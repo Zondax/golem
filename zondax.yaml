@@ -1,4 +1,4 @@
 projectName: golem
 
 templates:
-  - template: local:///Users/lenij/zondax/templates/templates/basic-golang
+  - template: templates/basic-golang
