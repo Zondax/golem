@@ -1,4 +1,4 @@
-package golem
+package cli
 
 type CleanUpHandler func()
 type DefaultConfigHandler func()

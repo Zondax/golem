@@ -1,4 +1,4 @@
-package golem
+package cli
 
 import (
 	"go.uber.org/zap"
