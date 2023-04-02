@@ -12,13 +12,13 @@ GITVERSION := v0.0.0
 endif
 
 build:
-	go build -ldflags "-X $(PACKAGE_VERSION).GitVersion=$(GIT_VERSION) -X $(PACKAGE_VERSION).GitRevision=$(GIT_REVISION)" -o $(APP_NAME)
+	go build -ldflags "-X $(PACKAGE_VERSION).GitVersion=$(GIT_VERSION) -X $(PACKAGE_VERSION).GitRevision=$(GIT_REVISION)" -o output/$(APP_NAME)
 
 run: build
-	./$(APP_NAME) start
+	./output/$(APP_NAME) start
 
 version: build
-	./$(APP_NAME) version
+	./output/$(APP_NAME) version
 
 clean:
 	go clean
@@ -40,7 +40,7 @@ lint:
 
 ########################################
 
-zdx-update:
+zondax-update:
 	@npx -y @zondax/cli@latest update
 
 # include if exists
