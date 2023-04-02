@@ -49,7 +49,12 @@ func (c *CLI) init() {
 		Use:   "check",
 		Short: "Check configuration",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("%s\n", c.checkConfig())
+			err := c.checkConfig()
+			if err != nil {
+				fmt.Printf("%s\n", c.checkConfig().Error())
+			} else {
+				fmt.Printf("Configuration OK\n")
+			}
 		},
 	}
 
