@@ -42,6 +42,8 @@ func checkConfig[T Config]() error {
 func LoadConfig[T Config]() (*T, error) {
 	var config T
 
+	config.SetDefaults()
+
 	err := viper.Unmarshal(&config)
 	if err != nil {
 		return nil, err
