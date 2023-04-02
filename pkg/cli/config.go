@@ -24,10 +24,10 @@ func SetupConfiguration(c *cobra.Command) {
 	}
 
 	viper.AutomaticEnv() // read value ENV variables
-	err = viper.ReadInConfig()
-	if err != nil {
-		zap.S().Fatalf("%+v", err)
-	}
+	//err = viper.ReadInConfig()
+	//if err != nil {
+	//	zap.S().Fatalf("%+v", err)
+	//}
 }
 
 func checkConfig[T Config]() error {

@@ -64,8 +64,6 @@ func (c *CLI) init() {
 		},
 	}
 
-	SetupConfiguration(c.GetRoot())
-
 	c.GetRoot().AddCommand(checkCmd)
 	c.GetRoot().AddCommand(versionCmd)
 
@@ -78,6 +76,8 @@ func (c *CLI) init() {
 		viper.AddConfigPath(c.app.ConfigPath)
 		viper.SetEnvPrefix(c.app.EnvPrefix)
 	})
+
+	SetupConfiguration(c.GetRoot())
 }
 
 func (c *CLI) GetRoot() *cobra.Command {
