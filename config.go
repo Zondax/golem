@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func SetupConfiguration(c *cobra.Command, args []string) {
+func SetupConfiguration(c *cobra.Command) {
 	var configFileFlag string
 	c.PersistentFlags().StringVarP(&configFileFlag, "config", "c", "./config.yaml", "The path to the config file to use.")
 	err := viper.BindPFlag("config", c.PersistentFlags().Lookup("config"))

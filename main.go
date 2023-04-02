@@ -24,8 +24,6 @@ type CLI struct {
 	rootCmd     *cobra.Command
 }
 
-// TODO: Clean up all this configuration passing
-
 // New generates a CLI instance
 func New[T Config](app AppSettings) *CLI {
 	var rootCmd = &cobra.Command{
@@ -65,6 +63,8 @@ func (c *CLI) init() {
 			fmt.Printf("%s\n", c.GetVersionString())
 		},
 	}
+
+	SetupConfiguration(c.GetRoot())
 
 	c.GetRoot().AddCommand(checkCmd)
 	c.GetRoot().AddCommand(versionCmd)
