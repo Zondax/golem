@@ -24,10 +24,6 @@ func SetupConfiguration(c *cobra.Command) {
 	}
 
 	viper.AutomaticEnv() // read value ENV variables
-	//err = viper.ReadInConfig()
-	//if err != nil {
-	//	zap.S().Fatalf("%+v", err)
-	//}
 }
 
 func checkConfig[T Config]() error {
@@ -44,7 +40,14 @@ func LoadConfig[T Config]() (*T, error) {
 
 	config.SetDefaults()
 
-	err := viper.Unmarshal(&config)
+	err := viper.ReadInConfig()
+	if err != nil {
+		zap.S().Fatalf("%+v", err)
+	}
+
+	zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
+
+	err = viper.Unmarshal(&config)
 	if err != nil {
 		return nil, err
 	}
