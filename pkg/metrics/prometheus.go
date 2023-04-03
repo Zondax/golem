@@ -9,22 +9,6 @@ import (
 	"time"
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func newResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{w, http.StatusOK}
-}
-
-func prometheusMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := newResponseWriter(w)
-		next.ServeHTTP(rw, r)
-	})
-}
-
 // StartMetricsServer starts a prometheus server.
 // Data Url is at localhost:<port>/metrics/<endpoint>
 // Normally you would use /metrics as endpoint and 9090 as port
