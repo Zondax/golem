@@ -9,21 +9,19 @@ import (
 
 func SetupConfiguration(c *cobra.Command) {
 	var configFileFlag string
-	c.PersistentFlags().StringVarP(&configFileFlag, "config", "c", "./config.yaml", "The path to the config file to use.")
+	c.PersistentFlags().StringVarP(&configFileFlag, "config", "c", "", "The path to the config file to use.")
 	err := viper.BindPFlag("config", c.PersistentFlags().Lookup("config"))
 	if err != nil {
 		zap.S().Fatalf("unable to bind config flag: %+v", err)
 	}
-	viper.SetConfigFile(configFileFlag)
 
 	viper.SetConfigName("config") // config file name without extension
-	viper.AddConfigPath(".")      // search path
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")    // search path
 
 	if defaultConfigHandler != nil {
 		defaultConfigHandler()
 	}
-
-	viper.AutomaticEnv() // read value ENV variables
 }
 
 func checkConfig[T Config]() error {
@@ -40,17 +38,24 @@ func LoadConfig[T Config]() (*T, error) {
 
 	config.SetDefaults()
 
+	configFileOverride := viper.GetString("config")
+	if configFileOverride != "" {
+		viper.SetConfigFile(configFileOverride)
+	}
+
+	zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
 	err := viper.ReadInConfig()
 	if err != nil {
 		zap.S().Fatalf("%+v", err)
 	}
 
-	zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
-
 	err = viper.Unmarshal(&config)
 	if err != nil {
 		return nil, err
 	}
+
+	// Override with environment variables
+	viper.AutomaticEnv() // read value ENV variables
 
 	err = config.Validate()
 	if err != nil {
