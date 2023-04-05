@@ -17,7 +17,7 @@ func SetupConfiguration(c *cobra.Command) {
 
 	viper.SetConfigName("config") // config file name without extension
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")    // search path
+	viper.AddConfigPath(".") // search path
 
 	if defaultConfigHandler != nil {
 		defaultConfigHandler()
