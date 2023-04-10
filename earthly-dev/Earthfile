@@ -16,6 +16,7 @@ build-production:
 
     RUN ssh-keygen -A
     RUN sed -i s/#PermitRootLogin.*/PermitRootLogin\ yes/ /etc/ssh/sshd_config
+    RUN sed -i s/#AllowTcpForwarding yes/AllowTcpForwarding\ yes/ /etc/ssh/sshd_config
     RUN mkdir -m 700 /root/.ssh
 
     EXPOSE 22
