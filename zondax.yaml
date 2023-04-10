@@ -1,4 +1,5 @@
 projectName: golem
-
+localPath: ~/zondax/templates
 templates:
   - template: templates/basic-golang
+  - template: templates/publish-earthly
