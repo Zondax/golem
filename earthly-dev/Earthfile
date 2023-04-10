@@ -17,6 +17,8 @@ build-production:
     RUN apt-get update && \
         apt-get install -yy apt-utils python-is-python3 git openssh-server curl wget libc6 libstdc++6 ca-certificates tar bash
 
+    RUN mkdir -p /var/run/sshd
+
     RUN ssh-keygen -A
     RUN sed -i "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
     RUN sed -i "s/#AllowTcpForwarding yes/AllowTcpForwarding yes/" /etc/ssh/sshd_config
