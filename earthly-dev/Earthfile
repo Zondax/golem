@@ -19,6 +19,9 @@ build-production:
 
     RUN mkdir -p /var/run/sshd
 
+    # FIXME: we need to add a user, so we have rootless development environment
+    RUN mkdir -p /root/zondax
+
     RUN ssh-keygen -A
     RUN sed -i "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
     RUN sed -i "s/#AllowTcpForwarding yes/AllowTcpForwarding yes/" /etc/ssh/sshd_config
