@@ -17,6 +17,11 @@ build-production:
     RUN apt-get update && \
         apt-get install -yy apt-utils python-is-python3 git openssh-server curl wget libc6 libstdc++6 ca-certificates tar bash
 
+    # Some non required but useful tools
+    RUN apt-get update && \
+        apt-get install -yy htop
+
+
     RUN mkdir -p /var/run/sshd
 
     # FIXME: we need to add a user, so we have rootless development environment

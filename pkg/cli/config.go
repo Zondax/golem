@@ -41,9 +41,9 @@ func LoadConfig[T Config]() (*T, error) {
 	configFileOverride := viper.GetString("config")
 	if configFileOverride != "" {
 		viper.SetConfigFile(configFileOverride)
+		zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
 
-	zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
 	err := viper.ReadInConfig()
 	if err != nil {
 		zap.S().Fatalf("%+v", err)
