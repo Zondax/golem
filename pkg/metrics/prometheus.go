@@ -31,10 +31,10 @@ func StartMetricsServer(endpoint string, port string) chan error {
 		err := server.ListenAndServe()
 		if err != nil {
 			zap.S().Errorf("Prometheus server error: %v", err)
-			errChan <- err
 		} else {
 			zap.S().Infof("Prometheus server serving at port %s", port)
 		}
+		errChan <- err
 	}()
 
 	return errChan
