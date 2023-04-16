@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/go-chi/chi/v5 v5.0.8
-	github.com/prometheus/client_golang v1.14.0
+	github.com/prometheus/client_golang v1.15.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	go.uber.org/zap v1.24.0
