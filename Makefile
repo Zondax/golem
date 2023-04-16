@@ -9,13 +9,19 @@ CMDS=$(shell find cmd -type d)
 # Strip cmd/ from directory names and generate output binary names
 BINS=$(subst cmd/,output/,$(CMDS))
 
+default: build
+
+modtidy:
+	@go mod tidy
+
+generate: modtidy
+	go generate ./internal/...
+
 output/%: cmd/%
 	mkdir -p $(dir $@)
 	go build -o $@ ./$<
 
-build: $(BINS)
-	go mod tidy
-	go generate ./internal/...
+build: generate $(BINS)
 	@[ -e main.go ] && go build -v -o output/$(APP_NAME) || true
 
 run: build
