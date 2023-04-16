@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/zondax/golem/internal/version"
 	"github.com/zondax/golem/pkg/cli"
 	"github.com/zondax/golem/pkg/metrics"
 )
@@ -11,8 +12,8 @@ func main() {
 		Description: "some fake tool",
 		ConfigPath:  "$HOME/.golem/",
 		EnvPrefix:   "golem",
-		GitVersion:  GitVersion,
-		GitRevision: GitRevision,
+		GitVersion:  version.GitVersion,
+		GitRevision: version.GitRevision,
 	}
 
 	// Define application level features

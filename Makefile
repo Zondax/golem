@@ -3,10 +3,20 @@
 #
 APP_NAME=golem
 
-build:
+# Get all directories under cmd
+CMDS=$(shell find cmd -type d)
+
+# Strip cmd/ from directory names and generate output binary names
+BINS=$(subst cmd/,output/,$(CMDS))
+
+output/%: cmd/%
+	mkdir -p $(dir $@)
+	go build -o $@ ./$<
+
+build: $(BINS)
 	go mod tidy
-	go generate
-	go build -v -o output/$(APP_NAME)
+	go generate ./internal/...
+	@[ -e main.go ] && go build -v -o output/$(APP_NAME) || true
 
 run: build
 	./output/$(APP_NAME) start
@@ -36,10 +46,10 @@ earthly:
 	earthly +all
 
 docker-bash:
-	docker run --platform linux/amd64 -it zondax/golem-dev:latest /bin/bash
+	docker run --platform linux/amd64 -it zondax/${APP_NAME}:latest /bin/sh
 
 docker-run:
-	docker run --platform linux/amd64 -it zondax/golem-dev:latest
+	docker run --platform linux/amd64 -it zondax/${APP_NAME}:latest
 
 ########################################
 
