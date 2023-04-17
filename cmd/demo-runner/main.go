@@ -3,7 +3,7 @@ package main
 import "github.com/zondax/golem/pkg/runner"
 
 func main() {
-	println("Task runner demo")
+	println("[Demo] Running multiple tasks")
 
 	r := runner.NewRunner()
 

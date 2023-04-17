@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/zondax/golem/internal/version"
 	"github.com/zondax/golem/pkg/cli"
-	"github.com/zondax/golem/pkg/metrics"
 )
 
 func main() {
@@ -17,10 +16,8 @@ func main() {
 	}
 
 	// Define application level features
-	cli := cli.New[cli.ConfigMock](appSettings)
-	defer cli.Close()
+	myCli := cli.New[cli.ConfigMock](appSettings)
+	defer myCli.Close()
 
-	metrics.StartMetricsServer("metrics", "8080")
-
-	cli.Run()
+	myCli.Run()
 }

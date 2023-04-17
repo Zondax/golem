@@ -61,7 +61,7 @@ func (tr *TaskRunner) sendError(te TaskError) {
 		break
 	default:
 		// FIXME: log error at least? Nobody is registered to receive errors
-		fmt.Println("No receiver ready, error not sent!")
+		fmt.Printf("No receiver ready! error not sent! %s\n", te.Err.Error())
 	}
 }
 
@@ -74,12 +74,21 @@ func (tr *TaskRunner) runTask(task Task) {
 				return tr.ctx.Err()
 
 			case <-time.After(1 * time.Second):
-				// FIXME: are we sure we want to loop and keep retrying?
-				// Send some event so we are aware of this?
-				err := task.Start()
-				if err != nil {
-					tr.sendError(TaskError{Task: &task, Err: err})
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							err := fmt.Errorf("[PANIC] %s: %v", task.Name(), r)
+							tr.sendError(TaskError{Task: &task, Err: err})
+						}
+					}()
+
+					// FIXME: are we sure we want to loop and keep retrying?
+					// Send some event so we are aware of this?
+					err := task.Start()
+					if err != nil {
+						tr.sendError(TaskError{Task: &task, Err: err})
+					}
+				}()
 			}
 		}
 	})
