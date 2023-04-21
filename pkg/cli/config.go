@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -38,24 +40,41 @@ func LoadConfig[T Config]() (*T, error) {
 
 	config.SetDefaults()
 
+	// adds all default values in viper to struct
+	err := viper.Unmarshal(&config)
+	if err != nil {
+		return nil, err
+	}
+
 	configFileOverride := viper.GetString("config")
 	if configFileOverride != "" {
 		viper.SetConfigFile(configFileOverride)
 		zap.S().Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
 
-	err := viper.ReadInConfig()
+	err = viper.ReadInConfig()
 	if err != nil {
 		zap.S().Fatalf("%+v", err)
 	}
 
+	// adds all default+configFile values in viper to struct
+	// values in config file overrides default values
 	err = viper.Unmarshal(&config)
 	if err != nil {
 		return nil, err
 	}
 
+	// To override the value in config.yaml for the key
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	// Override with environment variables
 	viper.AutomaticEnv() // read value ENV variables
+
+	// adds all default+configFile+env values in viper to struct
+	// values from env overrides default+configFile values
+	err = viper.Unmarshal(&config)
+	if err != nil {
+		return nil, err
+	}
 
 	err = config.Validate()
 	if err != nil {
