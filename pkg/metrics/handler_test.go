@@ -38,7 +38,7 @@ func TestUpdateMetric(t *testing.T) {
 	}
 	taskMetric.metrics["test_metric"] = metricDetail
 
-	mockH.On("Update", realCounter, 1.0, mock.Anything).Return(nil).Once() // <-- Use the real Prometheus Counter here
+	mockH.On("Update", realCounter, 1.0, mock.Anything).Return(nil).Once()
 
 	taskMetric.UpdateMetric("test_metric", 1.0)
 	mockH.AssertExpectations(t)
