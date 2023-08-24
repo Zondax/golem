@@ -3,39 +3,57 @@ package metrics
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"net/http"
+	"sync"
 	"time"
 )
 
 // StartMetricsServer starts a prometheus server.
-// Data Url is at localhost:<port>/metrics/<endpoint>
+// Data Url is at localhost:<port>/metrics/<path>
 // Normally you would use /metrics as endpoint and 9090 as port
 
-type TaskMetrics struct {
-	endpoint string
-	port     string
+type TaskMetrics interface {
+	Start() error
+	RegisterMetric(name string, help string, labels []string, handler MetricHandler) error
+	UpdateMetric(name string, value float64, labels ...string)
+	Name() string
+	Stop() error
 }
 
-func NewTaskMetrics(endpoint string, port string) *TaskMetrics {
-	return &TaskMetrics{
-		endpoint: endpoint,
-		port:     port,
+type MetricDetail struct {
+	Collector prometheus.Collector
+	Handler   MetricHandler
+}
+
+type taskMetrics struct {
+	path    string
+	port    string
+	metrics map[string]MetricDetail
+	mux     sync.RWMutex
+}
+
+func NewTaskMetrics(path string, port string) TaskMetrics {
+	return &taskMetrics{
+		path:    path,
+		port:    port,
+		metrics: make(map[string]MetricDetail),
 	}
 }
 
-func (t *TaskMetrics) Name() string {
+func (t *taskMetrics) Name() string {
 	return "metrics"
 }
 
-func (t *TaskMetrics) Start() error {
+func (t *taskMetrics) Start() error {
 	router := chi.NewRouter()
 
 	zap.S().Infof("Metrics (prometheus) starting: %v", t.port)
 
-	// Prometheus endpoint
-	router.Get(t.endpoint, promhttp.Handler().(http.HandlerFunc))
+	// Prometheus path
+	router.Get(t.path, promhttp.Handler().(http.HandlerFunc))
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", t.port),
@@ -53,6 +71,6 @@ func (t *TaskMetrics) Start() error {
 	return err
 }
 
-func (t *TaskMetrics) Stop() error {
+func (t *taskMetrics) Stop() error {
 	return nil
 }
