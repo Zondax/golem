@@ -24,6 +24,9 @@ func TestStart(t *testing.T) {
 
 	resp, err := http.Get("http://localhost:9091/metrics")
 	assert.Nil(t, err)
+
+	defer resp.Body.Close()
+
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
