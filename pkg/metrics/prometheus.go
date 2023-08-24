@@ -12,7 +12,7 @@ import (
 )
 
 // StartMetricsServer starts a prometheus server.
-// Data Url is at localhost:<port>/metrics/<endpoint>
+// Data Url is at localhost:<port>/metrics/<path>
 // Normally you would use /metrics as endpoint and 9090 as port
 
 type TaskMetrics interface {
