@@ -16,7 +16,7 @@ import (
 // Normally you would use /metrics as endpoint and 9090 as port
 
 type TaskMetrics interface {
-	StartServer() error
+	Start() error
 	RegisterMetric(name string, help string, labels []string, handler MetricHandler) error
 	UpdateMetric(name string, value float64, labels ...string)
 	Name() string
@@ -47,7 +47,7 @@ func (t *taskMetrics) Name() string {
 	return "metrics"
 }
 
-func (t *taskMetrics) StartServer() error {
+func (t *taskMetrics) Start() error {
 	router := chi.NewRouter()
 
 	zap.S().Infof("Metrics (prometheus) starting: %v", t.port)

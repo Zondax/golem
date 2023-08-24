@@ -61,7 +61,7 @@ This project provides a comprehensive metrics collection and reporting framework
 
 ```go
 metricsServer := metrics.NewTaskMetrics("/metrics", "9090")
-err := metricsServer.StartServer()
+err := metricsServer.Start()
 if err != nil {
     log.Fatal(err)
 }

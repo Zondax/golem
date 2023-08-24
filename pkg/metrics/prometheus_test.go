@@ -12,11 +12,11 @@ func TestName(t *testing.T) {
 	assert.Equal(t, "metrics", metrics.Name())
 }
 
-func TestStartServer(t *testing.T) {
+func TestStart(t *testing.T) {
 	metrics := NewTaskMetrics("/metrics", "9091")
 
 	go func() {
-		err := metrics.StartServer()
+		err := metrics.Start()
 		assert.Nil(t, err)
 	}()
 
