@@ -1,4 +1,4 @@
-package zdatabase
+package zdb
 
 import (
 	"database/sql"

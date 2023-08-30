@@ -7,7 +7,7 @@ type ConnectionParams struct {
 	Password string
 	Name     string
 	Host     string
-	Port     string
+	Port     uint
 	Params   string
 }
 

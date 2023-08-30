@@ -1,10 +1,10 @@
-package zdatabase
+package zdb
 
 import (
 	"database/sql"
 	"fmt"
-	"github.com/zondax/golem/pkg/zdatabase/zdbconfig"
-	"github.com/zondax/golem/pkg/zdatabase/zdbconnector"
+	"github.com/zondax/golem/pkg/zdb/zdbconfig"
+	"github.com/zondax/golem/pkg/zdb/zdbconnector"
 	"go.uber.org/zap"
 	"gorm.io/gorm/clause"
 	"time"
