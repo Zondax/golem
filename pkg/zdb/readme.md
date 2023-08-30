@@ -14,7 +14,7 @@ The `zdatabase` package serves as an abstraction layer for database interactions
 - **Extensible**: Connector mechanism to add support for additional database types.
 - **Robustness**: In-built logging and error-handling features.
 - **Retry Mechanism**: Automatic retries for failed database connections.
-- **zdb mock**: zdb mock for testing 
+- **Mocks**:  Provides mock implementations for DBConnector and ZDatabase interfaces, making it straightforward to unit test the package components without setting up actual database connections
 
 ## Installation
 \`\`\`bash
