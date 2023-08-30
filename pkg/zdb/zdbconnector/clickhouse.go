@@ -2,7 +2,7 @@ package zdbconnector
 
 import (
 	"fmt"
-	"github.com/zondax/golem/pkg/zdatabase/zdbconfig"
+	"github.com/zondax/golem/pkg/zdb/zdbconfig"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
 )
@@ -24,7 +24,7 @@ func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error
 
 func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 	dsn := fmt.Sprintf(
-		"clickhouse://%s:%s@%s:%s/%s",
+		"clickhouse://%s:%s@%s:%v/%s",
 		params.User,
 		params.Password,
 		params.Host,

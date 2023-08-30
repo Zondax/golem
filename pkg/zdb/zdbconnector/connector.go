@@ -1,12 +1,16 @@
 package zdbconnector
 
 import (
-	"github.com/zondax/golem/pkg/zdatabase/zdbconfig"
+	"github.com/zondax/golem/pkg/zdb/zdbconfig"
 	"gorm.io/gorm"
 )
 
+const (
+	DBTypeClickhouse = "clickhouse"
+)
+
 var Connectors = map[string]DBConnector{
-	"clickhouse": &ClickHouseConnector{},
+	DBTypeClickhouse: &ClickHouseConnector{},
 }
 
 type DBConnector interface {
