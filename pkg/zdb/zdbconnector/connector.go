@@ -15,4 +15,5 @@ var Connectors = map[string]DBConnector{
 
 type DBConnector interface {
 	Connect(config *zdbconfig.Config) (*gorm.DB, error)
+	VerifyConnection(db *gorm.DB) error
 }

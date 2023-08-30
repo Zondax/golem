@@ -38,3 +38,7 @@ func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 
 	return dsn
 }
+
+func (c *ClickHouseConnector) VerifyConnection(db *gorm.DB) error {
+	return db.Exec("SELECT 1").Error
+}

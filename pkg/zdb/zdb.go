@@ -58,7 +58,7 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 	for i := 0; i < config.MaxAttempts; i++ {
 		dbConn, err = connector.Connect(config)
 		if err == nil {
-			verifyErr := verifyDBConnection(dbConn)
+			verifyErr := connector.VerifyConnection(dbConn)
 			if verifyErr == nil {
 				return &zDatabase{db: dbConn}, nil
 			}
@@ -72,8 +72,4 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 
 	zap.S().Infof("Unable to establish database connection after %d attempts.", config.MaxAttempts)
 	return nil, err
-}
-
-func verifyDBConnection(dbConn *gorm.DB) error {
-	return dbConn.Exec("SELECT 1").Error
 }
