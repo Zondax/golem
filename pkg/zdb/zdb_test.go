@@ -17,8 +17,22 @@ func TestNewInstanceForClickHouse(t *testing.T) {
 	mockConnector.On("Connect", config).Return(&gorm.DB{}, nil)
 	mockConnector.On("VerifyConnection", mock.Anything).Return(nil)
 
-	zdbconnector.Connectors["clickhouse"] = mockConnector
-	_, err := NewInstance("clickhouse", config)
+	zdbconnector.Connectors[zdbconnector.DBTypeClickhouse] = mockConnector
+	_, err := NewInstance(zdbconnector.DBTypeClickhouse, config)
+
+	assert.NoError(t, err)
+}
+
+func TestNewInstanceForPostgres(t *testing.T) {
+	mockConnector := new(MockDBConnector)
+
+	config := &zdbconfig.Config{}
+
+	mockConnector.On("Connect", config).Return(&gorm.DB{}, nil)
+	mockConnector.On("VerifyConnection", mock.Anything).Return(nil)
+
+	zdbconnector.Connectors[zdbconnector.DBTypePostgres] = mockConnector
+	_, err := NewInstance(zdbconnector.DBTypePostgres, config)
 
 	assert.NoError(t, err)
 }
