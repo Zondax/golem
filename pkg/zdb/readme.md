@@ -48,3 +48,8 @@ config := &zdbconfig.Config{
 ## Configuration
 
 The `zdatabase` package can be configured through the `zdbconfig` package. Refer to [Configuration Documentation](docs/configuration.md) for more details.
+
+## Support
+
+- clickhouse
+- postgresql

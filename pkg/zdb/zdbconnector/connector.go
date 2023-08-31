@@ -7,10 +7,12 @@ import (
 
 const (
 	DBTypeClickhouse = "clickhouse"
+	DBTypePostgres   = "postgres"
 )
 
 var Connectors = map[string]DBConnector{
 	DBTypeClickhouse: &ClickHouseConnector{},
+	DBTypePostgres:   &PostgresConnector{},
 }
 
 type DBConnector interface {
