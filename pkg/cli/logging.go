@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"strings"
 )
 
 const (
@@ -24,10 +26,10 @@ var stringToLevel = map[string]zapcore.Level{
 	PanicLevel: zapcore.PanicLevel,
 }
 
-func InitGlobalLogger(level string) *zap.Logger {
-	zapLevel, ok := stringToLevel[level]
+func InitGlobalLogger(level string) (*zap.Logger, error) {
+	zapLevel, ok := stringToLevel[strings.ToLower(level)]
 	if !ok {
-		zapLevel = zapcore.DebugLevel
+		return nil, errors.New("log level '%s' is incorrect")
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
@@ -40,5 +42,5 @@ func InitGlobalLogger(level string) *zap.Logger {
 
 	zap.ReplaceGlobals(logger)
 
-	return logger
+	return logger, nil
 }
