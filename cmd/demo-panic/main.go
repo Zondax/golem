@@ -9,7 +9,7 @@ import (
 func main() {
 	println("[Demo] Panic handler")
 
-	cli.InitGlobalLogger()
+	_, _ = cli.InitGlobalLogger(cli.DebugLevel)
 
 	r := runner.NewRunner()
 
