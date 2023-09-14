@@ -9,7 +9,7 @@ import (
 func main() {
 	println("[Demo] Microservice example")
 
-	cli.InitGlobalLogger(cli.DebugLevel)
+	_, _ = cli.InitGlobalLogger(cli.DebugLevel)
 
 	r := runner.NewRunner()
 
