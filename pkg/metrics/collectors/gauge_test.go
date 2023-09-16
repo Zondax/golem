@@ -15,3 +15,21 @@ func TestGaugeUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, float64(15), testutil.ToFloat64(gauge))
 }
+
+func TestGaugeInc(t *testing.T) {
+	gauge := prometheus.NewGauge(prometheus.GaugeOpts{Name: "test_gauge"})
+	g := &Gauge{}
+
+	err := g.Inc(gauge)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(1), testutil.ToFloat64(gauge))
+}
+
+func TestGaugeDec(t *testing.T) {
+	gauge := prometheus.NewGauge(prometheus.GaugeOpts{Name: "test_gauge"})
+	g := &Gauge{}
+
+	err := g.Dec(gauge)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(-1), testutil.ToFloat64(gauge))
+}

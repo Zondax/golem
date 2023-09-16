@@ -31,8 +31,8 @@ This project provides a comprehensive metrics collection and reporting framework
 ## Code Structure
 
 - `/metrics/collectors/`: Contains the implementation of various metrics collectors (Counter, Gauge, Histogram).
-- `/metrics/handler.go`: Contains the MetricHandler interface and taskMetrics `UpdateMetric` method for updating metrics.
-- `/metrics/prometheus.go`: Defines the Prometheus server
+- `/metrics/handler.go`: Contains the MetricHandler interface and taskMetrics `UpdateMetric`, `IncrementMetric`, and `DecrementMetric` methods for updating metrics.
+- `/metrics/prometheus.go`: Defines the Prometheus server.
 - `/metrics/register.go`: Responsible for registering metrics with the Prometheus server.
 
 ## Metrics Collectors
@@ -46,7 +46,7 @@ This project provides a comprehensive metrics collection and reporting framework
 ### Gauge
 
 - **File**: `/metrics/collectors/gauge.go`
-- **Methods**: `Update`
+- **Methods**: `Update`, `Inc`, `Dec`
 - **Usage**: Gauges are metrics that can arbitrarily go up and down.
 
 ### Histogram
@@ -76,9 +76,8 @@ err = metricsServer.RegisterMetric("my_counter", "This is a counter metric", nil
 // With labels
 err = metricsServer.RegisterMetric("my_counter_with_labels", "This is a counter metric with labels", []string{"label1", "label2"}, &collectors.Counter{})
 
-if err != nil {
-log.Fatal(err)
-}
+// Register a gauge
+err = metricsServer.RegisterMetric("my_gauge", "This is a gauge metric", nil, &collectors.Gauge{})
 ```
 
 ### Updating Metrics
@@ -89,4 +88,10 @@ metricsServer.UpdateMetric("my_counter", 1)
 
 // With labels
 metricsServer.UpdateMetric("my_counter_with_labels", 1, "label1_value", "label2_value")
+
+// Increment a gauge
+metricsServer.IncrementMetric("my_gauge")
+
+// Decrement a gauge
+metricsServer.DecrementMetric("my_gauge")
 ```

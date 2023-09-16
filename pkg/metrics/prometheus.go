@@ -18,7 +18,9 @@ import (
 type TaskMetrics interface {
 	Start() error
 	RegisterMetric(name string, help string, labels []string, handler MetricHandler) error
-	UpdateMetric(name string, value float64, labels ...string)
+	UpdateMetric(name string, value float64, labels ...string) error
+	IncrementMetric(name string, labels ...string) error
+	DecrementMetric(name string, labels ...string) error
 	Name() string
 	Stop() error
 }

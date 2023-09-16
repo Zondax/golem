@@ -69,7 +69,7 @@ func (c *CLI) init() {
 
 	// TODO: We can make this optional? and more configurable if we see the need
 	// Initialize logger
-	InitGlobalLogger()
+	_, _ = InitGlobalLogger(DebugLevel)
 	setupCloseHandler(nil)
 	// Set Configuration Defaults
 	setupDefaultConfiguration(func() {
