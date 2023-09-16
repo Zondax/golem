@@ -5,6 +5,8 @@ import (
 	"log"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExpandPath(t *testing.T) {
@@ -21,13 +23,13 @@ func TestExpandPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ExpandPath(tt.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ExpandPath() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				assert.Nil(t, err)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("ExpandPath() = %v, want %v", got, tt.want)
-			}
+
+			assert.NotNil(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
