@@ -9,6 +9,7 @@ type ConnectionParams struct {
 	Host     string
 	Port     uint
 	Params   string
+	Protocol string
 }
 
 type Config struct {
