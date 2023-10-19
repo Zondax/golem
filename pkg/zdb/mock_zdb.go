@@ -52,6 +52,21 @@ func (m *MockZDatabase) Raw(sql string, values ...interface{}) ZDatabase {
 	return args.Get(0).(ZDatabase)
 }
 
+func (m *MockZDatabase) Select(query interface{}, values ...interface{}) ZDatabase {
+	args := m.Called(query, values[0])
+	return args.Get(0).(ZDatabase)
+}
+
+func (m *MockZDatabase) Where(query interface{}, values ...interface{}) ZDatabase {
+	args := m.Called(query, values[0])
+	return args.Get(0).(ZDatabase)
+}
+
+func (m *MockZDatabase) Limit(limit int) ZDatabase {
+	args := m.Called(limit)
+	return args.Get(0).(ZDatabase)
+}
+
 func (m *MockZDatabase) Exec(sql string, values ...interface{}) ZDatabase {
 	m.Called(sql, values)
 	return m

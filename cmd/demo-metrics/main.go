@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/zondax/golem/pkg/cli"
+	"github.com/zondax/golem/pkg/constants"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/runner"
 )
@@ -9,7 +10,7 @@ import (
 func main() {
 	println("[Demo] Microservice example")
 
-	_, _ = cli.InitGlobalLogger(cli.DebugLevel)
+	_, _ = cli.InitGlobalLogger(constants.DebugLevel)
 
 	r := runner.NewRunner()
 
