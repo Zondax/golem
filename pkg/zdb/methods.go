@@ -58,6 +58,18 @@ func (z *zDatabase) Clauses(conds ...clause.Expression) ZDatabase {
 	return wrap(z.db.Clauses(conds...))
 }
 
+func (z *zDatabase) Select(query interface{}, args ...interface{}) ZDatabase {
+	return wrap(z.db.Select(query, args...))
+}
+
+func (z *zDatabase) Where(query interface{}, args ...interface{}) ZDatabase {
+	return wrap(z.db.Where(query, args...))
+}
+
+func (z *zDatabase) Limit(limit int) ZDatabase {
+	return wrap(z.db.Limit(limit))
+}
+
 func (z *zDatabase) Transaction(fc func(tx ZDatabase) error, opts ...*sql.TxOptions) (err error) {
 	return z.db.Transaction(func(tx *gorm.DB) error {
 		return fc(wrap(tx))

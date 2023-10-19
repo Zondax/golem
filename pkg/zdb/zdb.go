@@ -22,6 +22,9 @@ type ZDatabase interface {
 	Scan(dest interface{}) ZDatabase
 	Rows() (*sql.Rows, error)
 	ScanRows(rows *sql.Rows, result interface{}) error
+	Select(query interface{}, args ...interface{}) ZDatabase
+	Where(query interface{}, args ...interface{}) ZDatabase
+	Limit(limit int) ZDatabase
 	Create(value interface{}) ZDatabase
 	Delete(value interface{}, where ...interface{}) ZDatabase
 	Raw(sql string, values ...interface{}) ZDatabase
