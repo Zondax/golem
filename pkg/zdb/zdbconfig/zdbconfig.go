@@ -20,6 +20,7 @@ type Config struct {
 }
 
 type LogConfig struct {
+	Prefix                    string
 	LogLevel                  string
 	SlowThreshold             int
 	IgnoreRecordNotFoundError bool

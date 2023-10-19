@@ -2,28 +2,20 @@ package cli
 
 import (
 	"errors"
+	"github.com/zondax/golem/pkg/constants"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
 	"strings"
 )
 
-const (
-	DebugLevel = "debug"
-	InfoLevel  = "info"
-	WarnLevel  = "warn"
-	ErrorLevel = "error"
-	FatalLevel = "fatal"
-	PanicLevel = "panic"
-)
-
 var stringToLevel = map[string]zapcore.Level{
-	DebugLevel: zapcore.DebugLevel,
-	InfoLevel:  zapcore.InfoLevel,
-	WarnLevel:  zapcore.WarnLevel,
-	ErrorLevel: zapcore.ErrorLevel,
-	FatalLevel: zapcore.FatalLevel,
-	PanicLevel: zapcore.PanicLevel,
+	constants.DebugLevel: zapcore.DebugLevel,
+	constants.InfoLevel:  zapcore.InfoLevel,
+	constants.WarnLevel:  zapcore.WarnLevel,
+	constants.ErrorLevel: zapcore.ErrorLevel,
+	constants.FatalLevel: zapcore.FatalLevel,
+	constants.PanicLevel: zapcore.PanicLevel,
 }
 
 func InitGlobalLogger(level string) (*zap.Logger, error) {
