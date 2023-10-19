@@ -3,6 +3,7 @@ module github.com/zondax/golem
 go 1.19
 
 require (
+	github.com/ClickHouse/clickhouse-go/v2 v2.14.2
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/prometheus/client_golang v1.17.0
 	github.com/spf13/cobra v1.7.0
@@ -17,7 +18,6 @@ require (
 
 require (
 	github.com/ClickHouse/ch-go v0.58.2 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.14.2 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
