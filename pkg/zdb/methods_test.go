@@ -83,6 +83,27 @@ func (suite *ZDatabaseSuite) TestExec() {
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
 }
 
+func (suite *ZDatabaseSuite) TestSelect() {
+	suite.db.(*MockZDatabase).On("Select", "name", []interface{}{"Messi"}).Return(suite.db)
+	newDb := suite.db.Select("name", "Messi")
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
+func (suite *ZDatabaseSuite) TestWhere() {
+	suite.db.(*MockZDatabase).On("Where", "name = ?", []interface{}{"Messi"}).Return(suite.db)
+	newDb := suite.db.Where("name = ?", "Messi")
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
+func (suite *ZDatabaseSuite) TestLimit() {
+	suite.db.(*MockZDatabase).On("Limit", 10).Return(suite.db)
+	newDb := suite.db.Limit(10)
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
 func (suite *ZDatabaseSuite) TestTable() {
 	suite.db.(*MockZDatabase).On("Table", "test_table").Return(suite.db)
 	newDb := suite.db.Table("test_table")
