@@ -22,6 +22,7 @@ type Routes interface {
 	PATCH(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	DELETE(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	Route(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
+	Group(prefix string) Routes
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 }
@@ -35,6 +36,18 @@ func New() ZRouter {
 	return &zrouter{
 		router: chi.NewRouter(),
 	}
+}
+
+func (r *zrouter) Group(prefix string) Routes {
+	newRouter := &zrouter{
+		router: chi.NewRouter(),
+	}
+
+	r.router.Group(func(groupRouter chi.Router) {
+		groupRouter.Mount(prefix, newRouter.router)
+	})
+
+	return newRouter
 }
 
 func (r *zrouter) Run(addr ...string) error {

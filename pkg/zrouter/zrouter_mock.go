@@ -48,3 +48,8 @@ func (m *MockZRouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	args := m.Called(middlewares)
 	return args.Get(0).(Routes)
 }
+
+func (m *MockZRouter) Group(prefix string) Routes {
+	args := m.Called(prefix)
+	return args.Get(0).(Routes)
+}
