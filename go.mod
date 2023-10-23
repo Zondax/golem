@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.14.2
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/cors v1.2.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.17.0
