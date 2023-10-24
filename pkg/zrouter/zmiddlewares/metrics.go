@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
 	"net/http"
@@ -14,7 +15,7 @@ const (
 	durationMillisecondsMetricType = "duration_milliseconds"
 	responseSizeMetricType         = "response_size_bytes"
 	totalRequestMetricType         = "total_requests"
-	endpointLabel                  = "endpoint"
+	pathLabel                      = "path"
 	methodLabel                    = "method"
 	statusLabel                    = "status"
 )
@@ -32,9 +33,9 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 	responseSizeMetricName := getMetricName(appName, responseSizeMetricType)
 	durationMillisecondsMetricName := getMetricName(appName, durationMillisecondsMetricType)
 	activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
-	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Counter{})
-	register(durationMillisecondsMetricName, "Duration of HTTP requests.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Histogram{})
-	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Histogram{})
+	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Counter{})
+	register(durationMillisecondsMetricName, "Duration of HTTP requests.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Histogram{})
+	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Histogram{})
 	register(activeConnectionsMetricName, "Number of active HTTP connections.", nil, &collectors.Gauge{})
 
 	if len(errs) > 0 {
@@ -61,11 +62,12 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
 
 			duration := float64(time.Since(startTime).Milliseconds())
-			path := r.URL.Path
+			path := chi.RouteContext(r.Context()).RoutePattern()
+
 			responseStatus := mrw.status
 			bytesWritten := mrw.written
 
-			labels := []string{endpointLabel, path, methodLabel, r.Method, statusLabel, strconv.Itoa(responseStatus)}
+			labels := []string{r.Method, path, strconv.Itoa(responseStatus)}
 
 			durationMillisecondsMetricName := getMetricName(appName, durationMillisecondsMetricType)
 			_ = metricsServer.UpdateMetric(durationMillisecondsMetricName, duration, labels...)

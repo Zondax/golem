@@ -9,18 +9,26 @@ import (
 	"runtime/debug"
 )
 
+const (
+	internalErrorCode = "internal_error"
+)
+
 func ErrorHandlerMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				zap.S().Error("Internal error: %v\n%s", err, debug.Stack())
+				zap.S().Errorf("Internal error: %v\n%s", err, debug.Stack())
 				message := fmt.Sprintf("An internal error occurred: %v", err)
-				apiError := domain.NewAPIErrorResponse(http.StatusInternalServerError, "internal_error", message)
+				apiError := domain.NewAPIErrorResponse(http.StatusInternalServerError, internalErrorCode, message)
+
+				w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeJSON)
 				w.WriteHeader(apiError.HTTPStatus)
 				_ = json.NewEncoder(w).Encode(apiError)
 			}
 		}()
 
 		next.ServeHTTP(w, r)
-	})
+	}
+
+	return http.HandlerFunc(fn)
 }

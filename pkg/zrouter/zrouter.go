@@ -34,6 +34,7 @@ type Routes interface {
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
+	SetDefaultMiddlewares()
 	GetHandler() http.Handler
 }
 
@@ -82,11 +83,18 @@ func (r *zrouter) Run(addr ...string) error {
 	if len(addr) > 0 {
 		address = addr[0]
 	}
+
+	zap.S().Infof("Start server at %v", address)
 	return http.ListenAndServe(address, r.router)
 }
 
 func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
 	var wrappedHandler http.Handler = handler
+
+	for _, mw := range r.middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
 	for _, mw := range middlewares {
 		wrappedHandler = mw(wrappedHandler)
 	}

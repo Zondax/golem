@@ -7,3 +7,7 @@ import (
 func RequestID() Middleware {
 	return middleware.RequestID
 }
+
+func Logger() Middleware {
+	return middleware.Logger
+}

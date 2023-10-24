@@ -28,8 +28,12 @@ func (suite *ChiContextAdapterSuite) TestChiContextAdapter() {
 		assert.NoError(suite.T(), err)
 		assert.Equal(suite.T(), "Hello", input.Message)
 
-		adapter.JSON(http.StatusOK, map[string]string{"response": "OK"})
 		adapter.Header("Custom-Header", "CustomValue")
+
+		w.Header().Set("Content-Type", "application/json")
+		response := map[string]string{"response": "OK"}
+		err = json.NewEncoder(w).Encode(response)
+		assert.NoError(suite.T(), err)
 	})
 
 	body := bytes.NewBuffer([]byte(`{"message":"Hello"}`))

@@ -19,14 +19,6 @@ func (m *MockContext) BindJSON(obj interface{}) error {
 	return args.Error(0)
 }
 
-func (m *MockContext) JSON(code int, obj interface{}) {
-	m.Called(code, obj)
-}
-
-func (m *MockContext) Data(code int, contentType string, data []byte) {
-	m.Called(code, contentType, data)
-}
-
 func (m *MockContext) Header(key, value string) {
 	m.Called(key, value)
 }
