@@ -1,6 +1,8 @@
 package zrouter
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 )
@@ -18,21 +20,49 @@ func getChiHandler(handler HandlerFunc) http.HandlerFunc {
 
 		serviceResponse, err := handler(adaptedContext)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			handleError(w, err)
 			return
 		}
 
-		if serviceResponse != nil {
-			body, err := serviceResponse.ResponseBytes()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			contentType := serviceResponse.Header().Get(domain.ContentTypeHeader)
-			w.Header().Set("Content-Type", contentType)
-			w.WriteHeader(serviceResponse.Status())
-			_, _ = w.Write(body)
-		}
+		handleServiceResponse(w, serviceResponse)
 	}
+}
+
+func handleError(w http.ResponseWriter, err error) {
+	var apiErr *domain.APIError
+
+	if errors.As(err, &apiErr) {
+		writeAPIErrorResponse(w, apiErr)
+		return
+	}
+
+	writeInternalServerError(w)
+}
+
+func handleServiceResponse(w http.ResponseWriter, serviceResponse domain.ServiceResponse) {
+	if serviceResponse == nil {
+		return
+	}
+
+	body, err := serviceResponse.ResponseBytes()
+	if err != nil {
+		http.Error(w, "Failed to process response.", http.StatusInternalServerError)
+		return
+	}
+
+	contentType := serviceResponse.Header().Get(domain.ContentTypeHeader)
+	w.Header().Set(domain.ContentTypeHeader, contentType)
+	w.WriteHeader(serviceResponse.Status())
+	_, _ = w.Write(body)
+}
+
+func writeAPIErrorResponse(w http.ResponseWriter, apiErr *domain.APIError) {
+	w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeJSON)
+	w.WriteHeader(apiErr.HTTPStatus)
+	responseBody, _ := json.Marshal(apiErr)
+	_, _ = w.Write(responseBody)
+}
+
+func writeInternalServerError(w http.ResponseWriter) {
+	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }
