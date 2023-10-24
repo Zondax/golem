@@ -18,7 +18,7 @@ func (suite *ChiHandlerAdapterSuite) TestChiHandlerAdapter() {
 	h := http.Header{}
 	h.Add("Content-Type", "application/test")
 	handlerFunc := func(ctx Context) (domain.ServiceResponse, error) {
-		return domain.NewCustomServiceResponseWith(http.StatusOK, "Hello", h), nil
+		return domain.NewServiceResponseWithHeader(http.StatusOK, "Hello", h), nil
 	}
 
 	httpHandlerFunc := getChiHandler(handlerFunc)

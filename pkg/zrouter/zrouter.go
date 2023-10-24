@@ -7,11 +7,28 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const (
 	defaultAddress = ":8080"
+	defaultTimeOut = 240000
 )
+
+type Config struct {
+	ReadTimeOut  time.Duration
+	WriteTimeOut time.Duration
+}
+
+func (c *Config) setDefaultValues() {
+	if c.ReadTimeOut == 0 {
+		c.ReadTimeOut = time.Duration(defaultTimeOut) * time.Millisecond
+	}
+
+	if c.WriteTimeOut == 0 {
+		c.WriteTimeOut = time.Duration(defaultTimeOut) * time.Millisecond
+	}
+}
 
 type RegisteredRoute struct {
 	Method string
@@ -45,13 +62,20 @@ type zrouter struct {
 	appName       string
 	routes        []RegisteredRoute
 	mutex         sync.Mutex
+	config        *Config
 }
 
-func New(appName string, metricsServer metrics.TaskMetrics) ZRouter {
+func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRouter {
+	if config == nil {
+		config = &Config{}
+	}
+
+	config.setDefaultValues()
 	zr := &zrouter{
 		router:        chi.NewRouter(),
 		metricsServer: metricsServer,
 		appName:       appName,
+		config:        config,
 	}
 	return zr
 }
@@ -85,7 +109,14 @@ func (r *zrouter) Run(addr ...string) error {
 	}
 
 	zap.S().Infof("Start server at %v", address)
-	return http.ListenAndServe(address, r.router)
+
+	server := &http.Server{
+		Addr:         address,
+		Handler:      r.router,
+		ReadTimeout:  r.config.ReadTimeOut,
+		WriteTimeout: r.config.WriteTimeOut,
+	}
+	return server.ListenAndServe()
 }
 
 func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {

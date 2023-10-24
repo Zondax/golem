@@ -14,7 +14,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	r.Use(RateLimitMiddleware(1))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	req := httptest.NewRequest("GET", "/", nil)

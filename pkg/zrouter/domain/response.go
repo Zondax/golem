@@ -2,7 +2,6 @@ package domain
 
 import (
 	"encoding/json"
-	"fmt"
 	"go.uber.org/zap"
 	"net/http"
 	"sync"
@@ -14,70 +13,39 @@ const (
 	ContentTypeJSON            = "json"
 )
 
-var HeaderCacheControl = http.CanonicalHeaderKey("Cache-Control")
-
 type ServiceResponse interface {
 	Status() int
 	Header() http.Header
 	ResponseBytes() ([]byte, error)
 	RespondMethod() string
-	SetCache(maxAge int)
 	Contents() interface{}
 }
 
-type baseServiceResponse struct {
-	status int
-	header http.Header
-	cache  int
-}
-
-type jsonServiceResponse struct {
-	baseServiceResponse
-}
-
 type defaultServiceResponse struct {
-	jsonServiceResponse
+	status        int
+	header        http.Header
 	response      interface{}
 	once          sync.Once
 	responseBytes []byte
 	marshalError  error
 }
 
-type customServiceResponse struct {
-	jsonServiceResponse
-	response []byte
+func (d *defaultServiceResponse) Status() int {
+	return d.status
 }
 
-func (b *baseServiceResponse) Status() int {
-	return b.status
-}
-
-func (b *baseServiceResponse) SetCache(maxAge int) {
-	b.cache = maxAge
-}
-
-func (b *baseServiceResponse) cloneHeader() http.Header {
-	h := b.header
-	if b.header == nil {
+func (d *defaultServiceResponse) Header() http.Header {
+	h := d.header
+	if h == nil {
 		h = http.Header{}
 	}
-
-	if b.cache > 0 {
-		h[HeaderCacheControl] = []string{fmt.Sprintf("private, max-age=%d", b.cache)}
+	if h.Get(ContentTypeHeader) == "" {
+		h.Set(ContentTypeHeader, contentTypeApplicationJSON)
 	}
-
-	return h.Clone()
+	return h
 }
 
-func (j *jsonServiceResponse) Header() http.Header {
-	result := j.cloneHeader()
-	if result.Get(ContentTypeHeader) == "" {
-		result.Set(ContentTypeHeader, contentTypeApplicationJSON)
-	}
-	return result
-}
-
-func (j *jsonServiceResponse) RespondMethod() string {
+func (d *defaultServiceResponse) RespondMethod() string {
 	return ContentTypeJSON
 }
 
@@ -96,48 +64,20 @@ func (d *defaultServiceResponse) Contents() interface{} {
 	return d.response
 }
 
-func (c *customServiceResponse) ResponseBytes() ([]byte, error) {
-	return c.response, nil
-}
-
-func (c *customServiceResponse) Contents() interface{} {
-	return c.response
-}
-
-func NewNoContentServiceResponse() ServiceResponse {
-	return NewServiceResponse(http.StatusNoContent, nil)
-}
-
-func NewCreatedServiceResponse(response ...interface{}) ServiceResponse {
-	var res interface{}
-	if len(response) > 0 {
-		res = response[0]
-	}
-	return NewServiceResponse(http.StatusCreated, res)
-}
-
 func NewServiceResponse(status int, response interface{}) ServiceResponse {
-	return NewServiceResponseWith(status, response, nil)
-}
-
-func NewServiceResponseWith(status int, response interface{}, header http.Header) ServiceResponse {
 	return &defaultServiceResponse{
-		jsonServiceResponse: jsonServiceResponse{
-			baseServiceResponse{
-				header: header,
-				status: status,
-			},
-		},
+		status:   status,
 		response: response,
+		header:   nil,
 	}
 }
 
-func NewCustomServiceResponse(status int, response string) ServiceResponse {
-	return NewCustomServiceResponseWith(status, response, nil)
-}
-
-func NewSuccessResponse(status int, data interface{}) ServiceResponse {
-	return NewServiceResponse(status, data)
+func NewServiceResponseWithHeader(status int, response interface{}, header http.Header) ServiceResponse {
+	return &defaultServiceResponse{
+		status:   status,
+		response: response,
+		header:   header,
+	}
 }
 
 func NewErrorResponse(status int, errorCode, errMsg string) ServiceResponse {
@@ -145,28 +85,17 @@ func NewErrorResponse(status int, errorCode, errMsg string) ServiceResponse {
 	apiErrorBytes, err := json.Marshal(apiError)
 	if err != nil {
 		zap.S().Error(err.Error())
-		return NewCustomServiceResponse(status, errMsg)
+		return NewServiceResponse(status, errMsg)
 	}
 
-	return NewCustomServiceResponseBytes(status, apiErrorBytes, nil)
+	return &defaultServiceResponse{
+		status:        status,
+		response:      apiErrorBytes,
+		header:        nil,
+		responseBytes: apiErrorBytes,
+	}
 }
 
 func NewErrorNotFound(errMsg string) ServiceResponse {
 	return NewErrorResponse(http.StatusNotFound, "ROUTE_NOT_FOUND", errMsg)
-}
-
-func NewCustomServiceResponseWith(status int, response string, header http.Header) ServiceResponse {
-	return NewCustomServiceResponseBytes(status, []byte(response), header)
-}
-
-func NewCustomServiceResponseBytes(status int, bytes []byte, header http.Header) ServiceResponse {
-	return &customServiceResponse{
-		jsonServiceResponse: jsonServiceResponse{
-			baseServiceResponse{
-				header: header,
-				status: status,
-			},
-		},
-		response: bytes,
-	}
 }

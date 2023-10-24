@@ -15,7 +15,7 @@ type ZRouterSuite struct {
 }
 
 func (suite *ZRouterSuite) SetupTest() {
-	suite.router = New("testApp", nil)
+	suite.router = New("testApp", nil, nil)
 }
 
 func (suite *ZRouterSuite) TestRegisterAndGetRoutes() {
