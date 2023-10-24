@@ -202,7 +202,6 @@ The `Context` is an essential part of ZRouter, providing a consistent interface 
 
 Behind the scenes, ZRouter leverages the powerful `chi` router. The `chiContextAdapter` translates the chi context to ZRouter's, ensuring that you get the benefits of chi's speed and power with ZRouter's simplified and consistent interface.
 
-
 ## Monitoring and Logging
 
 Monitor request metrics and employ structured logging for in-depth insights.
