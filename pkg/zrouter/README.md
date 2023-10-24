@@ -112,10 +112,22 @@ Use `chiContextAdapter` for translating the `chi` router's context to ZRouter's.
 
 Specify server behavior with `Config`. Use default settings or customize as needed.
 
-Default settings: 
+Default settings:
 - `ReadTimeOut`: 240000 milliseconds.
 - `WriteTimeOut`: 240000 milliseconds.
-  Override these defaults by providing values during initialization.
+- `Logger`: Uses production logger settings by default.
+
+Override these defaults by providing values during initialization.
+
+Example:
+```go
+   config := &Config{
+   ReadTimeOut:  25000 * time.Millisecond,
+   WriteTimeOut: 25000 * time.Millisecond,
+   Logger:       zapLoggerInstance,
+   }
+   zr := New("YourAppName", metricsServerInstance, config)
+```
 
 ## Response Standards
 
