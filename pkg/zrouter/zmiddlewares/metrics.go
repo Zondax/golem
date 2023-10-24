@@ -3,6 +3,7 @@ package zmiddlewares
 import (
 	"fmt"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/metrics/collectors"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,9 +14,37 @@ const (
 	durationMillisecondsMetricType = "duration_milliseconds"
 	responseSizeMetricType         = "response_size_bytes"
 	totalRequestMetricType         = "total_requests"
+	endpointLabel                  = "endpoint"
+	methodLabel                    = "method"
+	statusLabel                    = "status"
 )
 
-func routerMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware {
+func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) []error {
+	var errs []error
+
+	register := func(name, help string, labels []string, handler metrics.MetricHandler) {
+		if err := metricsServer.RegisterMetric(name, help, labels, handler); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	totalRequestsMetricName := getMetricName(appName, totalRequestMetricType)
+	responseSizeMetricName := getMetricName(appName, responseSizeMetricType)
+	durationMillisecondsMetricName := getMetricName(appName, durationMillisecondsMetricType)
+	activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
+	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Counter{})
+	register(durationMillisecondsMetricName, "Duration of HTTP requests.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Histogram{})
+	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{methodLabel, endpointLabel, statusLabel}, &collectors.Histogram{})
+	register(activeConnectionsMetricName, "Number of active HTTP connections.", nil, &collectors.Gauge{})
+
+	if len(errs) > 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware {
 	var activeConnections int64
 
 	return func(next http.Handler) http.Handler {
@@ -36,7 +65,7 @@ func routerMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware
 			responseStatus := mrw.status
 			bytesWritten := mrw.written
 
-			labels := []string{"endpoint", path, "method", r.Method, "status", strconv.Itoa(responseStatus)}
+			labels := []string{endpointLabel, path, methodLabel, r.Method, statusLabel, strconv.Itoa(responseStatus)}
 
 			durationMillisecondsMetricName := getMetricName(appName, durationMillisecondsMetricType)
 			_ = metricsServer.UpdateMetric(durationMillisecondsMetricName, duration, labels...)

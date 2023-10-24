@@ -2,7 +2,9 @@ package zrouter
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -28,14 +30,29 @@ type Routes interface {
 }
 
 type zrouter struct {
-	router      *chi.Mux
-	middlewares []zmiddlewares.Middleware
+	router        *chi.Mux
+	middlewares   []zmiddlewares.Middleware
+	metricsServer metrics.TaskMetrics
+	appName       string
 }
 
-func New() ZRouter {
-	return &zrouter{
-		router: chi.NewRouter(),
+func New(appName string, metricsServer metrics.TaskMetrics) ZRouter {
+	zr := &zrouter{
+		router:        chi.NewRouter(),
+		metricsServer: metricsServer,
+		appName:       appName,
 	}
+	return zr
+}
+
+func (r *zrouter) SetDefaultMiddlewares() {
+	r.Use(zmiddlewares.ErrorHandlerMiddleware)
+	r.Use(zmiddlewares.RequestID())
+	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
+		zap.S().With("err", err).Error("Error registering metrics")
+	}
+
+	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
 }
 
 func (r *zrouter) Group(prefix string) Routes {
