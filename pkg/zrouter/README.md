@@ -75,12 +75,27 @@ For dynamic URL parts, utilize the chi style, e.g., /entities/{entityID}.
 
 Add pre- and post-processing steps to your routes. Chain multiple middlewares for enhanced functionality.
 
-### Default Middlewares
+### **Default Middlewares**
 
-ZRouter sets certain default middlewares:
-- `ErrorHandlerMiddleware`: Handles errors, translating them to a standard response.
-- `RequestID()`: Appends a unique request ID to each request.
-- `RequestMetrics()`: Logs metrics related to requests, responses, and other interactions.
+`ZRouter` comes bundled with certain default middlewares for enhanced functionality and ease of use:
+
+- **ErrorHandlerMiddleware**: Systematically manages errors by translating them into a consistent response format.
+- **RequestID()**: Attaches a unique request ID to every request, facilitating request tracking and debugging.
+- **RequestMetrics()**: Monitors and logs metrics associated with requests, responses, and other interactions for performance insights.
+
+To activate these middlewares, make sure to call:
+
+```go
+zr := zrouter.New("AppName", metricsServer, nil)
+zr.SetDefaultMiddlewares() //Call this method!
+```
+### **Additional Middlewares**
+
+Beyond the default offerings, `ZRouter` also provides extra middlewares to address specific needs:
+
+- **DefaultCors()**: Introduces a predefined set of Cross-Origin Resource Sharing (CORS) rules, facilitating browsers to make requests across origins safely.
+- **Cors(options CorsOptions)**: A flexible CORS middleware that allows you to set specific CORS policies, such as permitted origins, headers, and methods, tailored to your application's demands.
+- **RateLimitMiddleware(maxRPM int)**: Shields your application from being swamped by imposing a rate limit on the influx of requests. By setting `maxRPM`, you can decide the maximum number of permissible requests per minute.
 
 #### Default Registered Metrics
 
