@@ -211,3 +211,10 @@ Monitor request metrics and employ structured logging for in-depth insights.
 - **Route Grouping**: Consolidate routes under specific prefixes using `Group()`.
 - **NotFound Handling**: Specify custom logic for unmatched routes.
 - **Route Tracking**: Fetch a structured list of all registered routes.
+
+### **Why ZRouter?**
+
+- **Consistent Standard:** In a world full of routers, `ZRouter` gives us a way to keep things standard across our projects.
+- **Flexibility:** Today we're using `chi`, but what about tomorrow? With `ZRouter`, if we ever want to switch, we can do it here and keep everything else unchanged.
+- **Speed & Power of Chi:** We get all the speed and flexibility of routers like `chi` but without tying ourselves down to one specific router.
+- **Unified Approach:** `ZRouter` sets a clear standard for how we handle metrics, responses, errors, and more. It's about making sure everything works the same way, every time.
