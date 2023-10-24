@@ -97,13 +97,6 @@ Beyond the default offerings, `ZRouter` also provides extra middlewares to addre
 - **Cors(options CorsOptions)**: A flexible CORS middleware that allows you to set specific CORS policies, such as permitted origins, headers, and methods, tailored to your application's demands.
 - **RateLimitMiddleware(maxRPM int)**: Shields your application from being swamped by imposing a rate limit on the influx of requests. By setting `maxRPM`, you can decide the maximum number of permissible requests per minute.
 
-#### Default Registered Metrics
-
-When using the `RequestMetrics()` middleware, the following metrics are registered by default:
-- **Request Count**: Tracks the number of received requests.
-- **Response Time**: Measures the time taken to process a request and send a response.
-- **Error Count**: Monitors the number of errors thrown during request processing.
-
 ## Adapters
 
 Use `chiContextAdapter` for translating the `chi` router's context to ZRouter's.
