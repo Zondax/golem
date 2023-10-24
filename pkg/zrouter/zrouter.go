@@ -18,6 +18,7 @@ const (
 type Config struct {
 	ReadTimeOut  time.Duration
 	WriteTimeOut time.Duration
+	Logger       *zap.SugaredLogger
 }
 
 func (c *Config) setDefaultValues() {
@@ -27,6 +28,11 @@ func (c *Config) setDefaultValues() {
 
 	if c.WriteTimeOut == 0 {
 		c.WriteTimeOut = time.Duration(defaultTimeOut) * time.Millisecond
+	}
+
+	if c.Logger == nil {
+		l, _ := zap.NewProduction()
+		c.Logger = l.Sugar()
 	}
 }
 
@@ -81,10 +87,10 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 }
 
 func (r *zrouter) SetDefaultMiddlewares() {
-	r.Use(zmiddlewares.ErrorHandlerMiddleware)
+	r.Use(zmiddlewares.ErrorHandlerMiddleware(r.config.Logger))
 	r.Use(zmiddlewares.RequestID())
 	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
-		zap.S().With("err", err).Error("Error registering metrics")
+		r.config.Logger.With("err", err).Error("Error registering metrics")
 	}
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
@@ -108,7 +114,7 @@ func (r *zrouter) Run(addr ...string) error {
 		address = addr[0]
 	}
 
-	zap.S().Infof("Start server at %v", address)
+	r.config.Logger.Infof("Start server at %v", address)
 
 	server := &http.Server{
 		Addr:         address,

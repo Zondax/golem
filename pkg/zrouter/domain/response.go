@@ -2,7 +2,6 @@ package domain
 
 import (
 	"encoding/json"
-	"go.uber.org/zap"
 	"net/http"
 	"sync"
 )
@@ -84,7 +83,6 @@ func NewErrorResponse(status int, errorCode, errMsg string) ServiceResponse {
 	apiError := NewAPIErrorResponse(status, errorCode, errMsg)
 	apiErrorBytes, err := json.Marshal(apiError)
 	if err != nil {
-		zap.S().Error(err.Error())
 		return NewServiceResponse(status, errMsg)
 	}
 
