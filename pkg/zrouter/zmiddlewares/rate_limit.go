@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func RateLimitMiddleware(maxRPM int) Middleware {
+func RateLimit(maxRPM int) Middleware {
 	limiter := rate.NewLimiter(rate.Every(time.Minute/time.Duration(maxRPM)), maxRPM)
 
 	return func(next http.Handler) http.Handler {

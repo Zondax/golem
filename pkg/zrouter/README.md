@@ -95,7 +95,7 @@ Beyond the default offerings, `ZRouter` also provides extra middlewares to addre
 
 - **DefaultCors()**: Introduces a predefined set of Cross-Origin Resource Sharing (CORS) rules, facilitating browsers to make requests across origins safely.
 - **Cors(options CorsOptions)**: A flexible CORS middleware that allows you to set specific CORS policies, such as permitted origins, headers, and methods, tailored to your application's demands.
-- **RateLimitMiddleware(maxRPM int)**: Shields your application from being swamped by imposing a rate limit on the influx of requests. By setting `maxRPM`, you can decide the maximum number of permissible requests per minute.
+- **RateLimit(maxRPM int)**: Shields your application from being swamped by imposing a rate limit on the influx of requests. By setting `maxRPM`, you can decide the maximum number of permissible requests per minute.
 
 ## Adapters
 

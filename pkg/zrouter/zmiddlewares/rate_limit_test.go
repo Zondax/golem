@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-func TestRateLimitMiddleware(t *testing.T) {
+func TestRateLimit(t *testing.T) {
 	r := chi.NewRouter()
 
-	r.Use(RateLimitMiddleware(1))
+	r.Use(RateLimit(1))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("OK"))
