@@ -17,7 +17,7 @@ type ServiceResponse interface {
 	Status() int
 	Header() http.Header
 	ResponseBytes() ([]byte, error)
-	RespondMethod() string
+	ResponseFormat() string
 	Contents() interface{}
 }
 
@@ -45,7 +45,7 @@ func (d *defaultServiceResponse) Header() http.Header {
 	return h
 }
 
-func (d *defaultServiceResponse) RespondMethod() string {
+func (d *defaultServiceResponse) ResponseFormat() string {
 	return ContentTypeJSON
 }
 
