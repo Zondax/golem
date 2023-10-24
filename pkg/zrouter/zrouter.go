@@ -34,6 +34,7 @@ type Routes interface {
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
+	GetHandler() http.Handler
 }
 
 type zrouter struct {
@@ -149,4 +150,8 @@ func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
 	routesCopy := make([]RegisteredRoute, len(r.routes))
 	copy(routesCopy, r.routes)
 	return routesCopy
+}
+
+func (r *zrouter) GetHandler() http.Handler {
+	return r.router
 }
