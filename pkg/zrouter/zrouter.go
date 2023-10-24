@@ -6,11 +6,17 @@ import (
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
 	"go.uber.org/zap"
 	"net/http"
+	"sync"
 )
 
 const (
 	defaultAddress = ":8080"
 )
+
+type RegisteredRoute struct {
+	Method string
+	Path   string
+}
 
 type ZRouter interface {
 	Routes
@@ -27,6 +33,7 @@ type Routes interface {
 	Group(prefix string) Routes
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
+	GetRegisteredRoutes() []RegisteredRoute
 }
 
 type zrouter struct {
@@ -34,6 +41,8 @@ type zrouter struct {
 	middlewares   []zmiddlewares.Middleware
 	metricsServer metrics.TaskMetrics
 	appName       string
+	routes        []RegisteredRoute
+	mutex         sync.Mutex
 }
 
 func New(appName string, metricsServer metrics.TaskMetrics) ZRouter {
@@ -87,6 +96,10 @@ func (r *zrouter) Method(method, path string, handler HandlerFunc, middlewares .
 	chiHandler := getChiHandler(handler)
 	finalHandler := r.applyMiddlewares(chiHandler, middlewares...)
 	r.router.Method(method, path, finalHandler)
+
+	r.mutex.Lock()
+	r.routes = append(r.routes, RegisteredRoute{Method: method, Path: path})
+	r.mutex.Unlock()
 	return r
 }
 
@@ -127,4 +140,13 @@ func (r *zrouter) NoRoute(handler HandlerFunc) {
 func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	r.middlewares = append(r.middlewares, middlewares...)
 	return r
+}
+
+func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	routesCopy := make([]RegisteredRoute, len(r.routes))
+	copy(routesCopy, r.routes)
+	return routesCopy
 }
