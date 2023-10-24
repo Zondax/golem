@@ -72,6 +72,10 @@ type zrouter struct {
 }
 
 func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRouter {
+	if appName == "" {
+		panic("appName cannot be an empty string")
+	}
+
 	if config == nil {
 		config = &Config{}
 	}
