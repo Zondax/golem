@@ -7,6 +7,7 @@ import (
 	"github.com/zondax/golem/pkg/metrics/collectors"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -47,19 +48,25 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 
 func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware {
 	var activeConnections int64
+	var mu sync.Mutex
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			startTime := time.Now()
 			activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
+
+			mu.Lock()
 			activeConnections++
 			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
+			mu.Unlock()
 
 			mrw := &metricsResponseWriter{ResponseWriter: w}
 			next.ServeHTTP(mrw, r)
 
+			mu.Lock()
 			activeConnections--
 			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
+			mu.Unlock()
 
 			duration := float64(time.Since(startTime).Milliseconds())
 			path := chi.RouteContext(r.Context()).RoutePattern()
