@@ -85,14 +85,14 @@ func (suite *ZDatabaseSuite) TestExec() {
 
 func (suite *ZDatabaseSuite) TestSelect() {
 	suite.db.(*MockZDatabase).On("Select", "name", []interface{}{"Messi"}).Return(suite.db)
-	newDb := suite.db.Select("name", "Messi")
+	newDb := suite.db.Select("name", []interface{}{"Messi"})
 	suite.NotNil(newDb)
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
 }
 
 func (suite *ZDatabaseSuite) TestWhere() {
 	suite.db.(*MockZDatabase).On("Where", "name = ?", []interface{}{"Messi"}).Return(suite.db)
-	newDb := suite.db.Where("name = ?", "Messi")
+	newDb := suite.db.Where("name = ?", []interface{}{"Messi"})
 	suite.NotNil(newDb)
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
 }
