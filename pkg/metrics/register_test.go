@@ -16,3 +16,23 @@ func TestRegisterMetric(t *testing.T) {
 	assert.IsType(t, MetricDetail{}, tm.metrics["test_counter"])
 	assert.IsType(t, prometheus.NewCounter(prometheus.CounterOpts{}), tm.metrics["test_counter"].Collector)
 }
+
+func TestFormatMetricName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"router-name", "router_name"},
+		{"router name", "router_name"},
+		{"router$name", "router_name"},
+		{"routerName", "routerName"},
+		{"router@name-123", "router_name_123"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			result := formatMetricName(test.input)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}

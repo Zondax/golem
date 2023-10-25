@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/zondax/golem/pkg/metrics/collectors"
+	"regexp"
+	"strings"
 )
 
 type collectorRegister func(name, help string, labels []string, handler MetricHandler) (prometheus.Collector, error)
@@ -19,6 +21,7 @@ var (
 func (t *taskMetrics) RegisterMetric(name string, help string, labels []string, handler MetricHandler) error {
 	var metric prometheus.Collector
 
+	name = formatMetricName(name)
 	registerFn, ok := collectorRegisterMap[handler.Type()]
 	if !ok {
 		return fmt.Errorf("unsupported metric type")
@@ -73,4 +76,13 @@ func registerGauge(name, help string, labels []string, handler MetricHandler) (p
 	}
 
 	return prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: name, Help: help}, labels), nil
+}
+
+// FormatMetricName formats the given string to make it a valid Prometheus metric name.
+func formatMetricName(name string) string {
+	name = strings.ReplaceAll(name, "-", "_")
+	re := regexp.MustCompile("[^a-zA-Z0-9_]+")
+	name = re.ReplaceAllString(name, "_")
+
+	return name
 }
