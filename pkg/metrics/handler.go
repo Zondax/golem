@@ -17,6 +17,7 @@ type IncrementDecrementHandler interface {
 }
 
 func (t *taskMetrics) performMetricAction(name string, action func(MetricHandler, prometheus.Collector, ...string) error, labels ...string) error {
+	name = formatMetricName(name)
 	t.mux.RLock()
 	metricDetail, ok := t.metrics[name]
 	t.mux.RUnlock()
