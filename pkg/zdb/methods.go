@@ -50,8 +50,8 @@ func (z *zDatabase) Raw(sql string, values ...interface{}) ZDatabase {
 	return wrap(z.db.Raw(sql, values...))
 }
 
-func (z *zDatabase) Table(name string) ZDatabase {
-	return wrap(z.db.Table(name))
+func (z *zDatabase) Table(name string, args ...interface{}) ZDatabase {
+	return wrap(z.db.Table(name, args))
 }
 
 func (z *zDatabase) Clauses(conds ...clause.Expression) ZDatabase {
@@ -70,6 +70,22 @@ func (z *zDatabase) Limit(limit int) ZDatabase {
 	return wrap(z.db.Limit(limit))
 }
 
+func (z *zDatabase) Offset(offset int) ZDatabase {
+	return wrap(z.db.Offset(offset))
+}
+
+func (z *zDatabase) Order(value interface{}) ZDatabase {
+	return wrap(z.db.Order(value))
+}
+
+func (z *zDatabase) Distinct(args ...interface{}) ZDatabase {
+	return wrap(z.db.Distinct(args))
+}
+
+func (z *zDatabase) Group(name string) ZDatabase {
+	return wrap(z.db.Group(name))
+}
+
 func (z *zDatabase) Transaction(fc func(tx ZDatabase) error, opts ...*sql.TxOptions) (err error) {
 	return z.db.Transaction(func(tx *gorm.DB) error {
 		return fc(wrap(tx))
@@ -78,6 +94,16 @@ func (z *zDatabase) Transaction(fc func(tx ZDatabase) error, opts ...*sql.TxOpti
 
 func (z *zDatabase) RowsAffected() int64 {
 	return z.db.RowsAffected
+}
+
+func (z *zDatabase) Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase {
+	gormFuncs := make([]func(*gorm.DB) *gorm.DB, len(funcs))
+	for i, f := range funcs {
+		gormFuncs[i] = func(db *gorm.DB) *gorm.DB {
+			return f(wrap(db)).GetDbConnection()
+		}
+	}
+	return wrap(z.db.Scopes(gormFuncs...))
 }
 
 func (z *zDatabase) Error() error {
