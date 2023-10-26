@@ -18,7 +18,7 @@ func (m *MockZDatabase) GetDbConnection() *gorm.DB {
 }
 
 func (m *MockZDatabase) Find(dest interface{}, conds ...interface{}) ZDatabase {
-	args := m.Called(dest, conds)
+	args := m.Called(append([]interface{}{dest}, conds...)...)
 	return args.Get(0).(ZDatabase)
 }
 
@@ -43,22 +43,22 @@ func (m *MockZDatabase) Create(value interface{}) ZDatabase {
 }
 
 func (m *MockZDatabase) Delete(value interface{}, conds ...interface{}) ZDatabase {
-	args := m.Called(value, conds)
+	args := m.Called(append([]interface{}{value}, conds...)...)
 	return args.Get(0).(ZDatabase)
 }
 
 func (m *MockZDatabase) Raw(sql string, values ...interface{}) ZDatabase {
-	args := m.Called(sql, values)
+	args := m.Called(append([]interface{}{sql}, values...)...)
 	return args.Get(0).(ZDatabase)
 }
 
 func (m *MockZDatabase) Select(query interface{}, values ...interface{}) ZDatabase {
-	args := m.Called(query, values)
+	args := m.Called(append([]interface{}{query}, values...)...)
 	return args.Get(0).(ZDatabase)
 }
 
 func (m *MockZDatabase) Where(query interface{}, values ...interface{}) ZDatabase {
-	args := m.Called(query, values)
+	args := m.Called(append([]interface{}{query}, values...)...)
 	return args.Get(0).(ZDatabase)
 }
 
@@ -78,7 +78,7 @@ func (m *MockZDatabase) Exec(sql string, values ...interface{}) ZDatabase {
 }
 
 func (m *MockZDatabase) Table(name string, args ...interface{}) ZDatabase {
-	m.Called(name, args)
+	m.Called(append([]interface{}{name}, args...)...)
 	return m
 }
 
