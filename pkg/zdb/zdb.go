@@ -28,6 +28,7 @@ type ZDatabase interface {
 	Offset(offset int) ZDatabase
 	Order(value interface{}) ZDatabase
 	Distinct(args ...interface{}) ZDatabase
+	Count(count *int64) ZDatabase
 	Group(name string) ZDatabase
 	Create(value interface{}) ZDatabase
 	Delete(value interface{}, where ...interface{}) ZDatabase

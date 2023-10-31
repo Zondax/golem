@@ -112,6 +112,11 @@ func (m *MockZDatabase) Distinct(params ...interface{}) ZDatabase {
 	return args.Get(0).(ZDatabase)
 }
 
+func (m *MockZDatabase) Count(count *int64) ZDatabase {
+	args := m.Called(count)
+	return args.Get(0).(ZDatabase)
+}
+
 func (m *MockZDatabase) Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase {
 	args := m.Called(funcs)
 	return args.Get(0).(ZDatabase)
