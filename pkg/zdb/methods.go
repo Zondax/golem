@@ -51,7 +51,7 @@ func (z *zDatabase) Raw(sql string, values ...interface{}) ZDatabase {
 }
 
 func (z *zDatabase) Table(name string, args ...interface{}) ZDatabase {
-	return wrap(z.db.Table(name, args))
+	return wrap(z.db.Table(name, args...))
 }
 
 func (z *zDatabase) Clauses(conds ...clause.Expression) ZDatabase {
@@ -79,7 +79,7 @@ func (z *zDatabase) Order(value interface{}) ZDatabase {
 }
 
 func (z *zDatabase) Distinct(args ...interface{}) ZDatabase {
-	return wrap(z.db.Distinct(args))
+	return wrap(z.db.Distinct(args...))
 }
 
 func (z *zDatabase) Group(name string) ZDatabase {
