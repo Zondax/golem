@@ -82,6 +82,10 @@ func (z *zDatabase) Distinct(args ...interface{}) ZDatabase {
 	return wrap(z.db.Distinct(args...))
 }
 
+func (z *zDatabase) Count(count *int64) ZDatabase {
+	return wrap(z.db.Count(count))
+}
+
 func (z *zDatabase) Group(name string) ZDatabase {
 	return wrap(z.db.Group(name))
 }
