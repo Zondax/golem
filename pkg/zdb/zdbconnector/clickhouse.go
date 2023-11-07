@@ -4,8 +4,10 @@ import (
 	"fmt"
 	clickhouse2 "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
+	"go.uber.org/zap"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
+	"net/url"
 	"strings"
 )
 
@@ -19,6 +21,8 @@ func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error
 	var err error
 	dbConn, err = gorm.Open(clickhouse.Open(dsn), gormConfig)
 	if err != nil {
+		logDSN := obfuscatePasswordInDSN(dsn)
+		zap.S().Errorf("Failed to open database connection: %v, DSN: %s", err, logDSN)
 		return nil, err
 	}
 	return dbConn, nil
@@ -49,4 +53,18 @@ func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 
 func (c *ClickHouseConnector) VerifyConnection(db *gorm.DB) error {
 	return db.Exec("SELECT 1").Error
+}
+
+func obfuscatePasswordInDSN(dsn string) string {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		zap.S().Errorf("Error parsing DSN: %v", err)
+		return ""
+	}
+
+	if _, hasPassword := u.User.Password(); hasPassword {
+		u.User = url.UserPassword(u.User.Username(), "*****")
+	}
+
+	return u.String()
 }
