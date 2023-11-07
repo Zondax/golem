@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const (
+	defaultProtocol = "clickhouse"
+)
+
 type ClickHouseConnector struct{}
 
 func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error) {
@@ -29,7 +33,7 @@ func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error
 }
 
 func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
-	protocol := clickhouse2.Native.String()
+	protocol := defaultProtocol
 	if strings.EqualFold(params.Protocol, clickhouse2.HTTP.String()) {
 		protocol = clickhouse2.HTTP.String()
 	}
