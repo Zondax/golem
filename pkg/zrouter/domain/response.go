@@ -8,7 +8,7 @@ import (
 
 const (
 	ContentTypeHeader          = "Content-Type"
-	contentTypeApplicationJSON = "application/json; charset=utf-8"
+	ContentTypeApplicationJSON = "application/json; charset=utf-8"
 	ContentTypeJSON            = "json"
 )
 
@@ -39,7 +39,7 @@ func (d *defaultServiceResponse) Header() http.Header {
 		h = http.Header{}
 	}
 	if h.Get(ContentTypeHeader) == "" {
-		h.Set(ContentTypeHeader, contentTypeApplicationJSON)
+		h.Set(ContentTypeHeader, ContentTypeApplicationJSON)
 	}
 	return h
 }
