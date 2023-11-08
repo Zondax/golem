@@ -35,6 +35,24 @@ func (suite *ChiHandlerAdapterSuite) TestChiHandlerAdapter() {
 	suite.Equal("application/test", recorder.Header().Get("Content-Type"))
 }
 
+func (suite *ChiHandlerAdapterSuite) TestChiHandlerAdapter_ShouldReturnNotFoundError() {
+	h := http.Header{}
+	h.Add(domain.ContentTypeHeader, domain.ContentTypeApplicationJSON)
+
+	expected := `{"error_code":"ROUTE_NOT_FOUND","message":"Route not found"}`
+	httpHandlerFunc := getChiHandler(NotFoundHandler)
+
+	req, err := http.NewRequest("GET", "/test", bytes.NewBuffer(nil))
+	suite.Require().NoError(err)
+
+	recorder := httptest.NewRecorder()
+
+	httpHandlerFunc(recorder, req)
+
+	suite.Equal(http.StatusNotFound, recorder.Code)
+	suite.Equal(expected, recorder.Body.String())
+}
+
 func TestChiHandlerAdapterSuite(t *testing.T) {
 	suite.Run(t, new(ChiHandlerAdapterSuite))
 }
