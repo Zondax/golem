@@ -88,7 +88,7 @@ func NewErrorResponse(status int, errorCode, errMsg string) ServiceResponse {
 
 	return &defaultServiceResponse{
 		status:        status,
-		response:      apiErrorBytes,
+		response:      apiError,
 		header:        nil,
 		responseBytes: apiErrorBytes,
 	}
