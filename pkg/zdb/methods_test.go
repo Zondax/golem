@@ -97,6 +97,31 @@ func (suite *ZDatabaseSuite) TestWhere() {
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
 }
 
+func (suite *ZDatabaseSuite) TestJoins() {
+	query := "JOIN table2 ON table1.id = table2.fk_id"
+	args := []interface{}{"arg1", "arg2"}
+	suite.db.(*MockZDatabase).On("Joins", query, args[0], args[1]).Return(suite.db)
+
+	newDb := suite.db.Joins(query, args...)
+
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
+func (suite *ZDatabaseSuite) TestUnionAll() {
+	subQuery1 := new(MockZDatabase)
+	subQuery2 := new(MockZDatabase)
+
+	subQuery1.On("GetDbConnection").Return("subQuery1")
+	subQuery2.On("GetDbConnection").Return("subQuery2")
+
+	suite.db.(*MockZDatabase).On("UnionAll", subQuery1, subQuery2).Return(suite.db)
+	newDb := suite.db.UnionAll(subQuery1, subQuery2)
+
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
 func (suite *ZDatabaseSuite) TestLimit() {
 	suite.db.(*MockZDatabase).On("Limit", 10).Return(suite.db)
 	newDb := suite.db.Limit(10)
