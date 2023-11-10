@@ -26,6 +26,7 @@ type ZDatabase interface {
 	Where(query interface{}, args ...interface{}) ZDatabase
 	Joins(query string, args ...interface{}) ZDatabase
 	UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
+	UnionDistinct(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
 	Limit(limit int) ZDatabase
 	Offset(offset int) ZDatabase
 	Order(value interface{}) ZDatabase

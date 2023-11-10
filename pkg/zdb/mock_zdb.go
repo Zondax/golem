@@ -72,6 +72,11 @@ func (m *MockZDatabase) UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZData
 	return args.Get(0).(ZDatabase)
 }
 
+func (m *MockZDatabase) UnionDistinct(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase {
+	args := m.Called(subQuery1, subQuery2)
+	return args.Get(0).(ZDatabase)
+}
+
 func (m *MockZDatabase) Limit(limit int) ZDatabase {
 	args := m.Called(limit)
 	return args.Get(0).(ZDatabase)

@@ -79,6 +79,15 @@ func (z *zDatabase) UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
 	return wrap(unionAll)
 }
 
+// Gorm doesn't have a UnionDistinct clause, so we need to build a workaround, which was found in this issue: https://github.com/go-gorm/gorm/issues/3781.
+func (z *zDatabase) UnionDistinct(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase {
+	unionAll := z.db.
+		Table("(? ", subQuery1.GetDbConnection()).
+		Joins("UNION DISTINCT ?)", subQuery2.GetDbConnection())
+
+	return wrap(unionAll)
+}
+
 func (z *zDatabase) Limit(limit int) ZDatabase {
 	return wrap(z.db.Limit(limit))
 }

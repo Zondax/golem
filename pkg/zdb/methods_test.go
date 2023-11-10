@@ -122,6 +122,20 @@ func (suite *ZDatabaseSuite) TestUnionAll() {
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
 }
 
+func (suite *ZDatabaseSuite) TestUnionDistinct() {
+	subQuery1 := new(MockZDatabase)
+	subQuery2 := new(MockZDatabase)
+
+	subQuery1.On("GetDbConnection").Return("subQuery1")
+	subQuery2.On("GetDbConnection").Return("subQuery2")
+
+	suite.db.(*MockZDatabase).On("UnionDistinct", subQuery1, subQuery2).Return(suite.db)
+	newDb := suite.db.UnionDistinct(subQuery1, subQuery2)
+
+	suite.NotNil(newDb)
+	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
 func (suite *ZDatabaseSuite) TestLimit() {
 	suite.db.(*MockZDatabase).On("Limit", 10).Return(suite.db)
 	newDb := suite.db.Limit(10)
