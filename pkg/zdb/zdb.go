@@ -24,6 +24,8 @@ type ZDatabase interface {
 	ScanRows(rows *sql.Rows, result interface{}) error
 	Select(query interface{}, args ...interface{}) ZDatabase
 	Where(query interface{}, args ...interface{}) ZDatabase
+	Joins(query string, args ...interface{}) ZDatabase
+	UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
 	Limit(limit int) ZDatabase
 	Offset(offset int) ZDatabase
 	Order(value interface{}) ZDatabase

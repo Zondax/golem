@@ -66,6 +66,19 @@ func (z *zDatabase) Where(query interface{}, args ...interface{}) ZDatabase {
 	return wrap(z.db.Where(query, args...))
 }
 
+func (z *zDatabase) Joins(query string, args ...interface{}) ZDatabase {
+	return wrap(z.db.Joins(query, args...))
+}
+
+// Gorm doesn't have a UnionAll clause, so we need to build a workaround, which was found in this issue: https://github.com/go-gorm/gorm/issues/3781.
+func (z *zDatabase) UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase {
+	unionAll := z.db.
+		Table("(? ", subQuery1.GetDbConnection()).
+		Joins("UNION ALL ?)", subQuery2.GetDbConnection())
+
+	return wrap(unionAll)
+}
+
 func (z *zDatabase) Limit(limit int) ZDatabase {
 	return wrap(z.db.Limit(limit))
 }
