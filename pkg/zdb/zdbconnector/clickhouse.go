@@ -4,10 +4,13 @@ import (
 	"fmt"
 	clickhouse2 "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
+	"go.uber.org/zap"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
 	"strings"
 )
+
+const httpsProtocol = "https"
 
 type ClickHouseConnector struct{}
 
@@ -25,9 +28,17 @@ func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error
 }
 
 func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
-	protocol := clickhouse2.Native.String()
-	if strings.EqualFold(params.Protocol, clickhouse2.HTTP.String()) {
+	protocol := ""
+
+	switch {
+	case strings.EqualFold(params.Protocol, clickhouse2.HTTP.String()):
 		protocol = clickhouse2.HTTP.String()
+	case strings.EqualFold(params.Protocol, httpsProtocol):
+		protocol = httpsProtocol
+	case strings.EqualFold(params.Protocol, clickhouse2.Native.String()):
+		protocol = clickhouse2.Native.String()
+	default:
+		zap.S().Errorf("Failed to identify connection protocol [%s]", params.Protocol)
 	}
 
 	dsn := fmt.Sprintf(
