@@ -35,7 +35,7 @@ func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 		protocol = clickhouse2.HTTP.String()
 	case strings.EqualFold(params.Protocol, httpsProtocol):
 		protocol = httpsProtocol
-	case strings.EqualFold(params.Protocol, clickhouse2.Native.String()):
+	case strings.EqualFold(params.Protocol, clickhouse2.Native.String()), params.Protocol == "":
 		protocol = clickhouse2.Native.String()
 	default:
 		zap.S().Errorf("Failed to identify connection protocol [%s]", params.Protocol)
