@@ -51,6 +51,9 @@ lint:
 	golangci-lint --version
 	golangci-lint run
 
+test:
+	go test -v -race ./...
+
 earthly:
 	earthly +all
 

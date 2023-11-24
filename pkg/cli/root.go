@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zondax/golem/pkg/constants"
 	"go.uber.org/zap"
 	"os"
 )
@@ -69,7 +70,7 @@ func (c *CLI) init() {
 
 	// TODO: We can make this optional? and more configurable if we see the need
 	// Initialize logger
-	_, _ = InitGlobalLogger(DebugLevel)
+	_, _ = InitGlobalLogger(constants.DebugLevel)
 	setupCloseHandler(nil)
 	// Set Configuration Defaults
 	setupDefaultConfiguration(func() {

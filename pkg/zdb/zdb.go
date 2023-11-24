@@ -22,14 +22,26 @@ type ZDatabase interface {
 	Scan(dest interface{}) ZDatabase
 	Rows() (*sql.Rows, error)
 	ScanRows(rows *sql.Rows, result interface{}) error
+	Select(query interface{}, args ...interface{}) ZDatabase
+	Where(query interface{}, args ...interface{}) ZDatabase
+	Joins(query string, args ...interface{}) ZDatabase
+	UnionAll(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
+	UnionDistinct(subQuery1 ZDatabase, subQuery2 ZDatabase) ZDatabase
+	Limit(limit int) ZDatabase
+	Offset(offset int) ZDatabase
+	Order(value interface{}) ZDatabase
+	Distinct(args ...interface{}) ZDatabase
+	Count(count *int64) ZDatabase
+	Group(name string) ZDatabase
 	Create(value interface{}) ZDatabase
 	Delete(value interface{}, where ...interface{}) ZDatabase
 	Raw(sql string, values ...interface{}) ZDatabase
 	Exec(sql string, values ...interface{}) ZDatabase
-	Table(name string) ZDatabase
+	Table(name string, args ...interface{}) ZDatabase
 	Transaction(fc func(tx ZDatabase) error, opts ...*sql.TxOptions) (err error)
 	Clauses(conds ...clause.Expression) ZDatabase
 	Error() error
+	Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase
 	RowsAffected() int64
 	GetDbConnection() *gorm.DB
 }

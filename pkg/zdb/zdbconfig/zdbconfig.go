@@ -9,6 +9,7 @@ type ConnectionParams struct {
 	Host     string
 	Port     uint
 	Params   string
+	Protocol string
 }
 
 type Config struct {
@@ -19,6 +20,7 @@ type Config struct {
 }
 
 type LogConfig struct {
+	Prefix                    string
 	LogLevel                  string
 	SlowThreshold             int
 	IgnoreRecordNotFoundError bool
