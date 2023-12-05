@@ -24,11 +24,11 @@ func TestExpandPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ExpandPath(tt.path)
 			if tt.wantErr {
-				assert.Nil(t, err)
+				assert.NotNil(t, err)
 				return
 			}
 
-			assert.NotNil(t, err)
+			assert.Nil(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}
