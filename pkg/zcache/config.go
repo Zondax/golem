@@ -23,7 +23,7 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	Eviction time.Duration
+	EvictionInSeconds int
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -45,5 +45,5 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
-	return bigcache.DefaultConfig(c.Eviction)
+	return bigcache.DefaultConfig(time.Second * time.Duration(c.EvictionInSeconds))
 }
