@@ -9,6 +9,7 @@ import (
 )
 
 type RemoteCache interface {
+	ZCache
 	Incr(ctx context.Context, key string) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)

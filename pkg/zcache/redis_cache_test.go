@@ -16,7 +16,7 @@ func TestZCacheTestSuite(t *testing.T) {
 type ZCacheTestSuite struct {
 	suite.Suite
 	mr    *miniredis.Miniredis
-	cache ZCache
+	cache RemoteCache
 }
 
 func (suite *ZCacheTestSuite) SetupSuite() {
@@ -24,11 +24,12 @@ func (suite *ZCacheTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	suite.mr = mr
 
-	config := &Config{
+	config := &RemoteConfig{
 		Addr: mr.Addr(),
 	}
 
-	suite.cache = NewCache(config)
+	suite.cache, err = NewRemoteCache(config)
+	suite.Nil(err)
 }
 
 func (suite *ZCacheTestSuite) TearDownSuite() {

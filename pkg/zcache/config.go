@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Config struct {
+type RemoteConfig struct {
 	Network            string
 	Addr               string
 	Password           string
@@ -20,12 +20,13 @@ type Config struct {
 	PoolTimeout        time.Duration
 	IdleTimeout        time.Duration
 	IdleCheckFrequency time.Duration
+}
 
-	//LocalCache
+type LocalConfig struct {
 	Eviction time.Duration
 }
 
-func (c *Config) ToRedisConfig() *redis.Options {
+func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 	return &redis.Options{
 		Network:            c.Network,
 		Addr:               c.Addr,
@@ -43,6 +44,6 @@ func (c *Config) ToRedisConfig() *redis.Options {
 	}
 }
 
-func (c *Config) ToBigCacheConfig() bigcache.Config {
+func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
 	return bigcache.DefaultConfig(c.Eviction)
 }

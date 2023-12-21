@@ -38,8 +38,8 @@ import (
 )
 
 func main() {
-    config := zcache.Config{Addr: "localhost:6379"}
-    cache := zcache.NewCache(config)
+    config := zcache.RemoteConfig{Addr: "localhost:6379"}
+    cache := zcache.NewRemoteCache(config)
     ctx := context.Background()
 
     // Set a value
@@ -60,8 +60,8 @@ func main() {
 
 ```go
 func main() {
-    config := zcache.Config{/* BigCache configuration parameters */}
-    cache, err := zcache.NewCache(config, zcache.LocalCacheType)
+    config := zcache.LocalConfig{Eviction: 12}
+    cache, err := zcache.NewLocalCache(config)
     if err != nil {
         // Handle error
     }
