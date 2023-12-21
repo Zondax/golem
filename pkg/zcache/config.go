@@ -1,6 +1,7 @@
 package zcache
 
 import (
+	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
@@ -19,6 +20,9 @@ type Config struct {
 	PoolTimeout        time.Duration
 	IdleTimeout        time.Duration
 	IdleCheckFrequency time.Duration
+
+	//LocalCache
+	Eviction time.Duration
 }
 
 func (c *Config) ToRedisConfig() *redis.Options {
@@ -37,4 +41,8 @@ func (c *Config) ToRedisConfig() *redis.Options {
 		IdleTimeout:        c.IdleTimeout,
 		IdleCheckFrequency: c.IdleCheckFrequency,
 	}
+}
+
+func (c *Config) ToBigCacheConfig() bigcache.Config {
+	return bigcache.DefaultConfig(c.Eviction)
 }
