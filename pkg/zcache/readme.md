@@ -72,7 +72,6 @@ type Config struct {
     PoolSize           int           // Number of connections in the pool
     MinIdleConns       int           // Minimum number of idle connections
     IdleTimeout        time.Duration // Timeout for idle connections
-    // Add other configuration fields as needed
 }
 ```
 ---
