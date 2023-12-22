@@ -8,6 +8,20 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+type RemoteCache interface {
+	ZCache
+	Incr(ctx context.Context, key string) (int64, error)
+	Decr(ctx context.Context, key string) (int64, error)
+	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)
+	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
+	SMembers(ctx context.Context, key string) ([]string, error)
+	SAdd(ctx context.Context, key string, members ...interface{}) (int64, error)
+	HSet(ctx context.Context, key string, values ...interface{}) (int64, error)
+	HGet(ctx context.Context, key, field string) (string, error)
+	FlushAll(ctx context.Context) error
+	Exists(ctx context.Context, keys ...string) (int64, error)
+}
+
 type redisCache struct {
 	client *redis.Client
 }

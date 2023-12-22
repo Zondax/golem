@@ -28,7 +28,7 @@ go get github.com/zondax/golem/pkg/zcache
 
 ---
 
-## Usage
+## Usage Remote cache - Redis
 
 ```go
 import (
@@ -38,8 +38,8 @@ import (
 )
 
 func main() {
-    config := zcache.Config{Addr: "localhost:6379"}
-    cache := zcache.NewCache(config)
+    config := zcache.RemoteConfig{Addr: "localhost:6379"}
+    cache := zcache.NewRemoteCache(config)
     ctx := context.Background()
 
     // Set a value
@@ -53,6 +53,28 @@ func main() {
     // Delete a value
     cache.Delete(ctx, "key1")
 }
+```
+
+
+## Usage Local cache - BigCache
+
+```go
+func main() {
+    config := zcache.LocalConfig{Eviction: 12}
+    cache, err := zcache.NewLocalCache(config)
+    if err != nil {
+        // Handle error
+    }
+    
+    ctx := context.Background()
+    
+    cache.Set(ctx, "key1", "value1", 10*time.Minute)
+    if value, err := cache.Get(ctx, "key1"); err == nil {
+    fmt.Println("Retrieved value:", value)
+    }
+    cache.Delete(ctx, "key1")
+}
+
 ```
 
 --- 
