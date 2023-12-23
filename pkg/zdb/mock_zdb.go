@@ -162,3 +162,8 @@ func (m *MockDBConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error) {
 	args := m.Called(config)
 	return args.Get(0).(*gorm.DB), args.Error(1)
 }
+
+func (m *MockDBConnector) VerifyConnection(db *gorm.DB) error {
+	args := m.Called(db)
+	return args.Error(0)
+}
