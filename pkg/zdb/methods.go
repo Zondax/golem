@@ -132,6 +132,11 @@ func (z *zDatabase) Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase {
 	return wrap(z.db.Scopes(gormFuncs...))
 }
 
+func (z *zDatabase) GetDBStats() (sql.DBStats, error) {
+	sqlDB, err := z.db.DB()
+	return sqlDB.Stats(), err
+}
+
 func (z *zDatabase) Error() error {
 	return z.db.Error
 }

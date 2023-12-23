@@ -44,6 +44,7 @@ type ZDatabase interface {
 	Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase
 	RowsAffected() int64
 	GetDbConnection() *gorm.DB
+	GetDBStats() (sql.DBStats, error)
 }
 
 type zDatabase struct {
