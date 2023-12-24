@@ -28,3 +28,24 @@ func TestRateLimit(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
+
+func TestRateLimitByFullPath(t *testing.T) {
+	r := chi.NewRouter()
+
+	r.Use(RateLimitByFullPath(1))
+
+	r.Get("/tests/{id}", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	})
+
+	req := httptest.NewRequest("GET", "/tests/1", nil)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "OK", rec.Body.String())
+
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+}
