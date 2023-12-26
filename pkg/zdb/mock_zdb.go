@@ -142,6 +142,11 @@ func (m *MockZDatabase) Group(name string) ZDatabase {
 	return args.Get(0).(ZDatabase)
 }
 
+func (m *MockZDatabase) GetDBStats() (sql.DBStats, error) {
+	args := m.Called()
+	return args.Get(0).(sql.DBStats), args.Error(1)
+}
+
 // MockDBConnector
 
 type MockDBConnector struct {
