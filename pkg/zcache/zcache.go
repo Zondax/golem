@@ -8,7 +8,7 @@ import (
 )
 
 type ZCache interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Get(ctx context.Context, key string, data interface{}) error
 	Delete(ctx context.Context, key string) error
 }

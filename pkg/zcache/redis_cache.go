@@ -26,12 +26,12 @@ type redisCache struct {
 	client *redis.Client
 }
 
-func (c *redisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.client.Set(ctx, key, val, expiration).Err()
+	return c.client.Set(ctx, key, val, ttl).Err()
 }
 
 func (c *redisCache) Get(ctx context.Context, key string, data interface{}) error {

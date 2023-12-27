@@ -10,8 +10,8 @@ type MockZCache struct {
 	mock.Mock
 }
 
-func (m *MockZCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-	args := m.Called(ctx, key, value, expiration)
+func (m *MockZCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	args := m.Called(ctx, key, value, ttl)
 	return args.Error(0)
 }
 
