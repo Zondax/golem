@@ -15,7 +15,7 @@ type combinedCache struct {
 }
 
 func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-	if err := c.localCache.Set(ctx, key, value, expiration); err != nil {
+	if err := c.localCache.Set(ctx, key, value, -1); err != nil {
 		return err
 	}
 	if err := c.remoteCache.Set(ctx, key, value, expiration); err != nil {
@@ -30,7 +30,7 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 		if err := c.remoteCache.Get(ctx, key, data); err != nil {
 			return err
 		}
-		c.localCache.Set(ctx, key, data, 0)
+		c.localCache.Set(ctx, key, data, -1)
 	}
 
 	return nil
