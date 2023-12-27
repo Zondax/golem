@@ -27,7 +27,7 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 
 func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	remoteClient, err := NewRemoteCache(combinedConfig.Remote)
-	if err != nil && !combinedConfig.isRemoteBestEffort {
+	if err != nil {
 		return nil, err
 	}
 
