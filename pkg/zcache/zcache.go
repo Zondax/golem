@@ -24,3 +24,9 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	client := redis.NewClient(redisOptions)
 	return &redisCache{client: client}, nil
 }
+
+func NewCombinedCache(localConfig *LocalConfig, remoteConfig *RemoteConfig) (CombinedCache, error) {
+	remoteClient, err := NewRemoteCache(remoteConfig)
+	localClient, err := NewLocalCache(localConfig)
+	return &combinedCache{remoteCache: remoteClient, localCache: localClient}, err
+}

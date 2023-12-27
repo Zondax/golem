@@ -1,0 +1,51 @@
+package zcache
+
+import (
+	"context"
+	"time"
+)
+
+type CombinedCache interface {
+	ZCache
+}
+
+type combinedCache struct {
+	localCache  LocalCache
+	remoteCache RemoteCache
+}
+
+func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	if err := c.localCache.Set(ctx, key, value, expiration); err != nil {
+		return err
+	}
+	if err := c.remoteCache.Set(ctx, key, value, expiration); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) error {
+	err := c.localCache.Get(ctx, key, data)
+	if err != nil {
+		if err := c.remoteCache.Get(ctx, key, data); err != nil {
+			return err
+		}
+		c.localCache.Set(ctx, key, data, 0)
+	}
+
+	return nil
+}
+
+func (c *combinedCache) Delete(ctx context.Context, key string) error {
+	err1 := c.localCache.Delete(ctx, key)
+	err2 := c.remoteCache.Delete(ctx, key)
+
+	if err1 != nil {
+		return err1
+	}
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+}
