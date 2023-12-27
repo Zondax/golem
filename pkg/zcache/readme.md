@@ -84,7 +84,8 @@ func main() {
 func main() {
     localConfig := zcache.LocalConfig{Eviction: 12}
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
-    cache, err := zcache.NewCombinedCache(localConfig, remoteConfig)
+	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
+    cache, err := zcache.NewCombinedCache(config)
     if err != nil {
         // Handle error
     }

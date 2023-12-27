@@ -25,8 +25,16 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	return &redisCache{client: client}, nil
 }
 
-func NewCombinedCache(localConfig *LocalConfig, remoteConfig *RemoteConfig) (CombinedCache, error) {
-	remoteClient, err := NewRemoteCache(remoteConfig)
-	localClient, err := NewLocalCache(localConfig)
-	return &combinedCache{remoteCache: remoteClient, localCache: localClient}, err
+func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
+	remoteClient, err := NewRemoteCache(combinedConfig.Remote)
+	if err != nil && !combinedConfig.isRemoteBestEffort {
+		return nil, err
+	}
+
+	localClient, err := NewLocalCache(combinedConfig.Local)
+	if err != nil {
+		return nil, err
+	}
+
+	return &combinedCache{remoteCache: remoteClient, localCache: localClient, isRemoteBestEffort: combinedConfig.isRemoteBestEffort}, nil
 }

@@ -32,7 +32,9 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 		EvictionInSeconds: 10,
 	}
 
-	suite.cache, err = NewCombinedCache(localConfig, remoteConfig)
+	config := &CombinedConfig{localConfig, remoteConfig, false}
+
+	suite.cache, err = NewCombinedCache(config)
 	suite.Nil(err)
 }
 

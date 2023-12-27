@@ -47,3 +47,9 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
 	return bigcache.DefaultConfig(time.Second * time.Duration(c.EvictionInSeconds))
 }
+
+type CombinedConfig struct {
+	Local              *LocalConfig
+	Remote             *RemoteConfig
+	isRemoteBestEffort bool
+}
