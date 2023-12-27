@@ -31,12 +31,14 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	}, Remote: &RemoteConfig{
 		Addr: "0.0.0.0",
 	}, isRemoteBestEffort: true})
+	suite.Nil(err)
 
 	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{Local: &LocalConfig{
 		EvictionInSeconds: 10,
 	}, Remote: &RemoteConfig{
 		Addr: mr.Addr(),
 	}, isRemoteBestEffort: false})
+	suite.Nil(err)
 
 	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(&CombinedConfig{Local: &LocalConfig{
 		EvictionInSeconds: 10,
