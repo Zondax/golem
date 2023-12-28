@@ -92,8 +92,8 @@ func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error
 
 func (c *redisCache) GetStats() ZCacheStats {
 	poolStats := c.client.PoolStats()
-	//ctx := context.Background()
-	//stats, _ := c.client.Info(ctx).Result()
+	// ctx := context.Background()
+	// stats, _ := c.client.Info(ctx).Result()
 
 	return ZCacheStats{
 		Redis: &RedisStats{

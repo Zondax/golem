@@ -60,6 +60,11 @@ func (c *combinedCache) Delete(ctx context.Context, key string) error {
 
 func (c *combinedCache) GetStats() ZCacheStats {
 	localStats := c.localCache.(interface{}).(*bigcache.BigCache).Stats()
-	remoteStats := c.remoteCache.(interface{}).(*redis.Client).PoolStats()
-	return ZCacheStats{Bigcache: &localStats, Redis: remoteStats}
+	remotePoolStats := c.remoteCache.(interface{}).(*redis.Client).PoolStats()
+	return ZCacheStats{
+		Bigcache: &localStats,
+		Redis: &RedisStats{
+			Pool: remotePoolStats,
+		},
+	}
 }
