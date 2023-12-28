@@ -2,10 +2,9 @@ package zcache
 
 import (
 	"context"
-	"github.com/allegro/bigcache/v3"
 	"github.com/stretchr/testify/suite"
+	"os"
 	"testing"
-	"time"
 )
 
 func TestLocalCacheTestSuite(t *testing.T) {
@@ -18,11 +17,14 @@ type LocalCacheTestSuite struct {
 }
 
 func (suite *LocalCacheTestSuite) SetupSuite() {
-	bigCacheConfig := bigcache.DefaultConfig(10 * time.Minute)
-	client, err := bigcache.New(context.Background(), bigCacheConfig)
-	suite.Require().NoError(err)
-
-	suite.cache = &localCache{client: client}
+	prefix := os.Getenv("PREFIX")
+	var err error
+	config := LocalConfig{
+		EvictionInSeconds: 100000,
+		Prefix:            prefix,
+	}
+	suite.cache, err = NewLocalCache(&config)
+	suite.Nil(err)
 }
 
 func (suite *LocalCacheTestSuite) TestSetAndGet() {

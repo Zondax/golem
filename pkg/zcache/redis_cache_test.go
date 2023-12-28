@@ -3,13 +3,14 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 )
 
-func TestZCacheTestSuite(t *testing.T) {
+func TestRedisTestSuite(t *testing.T) {
 	suite.Run(t, new(RedisCacheTestSuite))
 }
 
@@ -24,8 +25,10 @@ func (suite *RedisCacheTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	suite.mr = mr
 
+	prefix := os.Getenv("PREFIX")
 	config := &RemoteConfig{
-		Addr: mr.Addr(),
+		Addr:   mr.Addr(),
+		Prefix: prefix,
 	}
 
 	suite.cache, err = NewRemoteCache(config)
