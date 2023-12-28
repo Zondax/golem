@@ -20,10 +20,12 @@ type RemoteConfig struct {
 	PoolTimeout        time.Duration
 	IdleTimeout        time.Duration
 	IdleCheckFrequency time.Duration
+	Prefix             string
 }
 
 type LocalConfig struct {
 	EvictionInSeconds int
+	Prefix            string
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -51,6 +53,7 @@ func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
 type CombinedConfig struct {
 	Local              *LocalConfig
 	Remote             *RemoteConfig
-	generalTtlSeconds  int
+	globalTtlSeconds   int
+	globalPrefix       string
 	isRemoteBestEffort bool
 }

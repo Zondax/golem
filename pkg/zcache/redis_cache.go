@@ -30,20 +30,25 @@ type RemoteCache interface {
 
 type redisCache struct {
 	client        *redis.Client
+	prefix        string
 	metricsServer *metrics.TaskMetrics
 	appName       string
 }
 
 func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	realKey := getKeyWithPrefix(c.prefix, key)
+
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.client.Set(ctx, key, val, ttl).Err()
+	return c.client.Set(ctx, realKey, val, ttl).Err()
 }
 
 func (c *redisCache) Get(ctx context.Context, key string, data interface{}) error {
-	val, err := c.client.Get(ctx, key).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+
+	val, err := c.client.Get(ctx, realKey).Result()
 	if err != nil {
 		return err
 	}
@@ -51,19 +56,23 @@ func (c *redisCache) Get(ctx context.Context, key string, data interface{}) erro
 }
 
 func (c *redisCache) Delete(ctx context.Context, key string) error {
-	return c.client.Del(ctx, key).Err()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.Del(ctx, realKey).Err()
 }
 
 func (c *redisCache) Exists(ctx context.Context, keys ...string) (int64, error) {
-	return c.client.Exists(ctx, keys...).Result()
+	realKeys := getKeysWithPrefix(c.prefix, keys)
+	return c.client.Exists(ctx, realKeys...).Result()
 }
 
 func (c *redisCache) Incr(ctx context.Context, key string) (int64, error) {
-	return c.client.Incr(ctx, key).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.Incr(ctx, realKey).Result()
 }
 
 func (c *redisCache) Decr(ctx context.Context, key string) (int64, error) {
-	return c.client.Decr(ctx, key).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.Decr(ctx, realKey).Result()
 }
 
 func (c *redisCache) FlushAll(ctx context.Context) error {
@@ -71,27 +80,33 @@ func (c *redisCache) FlushAll(ctx context.Context) error {
 }
 
 func (c *redisCache) LPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
-	return c.client.LPush(ctx, key, values...).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.LPush(ctx, realKey, values...).Result()
 }
 
 func (c *redisCache) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
-	return c.client.RPush(ctx, key, values...).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.RPush(ctx, realKey, values...).Result()
 }
 
 func (c *redisCache) SMembers(ctx context.Context, key string) ([]string, error) {
-	return c.client.SMembers(ctx, key).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.SMembers(ctx, realKey).Result()
 }
 
 func (c *redisCache) SAdd(ctx context.Context, key string, members ...interface{}) (int64, error) {
-	return c.client.SAdd(ctx, key, members...).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.SAdd(ctx, realKey, members...).Result()
 }
 
 func (c *redisCache) HSet(ctx context.Context, key string, values ...interface{}) (int64, error) {
-	return c.client.HSet(ctx, key, values...).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.HSet(ctx, realKey, values...).Result()
 }
 
 func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error) {
-	return c.client.HGet(ctx, key, field).Result()
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.HGet(ctx, realKey, field).Result()
 }
 
 func (c *redisCache) GetStats() ZCacheStats {

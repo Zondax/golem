@@ -24,25 +24,29 @@ type ZCache interface {
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 	bigCacheConfig := config.ToBigCacheConfig()
 	client, err := bigcache.New(context.Background(), bigCacheConfig)
-	return &localCache{client: client}, err
+	return &localCache{client: client, prefix: config.Prefix}, err
 }
 
 func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	redisOptions := config.ToRedisConfig()
 	client := redis.NewClient(redisOptions)
-	return &redisCache{client: client}, nil
+	return &redisCache{client: client, prefix: config.Prefix}, nil
 }
 
 func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	localCacheConfig := combinedConfig.Local
 	remoteCacheConfig := combinedConfig.Remote
 
+	// Set global configs on remote cache config
+	remoteCacheConfig.Prefix = combinedConfig.globalPrefix
 	remoteClient, err := NewRemoteCache(remoteCacheConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	localCacheConfig.EvictionInSeconds = combinedConfig.generalTtlSeconds
+	// Set global configs on local cache config
+	localCacheConfig.EvictionInSeconds = combinedConfig.globalTtlSeconds
+	localCacheConfig.Prefix = combinedConfig.globalPrefix
 	localClient, err := NewLocalCache(localCacheConfig)
 	if err != nil {
 		return nil, err
@@ -52,6 +56,6 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 		remoteCache:        remoteClient,
 		localCache:         localClient,
 		isRemoteBestEffort: combinedConfig.isRemoteBestEffort,
-		ttl:                time.Duration(combinedConfig.generalTtlSeconds) * time.Second,
+		ttl:                time.Duration(combinedConfig.globalTtlSeconds) * time.Second,
 	}, nil
 }

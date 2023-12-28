@@ -15,20 +15,25 @@ type LocalCache interface {
 
 type localCache struct {
 	client        *bigcache.BigCache
+	prefix        string
 	metricsServer *metrics.TaskMetrics
 	appName       string
 }
 
 func (c *localCache) Set(_ context.Context, key string, value interface{}, _ time.Duration) error {
+	realKey := getKeyWithPrefix(c.prefix, key)
+
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.client.Set(key, val)
+	return c.client.Set(realKey, val)
 }
 
 func (c *localCache) Get(_ context.Context, key string, data interface{}) error {
-	val, err := c.client.Get(key)
+	realKey := getKeyWithPrefix(c.prefix, key)
+
+	val, err := c.client.Get(realKey)
 	if err != nil {
 		return err
 	}
@@ -36,7 +41,8 @@ func (c *localCache) Get(_ context.Context, key string, data interface{}) error 
 }
 
 func (c *localCache) Delete(_ context.Context, key string) error {
-	return c.client.Delete(key)
+	realKey := getKeyWithPrefix(c.prefix, key)
+	return c.client.Delete(realKey)
 }
 
 func (c *localCache) GetStats() ZCacheStats {
