@@ -11,6 +11,7 @@ type ZCache interface {
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Get(ctx context.Context, key string, data interface{}) error
 	Delete(ctx context.Context, key string) error
+	GetStats() ZCacheStats
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {

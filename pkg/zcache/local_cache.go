@@ -34,3 +34,8 @@ func (c *localCache) Get(_ context.Context, key string, data interface{}) error 
 func (c *localCache) Delete(_ context.Context, key string) error {
 	return c.client.Delete(key)
 }
+
+func (c *localCache) GetStats() ZCacheStats {
+	stats := c.client.Stats()
+	return ZCacheStats{Bigcache: &stats}
+}

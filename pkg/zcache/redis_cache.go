@@ -8,6 +8,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+type RedisStats struct {
+	Pool *redis.PoolStats
+}
+
 type RemoteCache interface {
 	ZCache
 	Incr(ctx context.Context, key string) (int64, error)
@@ -84,4 +88,16 @@ func (c *redisCache) HSet(ctx context.Context, key string, values ...interface{}
 
 func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error) {
 	return c.client.HGet(ctx, key, field).Result()
+}
+
+func (c *redisCache) GetStats() ZCacheStats {
+	poolStats := c.client.PoolStats()
+	//ctx := context.Background()
+	//stats, _ := c.client.Info(ctx).Result()
+
+	return ZCacheStats{
+		Redis: &RedisStats{
+			Pool: poolStats,
+		},
+	}
 }
