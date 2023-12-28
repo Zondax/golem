@@ -4,13 +4,21 @@ import (
 	"context"
 	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
+	"github.com/zondax/golem/pkg/metrics"
 	"time"
 )
 
+type ZCacheStats struct {
+	Local  *bigcache.Stats
+	Remote *RedisStats
+}
+
 type ZCache interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Get(ctx context.Context, key string, data interface{}) error
 	Delete(ctx context.Context, key string) error
+	GetStats() ZCacheStats
+	SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
@@ -23,4 +31,27 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	redisOptions := config.ToRedisConfig()
 	client := redis.NewClient(redisOptions)
 	return &redisCache{client: client}, nil
+}
+
+func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
+	localCacheConfig := combinedConfig.Local
+	remoteCacheConfig := combinedConfig.Remote
+
+	remoteClient, err := NewRemoteCache(remoteCacheConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	localCacheConfig.EvictionInSeconds = combinedConfig.generalTtlSeconds
+	localClient, err := NewLocalCache(localCacheConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &combinedCache{
+		remoteCache:        remoteClient,
+		localCache:         localClient,
+		isRemoteBestEffort: combinedConfig.isRemoteBestEffort,
+		ttl:                time.Duration(combinedConfig.generalTtlSeconds) * time.Second,
+	}, nil
 }

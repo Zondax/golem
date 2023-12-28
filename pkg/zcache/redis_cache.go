@@ -3,10 +3,16 @@ package zcache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/zondax/golem/pkg/metrics"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 )
+
+type RedisStats struct {
+	Pool *redis.PoolStats
+}
 
 type RemoteCache interface {
 	ZCache
@@ -23,15 +29,17 @@ type RemoteCache interface {
 }
 
 type redisCache struct {
-	client *redis.Client
+	client        *redis.Client
+	metricsServer *metrics.TaskMetrics
+	appName       string
 }
 
-func (c *redisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	val, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	return c.client.Set(ctx, key, val, expiration).Err()
+	return c.client.Set(ctx, key, val, ttl).Err()
 }
 
 func (c *redisCache) Get(ctx context.Context, key string, data interface{}) error {
@@ -84,4 +92,34 @@ func (c *redisCache) HSet(ctx context.Context, key string, values ...interface{}
 
 func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error) {
 	return c.client.HGet(ctx, key, field).Result()
+}
+
+func (c *redisCache) GetStats() ZCacheStats {
+	poolStats := c.client.PoolStats()
+	// ctx := context.Background()
+	// stats, _ := c.client.Info(ctx).Result()
+
+	return ZCacheStats{
+		Remote: &RedisStats{
+			Pool: poolStats,
+		},
+	}
+}
+
+func (c *redisCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
+	c.metricsServer = &metricsServer
+	c.appName = appName
+
+	errs := setupAndMonitorCacheMetrics(appName, metricsServer, c, updateInterval)
+	errs = append(errs, c.registerInternalCacheMetrics()...)
+
+	return errs
+}
+
+func (c *redisCache) registerInternalCacheMetrics() []error {
+	if c.metricsServer == nil {
+		return []error{fmt.Errorf("metrics server not available")}
+	}
+
+	return []error{}
 }

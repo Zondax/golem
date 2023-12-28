@@ -70,7 +70,31 @@ func main() {
     
     cache.Set(ctx, "key1", "value1", 10*time.Minute)
     if value, err := cache.Get(ctx, "key1"); err == nil {
-    fmt.Println("Retrieved value:", value)
+        fmt.Println("Retrieved value:", value)
+    }
+    cache.Delete(ctx, "key1")
+}
+
+```
+
+
+## Usage Combined cache - Local and Remote
+
+```go
+func main() {
+    localConfig := zcache.LocalConfig{Eviction: 12}
+    remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
+	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
+    cache, err := zcache.NewCombinedCache(config)
+    if err != nil {
+        // Handle error
+    }
+    
+    ctx := context.Background()
+    
+    cache.Set(ctx, "key1", "value1", 10*time.Minute)
+    if value, err := cache.Get(ctx, "key1"); err == nil {
+        fmt.Println("Retrieved value:", value)
     }
     cache.Delete(ctx, "key1")
 }
