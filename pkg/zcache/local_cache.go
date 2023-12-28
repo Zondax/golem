@@ -44,7 +44,7 @@ func (c *localCache) GetStats() ZCacheStats {
 	return ZCacheStats{Local: &stats}
 }
 
-func (c *localCache) SetupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
+func (c *localCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
 	c.metricsServer = &metricsServer
 	c.appName = appName
 

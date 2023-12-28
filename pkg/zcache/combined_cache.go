@@ -73,7 +73,7 @@ func (c *combinedCache) GetStats() ZCacheStats {
 	}
 }
 
-func (c *combinedCache) SetupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
+func (c *combinedCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
 	c.metricsServer = &metricsServer
 	c.appName = appName
 

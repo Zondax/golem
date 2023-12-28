@@ -106,7 +106,7 @@ func (c *redisCache) GetStats() ZCacheStats {
 	}
 }
 
-func (c *redisCache) SetupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
+func (c *redisCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
 	c.metricsServer = &metricsServer
 	c.appName = appName
 
