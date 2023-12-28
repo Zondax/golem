@@ -23,7 +23,7 @@ const (
 	remoteCachePoolStaleConnsMetricName = "remote_cache_pool_stale_conns"
 )
 
-func SetupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, cache ZCache, updateInterval time.Duration) []error {
+func setupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, cache ZCache, updateInterval time.Duration) []error {
 	if updateInterval <= 0 {
 		updateInterval = defaultInterval
 	}
@@ -57,21 +57,21 @@ func SetupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetri
 		for range ticker.C {
 			stats := cache.GetStats()
 
-			if stats.Bigcache != nil {
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheHitsMetricName), float64(stats.Bigcache.Hits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheMissesMetricName), float64(stats.Bigcache.Misses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelHitsMetricName), float64(stats.Bigcache.DelHits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelMissesMetricName), float64(stats.Bigcache.DelMisses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheCollisionsMetricName), float64(stats.Bigcache.Collisions))
+			if stats.Local != nil {
+				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheHitsMetricName), float64(stats.Local.Hits))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheMissesMetricName), float64(stats.Local.Misses))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelHitsMetricName), float64(stats.Local.DelHits))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelMissesMetricName), float64(stats.Local.DelMisses))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheCollisionsMetricName), float64(stats.Local.Collisions))
 			}
 
-			if stats.Redis != nil {
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolHitsMetricName), float64(stats.Redis.Pool.Hits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolMissesMetricName), float64(stats.Redis.Pool.Misses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTimeoutsMetricName), float64(stats.Redis.Pool.Timeouts))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTotalConnsMetricName), float64(stats.Redis.Pool.TotalConns))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolIdleConnsMetricName), float64(stats.Redis.Pool.IdleConns))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolStaleConnsMetricName), float64(stats.Redis.Pool.StaleConns))
+			if stats.Remote != nil {
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolHitsMetricName), float64(stats.Remote.Pool.Hits))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolMissesMetricName), float64(stats.Remote.Pool.Misses))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTimeoutsMetricName), float64(stats.Remote.Pool.Timeouts))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTotalConnsMetricName), float64(stats.Remote.Pool.TotalConns))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolIdleConnsMetricName), float64(stats.Remote.Pool.IdleConns))
+				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolStaleConnsMetricName), float64(stats.Remote.Pool.StaleConns))
 			}
 		}
 	}()
