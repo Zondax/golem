@@ -3,7 +3,7 @@ module github.com/zondax/golem
 go 1.19
 
 require (
-	github.com/ClickHouse/clickhouse-go/v2 v2.17.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.17.1
 	github.com/alicebob/miniredis/v2 v2.31.0
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/go-chi/chi/v5 v5.0.11
