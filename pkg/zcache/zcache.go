@@ -38,15 +38,15 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	remoteCacheConfig := combinedConfig.Remote
 
 	// Set global configs on remote cache config
-	remoteCacheConfig.Prefix = combinedConfig.globalPrefix
+	remoteCacheConfig.Prefix = combinedConfig.GlobalPrefix
 	remoteClient, err := NewRemoteCache(remoteCacheConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set global configs on local cache config
-	localCacheConfig.EvictionInSeconds = combinedConfig.globalTtlSeconds
-	localCacheConfig.Prefix = combinedConfig.globalPrefix
+	localCacheConfig.EvictionInSeconds = combinedConfig.GlobalTtlSeconds
+	localCacheConfig.Prefix = combinedConfig.GlobalPrefix
 	localClient, err := NewLocalCache(localCacheConfig)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	return &combinedCache{
 		remoteCache:        remoteClient,
 		localCache:         localClient,
-		isRemoteBestEffort: combinedConfig.isRemoteBestEffort,
-		ttl:                time.Duration(combinedConfig.globalTtlSeconds) * time.Second,
+		isRemoteBestEffort: combinedConfig.IsRemoteBestEffort,
+		ttl:                time.Duration(combinedConfig.GlobalTtlSeconds) * time.Second,
 	}, nil
 }
