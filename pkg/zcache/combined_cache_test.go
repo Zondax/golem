@@ -3,6 +3,7 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	"os"
 	"testing"
 	"time"
 
@@ -26,25 +27,43 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	suite.mr = mr
 
-	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(&CombinedConfig{Local: &LocalConfig{
-		EvictionInSeconds: 10,
-	}, Remote: &RemoteConfig{
-		Addr: "0.0.0.0",
-	}, isRemoteBestEffort: true})
+	prefix := os.Getenv("PREFIX")
+	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
+		&CombinedConfig{
+			Local: &LocalConfig{
+				EvictionInSeconds: 10,
+			},
+			Remote: &RemoteConfig{
+				Addr: "0.0.0.0",
+			},
+			isRemoteBestEffort: true,
+			globalPrefix:       prefix,
+		})
 	suite.Nil(err)
 
-	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{Local: &LocalConfig{
-		EvictionInSeconds: 10,
-	}, Remote: &RemoteConfig{
-		Addr: mr.Addr(),
-	}, isRemoteBestEffort: false})
+	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{
+		Local: &LocalConfig{
+			EvictionInSeconds: 10,
+		},
+		Remote: &RemoteConfig{
+			Addr: mr.Addr(),
+		},
+		isRemoteBestEffort: false,
+		globalPrefix:       prefix,
+	})
 	suite.Nil(err)
 
-	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(&CombinedConfig{Local: &LocalConfig{
-		EvictionInSeconds: 10,
-	}, Remote: &RemoteConfig{
-		Addr: "0.0.0.0",
-	}, isRemoteBestEffort: false})
+	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(
+		&CombinedConfig{
+			Local: &LocalConfig{
+				EvictionInSeconds: 10,
+			},
+			Remote: &RemoteConfig{
+				Addr: "0.0.0.0",
+			},
+			isRemoteBestEffort: false,
+			globalPrefix:       prefix,
+		})
 	suite.Nil(err)
 }
 
