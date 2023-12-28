@@ -35,7 +35,7 @@ func setupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetri
 		}
 	}
 
-	register(getMetricName(appName, localCacheHitsMetricName), "Number of successfully found keys", nil, &collectors.Gauge{})
+	register(getMetricName(appName, localCacheHitsMetricName), "Number of successfully found keys", []string{}, &collectors.Gauge{})
 	register(getMetricName(appName, localCacheMissesMetricName), "Number of not found keys", nil, &collectors.Gauge{})
 	register(getMetricName(appName, localCacheDelHitsMetricName), "Number of successfully deleted keys", nil, &collectors.Gauge{})
 	register(getMetricName(appName, localCacheDelMissesMetricName), "Number of not deleted keys", nil, &collectors.Gauge{})
