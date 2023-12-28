@@ -3,6 +3,7 @@ package zcache
 import (
 	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
+	"math"
 	"time"
 )
 
@@ -47,7 +48,12 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
-	return bigcache.DefaultConfig(time.Second * time.Duration(c.EvictionInSeconds))
+	eviction := time.Duration(c.EvictionInSeconds) * time.Second
+	if c.EvictionInSeconds < 0 {
+		eviction = time.Duration(math.MaxInt64)
+	}
+
+	return bigcache.DefaultConfig(eviction)
 }
 
 type CombinedConfig struct {
