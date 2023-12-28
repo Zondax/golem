@@ -3,39 +3,43 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 )
 
-func TestZCacheTestSuite(t *testing.T) {
-	suite.Run(t, new(ZCacheTestSuite))
+func TestRedisTestSuite(t *testing.T) {
+	suite.Run(t, new(RedisCacheTestSuite))
 }
 
-type ZCacheTestSuite struct {
+type RedisCacheTestSuite struct {
 	suite.Suite
 	mr    *miniredis.Miniredis
-	cache ZCache
+	cache RemoteCache
 }
 
-func (suite *ZCacheTestSuite) SetupSuite() {
+func (suite *RedisCacheTestSuite) SetupSuite() {
 	mr, err := miniredis.Run()
 	suite.Require().NoError(err)
 	suite.mr = mr
 
-	config := &Config{
-		Addr: mr.Addr(),
+	prefix := os.Getenv("PREFIX")
+	config := &RemoteConfig{
+		Addr:   mr.Addr(),
+		Prefix: prefix,
 	}
 
-	suite.cache = NewCache(config)
+	suite.cache, err = NewRemoteCache(config)
+	suite.Nil(err)
 }
 
-func (suite *ZCacheTestSuite) TearDownSuite() {
+func (suite *RedisCacheTestSuite) TearDownSuite() {
 	suite.mr.Close()
 }
 
-func (suite *ZCacheTestSuite) TestSetAndGet() {
+func (suite *RedisCacheTestSuite) TestSetAndGet() {
 	ctx := context.Background()
 	err := suite.cache.Set(ctx, "key1", "value1", 10*time.Second)
 	suite.NoError(err)
@@ -46,7 +50,7 @@ func (suite *ZCacheTestSuite) TestSetAndGet() {
 	suite.Equal("value1", result)
 }
 
-func (suite *ZCacheTestSuite) TestDelete() {
+func (suite *RedisCacheTestSuite) TestDelete() {
 	ctx := context.Background()
 
 	suite.NoError(suite.cache.Set(ctx, "key2", "value2", 10*time.Second))
@@ -58,7 +62,7 @@ func (suite *ZCacheTestSuite) TestDelete() {
 	suite.Error(err)
 }
 
-func (suite *ZCacheTestSuite) TestExists() {
+func (suite *RedisCacheTestSuite) TestExists() {
 	ctx := context.Background()
 
 	suite.NoError(suite.cache.Set(ctx, "key3", "value3", 10*time.Second))
@@ -69,7 +73,7 @@ func (suite *ZCacheTestSuite) TestExists() {
 	suite.Equal(int64(2), count)
 }
 
-func (suite *ZCacheTestSuite) TestIncrDecr() {
+func (suite *RedisCacheTestSuite) TestIncrDecr() {
 	ctx := context.Background()
 	key := "counterKey"
 
@@ -84,7 +88,7 @@ func (suite *ZCacheTestSuite) TestIncrDecr() {
 	suite.Equal(int64(0), newValue)
 }
 
-func (suite *ZCacheTestSuite) TestFlushAll() {
+func (suite *RedisCacheTestSuite) TestFlushAll() {
 	ctx := context.Background()
 	suite.NoError(suite.cache.Set(ctx, "key5", "value5", 10*time.Second))
 
@@ -96,7 +100,7 @@ func (suite *ZCacheTestSuite) TestFlushAll() {
 	suite.Equal(int64(0), count)
 }
 
-func (suite *ZCacheTestSuite) TestLPushAndRPush() {
+func (suite *RedisCacheTestSuite) TestLPushAndRPush() {
 	ctx := context.Background()
 	listKey := "listKey"
 
@@ -109,7 +113,7 @@ func (suite *ZCacheTestSuite) TestLPushAndRPush() {
 	suite.Equal(int64(2), rLen)
 }
 
-func (suite *ZCacheTestSuite) TestSMembersAndSAdd() {
+func (suite *RedisCacheTestSuite) TestSMembersAndSAdd() {
 	ctx := context.Background()
 	setKey := "setKey"
 
@@ -123,7 +127,7 @@ func (suite *ZCacheTestSuite) TestSMembersAndSAdd() {
 	suite.Contains(members, "member2")
 }
 
-func (suite *ZCacheTestSuite) TestHSetAndHGet() {
+func (suite *RedisCacheTestSuite) TestHSetAndHGet() {
 	ctx := context.Background()
 	hashKey := "hashKey"
 

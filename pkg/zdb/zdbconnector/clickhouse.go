@@ -24,6 +24,23 @@ func (c *ClickHouseConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error
 	if err != nil {
 		return nil, err
 	}
+	db, err := dbConn.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	if config.MaxIdleConns != 0 {
+		db.SetMaxIdleConns(config.MaxIdleConns)
+	}
+
+	if config.MaxOpenConns != 0 {
+		db.SetMaxOpenConns(config.MaxOpenConns)
+	}
+
+	if config.ConnMaxLifetime != 0 {
+		db.SetConnMaxLifetime(config.ConnMaxLifetime)
+	}
+
 	return dbConn, nil
 }
 

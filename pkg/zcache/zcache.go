@@ -2,29 +2,60 @@ package zcache
 
 import (
 	"context"
-	"time"
-
+	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
+	"github.com/zondax/golem/pkg/metrics"
+	"time"
 )
 
-type ZCache interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
-	Get(ctx context.Context, key string, data interface{}) error
-	Delete(ctx context.Context, key string) error
-	Exists(ctx context.Context, keys ...string) (int64, error)
-	Incr(ctx context.Context, key string) (int64, error)
-	Decr(ctx context.Context, key string) (int64, error)
-	FlushAll(ctx context.Context) error
-	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)
-	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
-	SMembers(ctx context.Context, key string) ([]string, error)
-	SAdd(ctx context.Context, key string, members ...interface{}) (int64, error)
-	HSet(ctx context.Context, key string, values ...interface{}) (int64, error)
-	HGet(ctx context.Context, key, field string) (string, error)
+type ZCacheStats struct {
+	Local  *bigcache.Stats
+	Remote *RedisStats
 }
 
-func NewCache(config *Config) ZCache {
+type ZCache interface {
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Get(ctx context.Context, key string, data interface{}) error
+	Delete(ctx context.Context, key string) error
+	GetStats() ZCacheStats
+	SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error
+}
+
+func NewLocalCache(config *LocalConfig) (LocalCache, error) {
+	bigCacheConfig := config.ToBigCacheConfig()
+	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	return &localCache{client: client, prefix: config.Prefix}, err
+}
+
+func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	redisOptions := config.ToRedisConfig()
 	client := redis.NewClient(redisOptions)
-	return &redisCache{client: client}
+	return &redisCache{client: client, prefix: config.Prefix}, nil
+}
+
+func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
+	localCacheConfig := combinedConfig.Local
+	remoteCacheConfig := combinedConfig.Remote
+
+	// Set global configs on remote cache config
+	remoteCacheConfig.Prefix = combinedConfig.GlobalPrefix
+	remoteClient, err := NewRemoteCache(remoteCacheConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set global configs on local cache config
+	localCacheConfig.EvictionInSeconds = combinedConfig.GlobalTtlSeconds
+	localCacheConfig.Prefix = combinedConfig.GlobalPrefix
+	localClient, err := NewLocalCache(localCacheConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &combinedCache{
+		remoteCache:        remoteClient,
+		localCache:         localClient,
+		isRemoteBestEffort: combinedConfig.IsRemoteBestEffort,
+		ttl:                time.Duration(combinedConfig.GlobalTtlSeconds) * time.Second,
+	}, nil
 }

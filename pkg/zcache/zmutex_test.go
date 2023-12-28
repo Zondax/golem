@@ -22,11 +22,13 @@ func (suite *ZMutexTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	suite.mr = mr
 
-	config := &Config{
+	config := &RemoteConfig{
 		Addr: mr.Addr(),
 	}
 
-	suite.cache = NewCache(config).(*redisCache)
+	remoteCache, err := NewRemoteCache(config)
+	suite.Nil(err)
+	suite.cache = remoteCache.(*redisCache)
 }
 
 func (suite *ZMutexTestSuite) TearDownSuite() {

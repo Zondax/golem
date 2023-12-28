@@ -1,6 +1,9 @@
 package zdbconfig
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 type ConnectionParams struct {
 	User     string
@@ -17,6 +20,9 @@ type Config struct {
 	MaxAttempts      int
 	ConnectionParams ConnectionParams
 	LogConfig        LogConfig
+	MaxIdleConns     int
+	MaxOpenConns     int
+	ConnMaxLifetime  time.Duration
 }
 
 type LogConfig struct {
