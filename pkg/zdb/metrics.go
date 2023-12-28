@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var waitDurationBuckets = []float64{50, 100, 250, 500, 1000, 2500, 5000, 10000, 20000, 50000, 100000}
+
 const (
 	defaultInterval                = time.Minute
 	dbOpenConnectionsMetricName    = "db_open_connections"
@@ -32,7 +34,7 @@ func SetupAndMonitorDBMetrics(appName string, metricsServer metrics.TaskMetrics,
 	register(getMetricName(appName, dbOpenConnectionsMetricName), "Number of open database connections.", nil, &collectors.Gauge{})
 	register(getMetricName(appName, dbIdleConnectionsMetricName), "Number of idle database connections in the pool.", nil, &collectors.Gauge{})
 	register(getMetricName(appName, dbMaxOpenConnectionsMetricName), "Maximum number of open database connections.", nil, &collectors.Gauge{})
-	register(getMetricName(appName, dbWaitDurationMetricName), "Total time waited for new database connections.", nil, &collectors.Histogram{})
+	register(getMetricName(appName, dbWaitDurationMetricName), "Total time waited for new database connections.", nil, &collectors.Histogram{Buckets: waitDurationBuckets})
 	register(getMetricName(appName, dbInUseConnectionsMetricName), "Number of database connections currently in use.", nil, &collectors.Gauge{})
 
 	if len(errs) > 0 {
