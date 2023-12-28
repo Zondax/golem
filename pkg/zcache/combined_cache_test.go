@@ -36,8 +36,8 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
-			isRemoteBestEffort: true,
-			globalPrefix:       prefix,
+			IsRemoteBestEffort: true,
+			GlobalPrefix:       prefix,
 		})
 	suite.Nil(err)
 
@@ -48,8 +48,8 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 		Remote: &RemoteConfig{
 			Addr: mr.Addr(),
 		},
-		isRemoteBestEffort: false,
-		globalPrefix:       prefix,
+		IsRemoteBestEffort: false,
+		GlobalPrefix:       prefix,
 	})
 	suite.Nil(err)
 
@@ -61,8 +61,8 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
-			isRemoteBestEffort: false,
-			globalPrefix:       prefix,
+			IsRemoteBestEffort: false,
+			GlobalPrefix:       prefix,
 		})
 	suite.Nil(err)
 }
