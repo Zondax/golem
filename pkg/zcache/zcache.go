@@ -26,15 +26,24 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 }
 
 func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
-	remoteClient, err := NewRemoteCache(combinedConfig.Remote)
+	localCacheConfig := combinedConfig.Local
+	remoteCacheConfig := combinedConfig.Remote
+
+	remoteClient, err := NewRemoteCache(remoteCacheConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	localClient, err := NewLocalCache(combinedConfig.Local)
+	localCacheConfig.EvictionInSeconds = combinedConfig.generalTtlSeconds
+	localClient, err := NewLocalCache(localCacheConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return &combinedCache{remoteCache: remoteClient, localCache: localClient, isRemoteBestEffort: combinedConfig.isRemoteBestEffort}, nil
+	return &combinedCache{
+		remoteCache:        remoteClient,
+		localCache:         localClient,
+		isRemoteBestEffort: combinedConfig.isRemoteBestEffort,
+		ttl:                time.Duration(combinedConfig.generalTtlSeconds) * time.Second,
+	}, nil
 }

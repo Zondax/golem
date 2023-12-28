@@ -2,6 +2,8 @@ package zcache
 
 import (
 	"context"
+	"github.com/allegro/bigcache/v3"
+	"github.com/go-redis/redis/v8"
 	"time"
 )
 
@@ -12,16 +14,17 @@ type CombinedCache interface {
 type combinedCache struct {
 	localCache         LocalCache
 	remoteCache        RemoteCache
+	ttl                time.Duration
 	isRemoteBestEffort bool
 }
 
-func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, remoteCacheTtl time.Duration) error {
-	if err := c.remoteCache.Set(ctx, key, value, remoteCacheTtl); err != nil && !c.isRemoteBestEffort {
+func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, _ time.Duration) error {
+	if err := c.remoteCache.Set(ctx, key, value, c.ttl); err != nil && !c.isRemoteBestEffort {
 		return err
 	}
 
 	// ttl is controlled by cache instantiation, so it does not matter here
-	if err := c.localCache.Set(ctx, key, value, -1); err != nil {
+	if err := c.localCache.Set(ctx, key, value, c.ttl); err != nil {
 		return err
 	}
 	return nil
@@ -34,8 +37,9 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 			return err
 		}
 
-		// ttl is controlled by cache instantiation, so it does not matter here
-		_ = c.localCache.Set(ctx, key, data, -1)
+		// Refresh data TTL on both caches
+		_ = c.localCache.Set(ctx, key, data, c.ttl)
+		_ = c.remoteCache.Set(ctx, key, data, c.ttl)
 	}
 
 	return nil
@@ -43,12 +47,11 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 
 func (c *combinedCache) Delete(ctx context.Context, key string) error {
 	err2 := c.remoteCache.Delete(ctx, key)
-	err1 := c.localCache.Delete(ctx, key)
-
 	if err2 != nil && !c.isRemoteBestEffort {
 		return err2
 	}
-	if err1 != nil {
+
+	if err1 := c.localCache.Delete(ctx, key); err1 != nil {
 		return err1
 	}
 

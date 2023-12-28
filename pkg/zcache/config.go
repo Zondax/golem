@@ -51,5 +51,6 @@ func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
 type CombinedConfig struct {
 	Local              *LocalConfig
 	Remote             *RemoteConfig
+	generalTtlSeconds  int
 	isRemoteBestEffort bool
 }
