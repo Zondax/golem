@@ -77,6 +77,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	suite.cacheRemote, err = NewRemoteCache(&RemoteConfig{
 		Addr:   mr.Addr(),
 		Logger: logger,
+		Prefix: prefix,
 	})
 	suite.Nil(err)
 }
