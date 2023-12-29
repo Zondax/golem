@@ -3,6 +3,7 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
 	"os"
 	"testing"
 	"time"
@@ -20,12 +21,16 @@ type CombinedCacheTestSuite struct {
 	cacheRemoteBrokenBestEffort    CombinedCache
 	cacheRemoteBrokenNotBestEffort CombinedCache
 	cacheOkNotBestEffort           CombinedCache
+	cacheRemote                    RemoteCache
 }
 
 func (suite *CombinedCacheTestSuite) SetupSuite() {
 	mr, err := miniredis.Run()
 	suite.Require().NoError(err)
 	suite.mr = mr
+
+	logger, err := zap.NewDevelopment()
+	suite.Require().NoError(err)
 
 	prefix := os.Getenv("PREFIX")
 	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
@@ -38,6 +43,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			},
 			IsRemoteBestEffort: true,
 			GlobalPrefix:       prefix,
+			GlobalLogger:       logger,
 		})
 	suite.Nil(err)
 
@@ -50,6 +56,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 		},
 		IsRemoteBestEffort: false,
 		GlobalPrefix:       prefix,
+		GlobalLogger:       logger,
 	})
 	suite.Nil(err)
 
@@ -63,7 +70,14 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			},
 			IsRemoteBestEffort: false,
 			GlobalPrefix:       prefix,
+			GlobalLogger:       logger,
 		})
+	suite.Nil(err)
+
+	suite.cacheRemote, err = NewRemoteCache(&RemoteConfig{
+		Addr:   mr.Addr(),
+		Logger: logger,
+	})
 	suite.Nil(err)
 }
 
@@ -97,6 +111,37 @@ func (suite *CombinedCacheTestSuite) TestSetAndGet() {
 	err = suite.cacheRemoteBrokenNotBestEffort.Get(ctx, "key1", &result3)
 	suite.Error(err)
 	suite.Equal("", result3)
+}
+
+func (suite *CombinedCacheTestSuite) TestGetFromRemoteToLocal() {
+	ctx := context.Background()
+
+	// write value remotely directly
+	err := suite.cacheRemote.Set(ctx, "onlyOnRemote", "value_on_remote", -1)
+	suite.NoError(err)
+
+	// check value on combined cache, it should not find it locally or remotely (it should fail)
+	var result1 string
+	err = suite.cacheOkNotBestEffort.Get(ctx, "noFound", &result1)
+	suite.Error(err)
+	suite.Equal(suite.cacheOkNotBestEffort.IsNotFoundError(err), true)
+
+	// check value on combined cache, it should not find it locally, retrieve it remotely and write it back locally and remotely
+	err = suite.cacheOkNotBestEffort.Get(ctx, "onlyOnRemote", &result1)
+	suite.NoError(err)
+	suite.Equal("value_on_remote", result1)
+
+	// check value again on combined cache, it should find it now locally
+	var result2 string
+	err = suite.cacheOkNotBestEffort.Get(ctx, "onlyOnRemote", &result2)
+	suite.NoError(err)
+	suite.Equal("value_on_remote", result2)
+
+	// check value directly on remote cache
+	var result3 string
+	err = suite.cacheRemote.Get(ctx, "onlyOnRemote", &result3)
+	suite.NoError(err)
+	suite.Equal("value_on_remote", result3)
 }
 
 func (suite *CombinedCacheTestSuite) TestDelete() {
