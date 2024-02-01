@@ -20,8 +20,7 @@ func (suite *LocalCacheTestSuite) SetupSuite() {
 	prefix := os.Getenv("PREFIX")
 	var err error
 	config := LocalConfig{
-		EvictionInSeconds: 100000,
-		Prefix:            prefix,
+		Prefix: prefix,
 	}
 	suite.cache, err = NewLocalCache(&config)
 	suite.Nil(err)
