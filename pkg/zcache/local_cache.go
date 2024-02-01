@@ -17,9 +17,15 @@ type CacheItem struct {
 }
 
 func NewCacheItem(value []byte, ttl time.Duration) CacheItem {
+	var expiresAt int64
+	expiresAt = time.Now().Add(ttl).Unix()
+	if ttl < 0 {
+		expiresAt = -1
+	}
+
 	return CacheItem{
 		Value:     value,
-		ExpiresAt: time.Now().Add(ttl).Unix(),
+		ExpiresAt: expiresAt,
 	}
 }
 
