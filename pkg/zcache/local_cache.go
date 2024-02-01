@@ -24,6 +24,9 @@ func NewCacheItem(value []byte, ttl time.Duration) CacheItem {
 }
 
 func (item CacheItem) IsExpired() bool {
+	if item.ExpiresAt < 0 {
+		return false
+	}
 	return time.Now().Unix() > item.ExpiresAt
 }
 
