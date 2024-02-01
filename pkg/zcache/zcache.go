@@ -69,7 +69,6 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	}
 
 	// Set global configs on local cache config
-	localCacheConfig.EvictionInSeconds = combinedConfig.GlobalTtlSeconds
 	localCacheConfig.Prefix = combinedConfig.GlobalPrefix
 	localCacheConfig.Logger = combinedConfig.GlobalLogger
 

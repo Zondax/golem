@@ -60,7 +60,7 @@ func main() {
 
 ```go
 func main() {
-    config := zcache.LocalConfig{Eviction: 12}
+    config := zcache.LocalConfig{}
     cache, err := zcache.NewLocalCache(config)
     if err != nil {
         // Handle error
@@ -82,7 +82,7 @@ func main() {
 
 ```go
 func main() {
-    localConfig := zcache.LocalConfig{Eviction: 12}
+    localConfig := zcache.LocalConfig{}
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
 	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
     cache, err := zcache.NewCombinedCache(config)

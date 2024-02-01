@@ -35,9 +35,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	prefix := os.Getenv("PREFIX")
 	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{
-				EvictionInSeconds: 10,
-			},
+			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
@@ -48,9 +46,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	suite.Nil(err)
 
 	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{
-		Local: &LocalConfig{
-			EvictionInSeconds: 10,
-		},
+		Local: &LocalConfig{},
 		Remote: &RemoteConfig{
 			Addr: mr.Addr(),
 		},
@@ -62,9 +58,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 
 	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{
-				EvictionInSeconds: 10,
-			},
+			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
