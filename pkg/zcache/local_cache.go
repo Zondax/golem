@@ -11,16 +11,19 @@ import (
 	"time"
 )
 
+const (
+	neverExpires = -1
+)
+
 type CacheItem struct {
 	Value     []byte `json:"value"`
 	ExpiresAt int64  `json:"expires_at"`
 }
 
 func NewCacheItem(value []byte, ttl time.Duration) CacheItem {
-	var expiresAt int64
-	expiresAt = time.Now().Add(ttl).Unix()
+	expiresAt := time.Now().Add(ttl).Unix()
 	if ttl < 0 {
-		expiresAt = -1
+		expiresAt = neverExpires
 	}
 
 	return CacheItem{
