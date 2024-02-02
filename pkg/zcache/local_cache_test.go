@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestLocalCacheTestSuite(t *testing.T) {
@@ -52,4 +53,20 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 
 	err = suite.cache.Get(ctx, key, new(string))
 	suite.Error(err)
+}
+
+func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
+	item := NewCacheItem([]byte("testValue"), 1*time.Second)
+	suite.False(item.IsExpired(), "CacheItem should not be expired right after creation")
+	time.Sleep(2 * time.Second)
+
+	suite.True(item.IsExpired(), "CacheItem should be expired after its TTL")
+}
+
+func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
+	item := NewCacheItem([]byte("testValue"), -1)
+	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire")
+	time.Sleep(2 * time.Second)
+
+	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire, even after some time")
 }
