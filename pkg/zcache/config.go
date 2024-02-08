@@ -4,7 +4,6 @@ import (
 	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
-	"math"
 	"time"
 )
 
@@ -27,9 +26,8 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	EvictionInSeconds int
-	Prefix            string
-	Logger            *zap.Logger
+	Prefix string
+	Logger *zap.Logger
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -51,12 +49,8 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
-	eviction := time.Duration(c.EvictionInSeconds) * time.Second
-	if c.EvictionInSeconds < 0 {
-		eviction = time.Duration(math.MaxInt64)
-	}
-
-	return bigcache.DefaultConfig(eviction)
+	evictionTime := time.Duration(100*365*24) * time.Hour // 100 years
+	return bigcache.DefaultConfig(evictionTime)
 }
 
 type CombinedConfig struct {
