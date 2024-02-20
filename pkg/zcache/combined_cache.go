@@ -60,9 +60,7 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 				c.logger.Sugar().Debugf("error getting key on combined/remote cache, key: [%s], err: %s", key, err)
 			}
 
-			if !c.isRemoteBestEffort {
-				return err
-			}
+			return err
 		}
 
 		c.logger.Sugar().Debugf("set value found on remote cache in the local cache, key: [%s]", key)
