@@ -24,7 +24,7 @@ type combinedCache struct {
 	appName            string
 }
 
-func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, _ time.Duration) error {
+func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	c.logger.Sugar().Debugf("set key on combined cache, key: [%s]", key)
 
 	if err := c.remoteCache.Set(ctx, key, value, c.ttl); err != nil {
@@ -35,8 +35,7 @@ func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, 
 		}
 	}
 
-	// ttl is controlled by cache instantiation, so it does not matter here
-	if err := c.localCache.Set(ctx, key, value, c.ttl); err != nil {
+	if err := c.localCache.Set(ctx, key, value, ttl); err != nil {
 		c.logger.Sugar().Errorf("error setting key on combined/local cache, key: [%s], err: %s", key, err)
 		return err
 	}
