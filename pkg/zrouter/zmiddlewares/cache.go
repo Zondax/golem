@@ -33,9 +33,18 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig, logger *zap
 
 				if mrw.status == http.StatusOK {
 					responseBody := mrw.Body()
+
+					for key, values := range mrw.Header() {
+						for _, value := range values {
+							w.Header().Add(key, value)
+						}
+					}
+
 					if err = cache.Set(r.Context(), key, responseBody, ttl); err != nil {
 						logger.Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
 					}
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write(responseBody)
 				}
 			} else {
 				next.ServeHTTP(w, r)
