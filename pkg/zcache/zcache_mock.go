@@ -3,11 +3,27 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/mock"
+	"github.com/zondax/golem/pkg/metrics"
 	"time"
 )
 
 type MockZCache struct {
 	mock.Mock
+}
+
+func (m *MockZCache) GetStats() ZCacheStats {
+	args := m.Called()
+	return args.Get(0).(ZCacheStats)
+}
+
+func (m *MockZCache) IsNotFoundError(err error) bool {
+	args := m.Called(err)
+	return args.Bool(0)
+}
+
+func (m *MockZCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
+	args := m.Called(appName, metricsServer, updateInterval)
+	return args.Get(0).([]error)
 }
 
 func (m *MockZCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
