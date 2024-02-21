@@ -19,8 +19,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		next.ServeHTTP(mrw, r)
 		duration := time.Since(start)
+		requestID := r.Header.Get(RequestIDHeader)
 
-		zap.S().Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
-			r.Method, r.URL.String(), mrw.status, duration, mrw.Body())
+		zap.S().Debugf("request_id: %s - Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
+			requestID, r.Method, r.URL.String(), mrw.status, duration, mrw.Body())
 	})
 }
