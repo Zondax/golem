@@ -133,14 +133,20 @@ func (r *zrouter) Run(addr ...string) error {
 
 func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
 	var wrappedHandler http.Handler = handler
+	// The order of middleware application is crucial: Route-specific middlewares are applied first,
+	// followed by router-level general middlewares. This ensures that general middlewares, which often
+	// handle logging, security, etc... are executed first. This sequence is
+	// important to maintain consistency in logging and to apply security measures before route-specific
+	// logic is executed.
+
+	for _, mw := range middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
 
 	for _, mw := range r.middlewares {
 		wrappedHandler = mw(wrappedHandler)
 	}
 
-	for _, mw := range middlewares {
-		wrappedHandler = mw(wrappedHandler)
-	}
 	return wrappedHandler
 }
 

@@ -10,9 +10,7 @@ const (
 )
 
 func RequestID() Middleware {
-	return func(next http.Handler) http.Handler {
-		return requestIDMiddleware(next)
-	}
+	return requestIDMiddleware
 }
 
 func requestIDMiddleware(next http.Handler) http.Handler {
@@ -24,7 +22,8 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 		}
 
 		w.Header().Set(RequestIDHeader, requestID)
-		next.ServeHTTP(w, r)
+		rw := &responseWriter{ResponseWriter: w}
+		next.ServeHTTP(rw, r)
 	})
 }
 
