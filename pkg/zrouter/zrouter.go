@@ -59,6 +59,7 @@ type Routes interface {
 	GetRegisteredRoutes() []RegisteredRoute
 	SetDefaultMiddlewares()
 	GetHandler() http.Handler
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
 
 type zrouter struct {
@@ -203,4 +204,8 @@ func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
 
 func (r *zrouter) GetHandler() http.Handler {
 	return r.router
+}
+
+func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.router.ServeHTTP(w, req)
 }
