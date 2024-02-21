@@ -1,14 +1,16 @@
 package logger
 
 import (
-	"github.com/zondax/golem/pkg/zrouter/domain"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"strings"
 	"sync"
 )
 
-const initializingLogError = "initializing logger error: "
+const (
+	ConsoleEncode        = "console"
+	initializingLogError = "initializing logger error: "
+)
 
 var (
 	baseLogger *zap.Logger
@@ -62,9 +64,9 @@ func NewLogger(config ...Config) *Logger {
 }
 
 func configureAndBuildLogger(config Config) *zap.Logger {
-	cfg := zap.NewDevelopmentConfig()
-	if strings.EqualFold(config.Encoding, domain.ContentTypeJSON) {
-		cfg = zap.NewProductionConfig()
+	cfg := zap.NewProductionConfig()
+	if strings.EqualFold(config.Encoding, ConsoleEncode) {
+		cfg = zap.NewDevelopmentConfig()
 	}
 
 	encoderConfig := zap.NewProductionEncoderConfig()
