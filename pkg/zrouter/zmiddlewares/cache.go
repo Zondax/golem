@@ -27,9 +27,9 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig, logger *zap
 					return
 				}
 
-				mrw := &metricsResponseWriter{ResponseWriter: w}
-				next.ServeHTTP(mrw, r) // Important: This line needs to be BEFORE setting the cache.
-				cacheResponseIfNeeded(mrw, r, cache, key, ttl, logger)
+				rw := &responseWriter{ResponseWriter: w}
+				next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
+				cacheResponseIfNeeded(rw, r, cache, key, ttl, logger)
 			}
 		})
 	}
@@ -53,17 +53,21 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 	if err == nil && cachedResponse != nil {
 		w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeApplicationJSON)
 		_, _ = w.Write(cachedResponse)
+		requestID := r.Header.Get(RequestIDHeader)
+
+		zap.S().Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
+			requestID, r.Method, r.URL.String(), http.StatusOK, string(cachedResponse))
 		return true
 	}
 	return false
 }
 
-func cacheResponseIfNeeded(mrw *metricsResponseWriter, r *http.Request, cache zcache.ZCache, key string, ttl time.Duration, logger *zap.SugaredLogger) {
-	if mrw.status != http.StatusOK {
+func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCache, key string, ttl time.Duration, logger *zap.SugaredLogger) {
+	if rw.status != http.StatusOK {
 		return
 	}
 
-	responseBody := mrw.Body()
+	responseBody := rw.Body()
 	if err := cache.Set(r.Context(), key, responseBody, ttl); err != nil {
 		logger.Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
 	}

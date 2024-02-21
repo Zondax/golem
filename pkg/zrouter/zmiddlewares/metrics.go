@@ -60,7 +60,7 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
 			mu.Unlock()
 
-			mrw := &metricsResponseWriter{ResponseWriter: w}
+			mrw := &responseWriter{ResponseWriter: w}
 			next.ServeHTTP(mrw, r)
 
 			mu.Lock()
