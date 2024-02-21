@@ -1,11 +1,12 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
+	"github.com/zondax/golem/pkg/logger"
 	"net/http"
 	"sync"
 	"time"
@@ -52,7 +53,7 @@ func (t *taskMetrics) Name() string {
 func (t *taskMetrics) Start() error {
 	router := chi.NewRouter()
 
-	zap.S().Infof("Metrics (prometheus) starting: %v", t.port)
+	logger.Log().Infof(context.Background(), "Metrics (prometheus) starting: %v", t.port)
 
 	// Prometheus path
 	router.Get(t.path, promhttp.Handler().(http.HandlerFunc))
@@ -65,9 +66,9 @@ func (t *taskMetrics) Start() error {
 
 	err := server.ListenAndServe()
 	if err != nil {
-		zap.S().Errorf("Prometheus server error: %v", err)
+		logger.Log().Errorf(context.Background(), "Prometheus server error: %v", err)
 	} else {
-		zap.S().Infof("Prometheus server serving at port %s", t.port)
+		logger.Log().Errorf(context.Background(), "Prometheus server serving at port %s", t.port)
 	}
 
 	return err

@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"fmt"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"go.uber.org/zap"
@@ -55,7 +56,7 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		_, _ = w.Write(cachedResponse)
 		requestID := r.Header.Get(RequestIDHeader)
 
-		zap.S().Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
+		logger.Log().Debugf(r.Context(), "[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
 			requestID, r.Method, r.URL.String(), http.StatusOK, string(cachedResponse))
 		return true
 	}

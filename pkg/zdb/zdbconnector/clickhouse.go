@@ -1,10 +1,11 @@
 package zdbconnector
 
 import (
+	"context"
 	"fmt"
 	clickhouse2 "github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
-	"go.uber.org/zap"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/gorm"
 	"strings"
@@ -55,7 +56,7 @@ func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 	case strings.EqualFold(params.Protocol, clickhouse2.Native.String()), params.Protocol == "":
 		protocol = clickhouse2.Native.String()
 	default:
-		zap.S().Errorf("Failed to identify connection protocol [%s]", params.Protocol)
+		logger.Log().Errorf(context.Background(), "Failed to identify connection protocol [%s]", params.Protocol)
 	}
 
 	dsn := fmt.Sprintf(

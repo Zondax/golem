@@ -1,7 +1,8 @@
 package cli
 
 import (
-	"go.uber.org/zap"
+	"context"
+	"github.com/zondax/golem/pkg/logger"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,13 +15,13 @@ func setupCloseHandler(handler CleanUpHandler) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		zap.S().Warn("\r- Ctrl+C pressed in Terminal")
+		logger.Log().Warn(context.Background(), "\r- Ctrl+C pressed in Terminal")
 
 		if handler != nil {
 			handler()
 		}
 
-		_ = zap.S().Sync() // Sync logger
+		_ = logger.Sync() // Sync logger
 		// TODO: friendly closing callback
 		os.Exit(0)
 	}()

@@ -1,7 +1,9 @@
 package zmiddlewares
 
 import (
+	"context"
 	"github.com/google/uuid"
+	"github.com/zondax/golem/pkg/logger"
 	"net/http"
 )
 
@@ -23,7 +25,9 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set(RequestIDHeader, requestID)
 		rw := &responseWriter{ResponseWriter: w}
-		next.ServeHTTP(rw, r)
+		ctx := context.WithValue(r.Context(), logger.RequestIDKey, requestID) //nolint
+
+		next.ServeHTTP(rw, r.WithContext(ctx))
 	})
 }
 

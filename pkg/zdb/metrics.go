@@ -1,10 +1,11 @@
 package zdb
 
 import (
+	"context"
 	"fmt"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func SetupAndMonitorDBMetrics(appName string, metricsServer metrics.TaskMetrics,
 		for range ticker.C {
 			stats, err := db.GetDBStats()
 			if err != nil {
-				zap.S().Errorf("Error while getting db stats: %v", err)
+				logger.Log().Errorf(context.Background(), "Error while getting db stats: %v", err)
 				continue
 			}
 

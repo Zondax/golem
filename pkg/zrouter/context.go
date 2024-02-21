@@ -1,6 +1,7 @@
 package zrouter
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -13,6 +14,7 @@ type Context interface {
 	Param(key string) string
 	Query(key string) string
 	DefaultQuery(key, defaultValue string) string
+	Context() context.Context
 }
 
 type chiContextAdapter struct {
@@ -47,4 +49,8 @@ func (c *chiContextAdapter) DefaultQuery(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func (c *chiContextAdapter) Context() context.Context {
+	return c.req.Context()
 }
