@@ -7,31 +7,31 @@ import (
 
 type Middleware func(next http.Handler) http.Handler
 
-type metricsResponseWriter struct {
+type responseWriter struct {
 	http.ResponseWriter
 	status  int
 	written int64
 	body    *bytes.Buffer
 }
 
-func (mrw *metricsResponseWriter) WriteHeader(statusCode int) {
-	mrw.status = statusCode
-	mrw.ResponseWriter.WriteHeader(statusCode)
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.status = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (mrw *metricsResponseWriter) Write(p []byte) (int, error) {
-	if mrw.body == nil {
-		mrw.body = new(bytes.Buffer)
+func (rw *responseWriter) Write(p []byte) (int, error) {
+	if rw.body == nil {
+		rw.body = new(bytes.Buffer)
 	}
-	mrw.body.Write(p)
-	n, err := mrw.ResponseWriter.Write(p)
-	mrw.written += int64(n)
+	rw.body.Write(p)
+	n, err := rw.ResponseWriter.Write(p)
+	rw.written += int64(n)
 	return n, err
 }
 
-func (mrw *metricsResponseWriter) Body() []byte {
-	if mrw.body != nil {
-		return mrw.body.Bytes()
+func (rw *responseWriter) Body() []byte {
+	if rw.body != nil {
+		return rw.body.Bytes()
 	}
 	return nil
 }

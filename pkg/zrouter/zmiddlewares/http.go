@@ -9,5 +9,5 @@ func RequestID() Middleware {
 }
 
 func Logger() Middleware {
-	return middleware.Logger
+	return LoggingMiddleware
 }
