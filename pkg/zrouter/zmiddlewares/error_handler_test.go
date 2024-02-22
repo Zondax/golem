@@ -13,8 +13,8 @@ import (
 
 func TestErrorHandlerMiddleware(t *testing.T) {
 	r := chi.NewRouter()
-
-	r.Use(ErrorHandlerMiddleware(logger.Logger{}))
+	log := logger.NewLogger()
+	r.Use(ErrorHandlerMiddleware(*log))
 
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("Some unexpected error")
