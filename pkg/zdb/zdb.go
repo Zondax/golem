@@ -80,10 +80,10 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 			err = verifyErr
 		}
 
-		logger.Log().Infof(context.Background(), "Failed to establish database connection: %v. Attempt %d/%d. Retrying in %d seconds...", err, i+1, config.MaxAttempts, config.RetryInterval)
+		logger.Log(context.Background()).Infof("Failed to establish database connection: %v. Attempt %d/%d. Retrying in %d seconds...", err, i+1, config.MaxAttempts, config.RetryInterval)
 		time.Sleep(time.Duration(config.RetryInterval) * time.Second)
 	}
 
-	logger.Log().Infof(context.Background(), "Unable to establish database connection after %d attempts.", config.MaxAttempts)
+	logger.Log(context.Background()).Infof("Unable to establish database connection after %d attempts.", config.MaxAttempts)
 	return nil, err
 }

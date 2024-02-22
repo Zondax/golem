@@ -1,7 +1,6 @@
 package zmiddlewares
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/zondax/golem/pkg/logger"
@@ -14,12 +13,12 @@ const (
 	internalErrorCode = "internal_error"
 )
 
-func ErrorHandlerMiddleware(logger logger.Logger) Middleware {
+func ErrorHandlerMiddleware() Middleware {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if err := recover(); err != nil {
-					logger.Errorf(context.Background(), "Internal error: %v\n%s", err, debug.Stack())
+					logger.Log(r.Context()).Errorf("Internal error: %v\n%s", err, debug.Stack())
 					message := fmt.Sprintf("An internal error occurred: %v", err)
 					apiError := domain.NewAPIErrorResponse(http.StatusInternalServerError, internalErrorCode, message)
 

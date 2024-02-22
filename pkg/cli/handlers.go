@@ -15,7 +15,7 @@ func setupCloseHandler(handler CleanUpHandler) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		logger.Log().Warn(context.Background(), "\r- Ctrl+C pressed in Terminal")
+		logger.Log(context.Background()).Warn("\r- Ctrl+C pressed in Terminal")
 
 		if handler != nil {
 			handler()

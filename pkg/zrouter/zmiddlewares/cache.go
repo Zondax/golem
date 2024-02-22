@@ -55,7 +55,7 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		_, _ = w.Write(cachedResponse)
 		requestID := r.Header.Get(RequestIDHeader)
 
-		logger.Log().Debugf(r.Context(), "[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
+		logger.Log(r.Context()).Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
 			requestID, r.Method, r.URL.String(), http.StatusOK, string(cachedResponse))
 		return true
 	}
@@ -69,6 +69,6 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 
 	responseBody := rw.Body()
 	if err := cache.Set(r.Context(), key, responseBody, ttl); err != nil {
-		logger.Log().Errorf(r.Context(), "Internal error when setting cache response: %v\n%s", err, debug.Stack())
+		logger.Log(r.Context()).Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
 	}
 }

@@ -13,6 +13,9 @@ const (
 )
 
 var (
+	defaultConfig = Config{
+		Level: "info",
+	}
 	baseLogger *zap.Logger
 	lock       sync.RWMutex
 )
@@ -47,15 +50,27 @@ func InitLogger(config Config) {
 	baseLogger = configureAndBuildLogger(config)
 	zap.ReplaceGlobals(baseLogger)
 }
-
-func NewLogger(config Config, fields ...zap.Field) *Logger {
+func NewLogger(opts ...interface{}) *Logger {
 	lock.Lock()
 	defer lock.Unlock()
 
-	logger := configureAndBuildLogger(config)
-	if len(fields) > 0 {
-		logger = logger.With(fields...)
+	var config Config
+	var fields []Field
+
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case Config:
+			config = opt
+		case Field:
+			fields = append(fields, opt)
+		}
 	}
+
+	if config == (Config{}) {
+		config = DefaultConfig()
+	}
+
+	logger := configureAndBuildLogger(config).With(toZapFields(fields)...)
 	return &Logger{logger: logger}
 }
 
@@ -89,4 +104,16 @@ func Sync() error {
 	defer lock.Unlock()
 
 	return baseLogger.Sync()
+}
+
+func DefaultConfig() Config {
+	return defaultConfig
+}
+
+func toZapFields(fields []Field) []zap.Field {
+	var zapFields []zap.Field
+	for _, field := range fields {
+		zapFields = append(zapFields, zap.Any(field.Key, field.Value))
+	}
+	return zapFields
 }

@@ -47,7 +47,7 @@ func SetupAndMonitorDBMetrics(appName string, metricsServer metrics.TaskMetrics,
 		for range ticker.C {
 			stats, err := db.GetDBStats()
 			if err != nil {
-				logger.Log().Errorf(context.Background(), "Error while getting db stats: %v", err)
+				logger.Log(context.Background()).Errorf("Error while getting db stats: %v", err)
 				continue
 			}
 

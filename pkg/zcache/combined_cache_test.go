@@ -41,7 +41,6 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			},
 			IsRemoteBestEffort: true,
 			GlobalPrefix:       prefix,
-			GlobalLogger:       logger,
 		})
 	suite.Nil(err)
 
@@ -52,7 +51,6 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 		},
 		IsRemoteBestEffort: false,
 		GlobalPrefix:       prefix,
-		GlobalLogger:       logger,
 	})
 	suite.Nil(err)
 
@@ -64,7 +62,6 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 			},
 			IsRemoteBestEffort: false,
 			GlobalPrefix:       prefix,
-			GlobalLogger:       logger,
 		})
 	suite.Nil(err)
 

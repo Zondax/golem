@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +12,7 @@ import (
 
 func TestErrorHandlerMiddleware(t *testing.T) {
 	r := chi.NewRouter()
-	log := logger.NewLogger()
-	r.Use(ErrorHandlerMiddleware(*log))
+	r.Use(ErrorHandlerMiddleware())
 
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("Some unexpected error")
