@@ -88,8 +88,8 @@ func configureAndBuildLogger(config Config) *zap.Logger {
 }
 
 func Sync() error {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 
 	if err := baseLogger.Sync(); err != nil {
 		return err
