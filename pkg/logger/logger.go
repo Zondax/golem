@@ -45,22 +45,18 @@ func InitLogger(config Config) {
 	defer lock.Unlock()
 
 	baseLogger = configureAndBuildLogger(config)
-
 	zap.ReplaceGlobals(baseLogger)
 }
 
-func NewLogger(config ...Config) *Logger {
+func NewLogger(config Config, fields ...zap.Field) *Logger {
 	lock.Lock()
 	defer lock.Unlock()
 
-	var cfg Config
-	if len(config) > 0 {
-		cfg = config[0]
+	logger := configureAndBuildLogger(config)
+	if len(fields) > 0 {
+		logger = logger.With(fields...)
 	}
-
-	zapLogger := configureAndBuildLogger(cfg)
-
-	return &Logger{logger: zapLogger}
+	return &Logger{logger: logger}
 }
 
 func configureAndBuildLogger(config Config) *zap.Logger {
@@ -74,10 +70,11 @@ func configureAndBuildLogger(config Config) *zap.Logger {
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	cfg.EncoderConfig = encoderConfig
 
-	cfg.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	if level, ok := stringToLevel[strings.ToLower(config.Level)]; ok {
-		cfg.Level = zap.NewAtomicLevelAt(level)
+	level := zapcore.InfoLevel
+	if l, ok := stringToLevel[strings.ToLower(config.Level)]; ok {
+		level = l
 	}
+	cfg.Level = zap.NewAtomicLevelAt(level)
 
 	logger, err := cfg.Build(zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
 	if err != nil {
@@ -91,9 +88,5 @@ func Sync() error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	if err := baseLogger.Sync(); err != nil {
-		return err
-	}
-
-	return nil
+	return baseLogger.Sync()
 }
