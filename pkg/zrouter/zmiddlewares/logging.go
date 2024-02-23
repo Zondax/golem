@@ -21,7 +21,15 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		duration := time.Since(start)
 		ctx := r.Context()
 
-		logger.GetLoggerFromContext(ctx).Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
-			r.Method, r.URL.String(), rw.status, duration, rw.Body())
+		log := logger.GetLoggerFromContext(ctx)
+
+		if log.IsDebugEnabled() {
+			log.Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
+				r.Method, r.URL.String(), rw.status, duration, string(rw.Body()))
+			return
+		}
+
+		log.Infof("Method: %s - URL: %s | Status: %d - Duration: %s",
+			r.Method, r.URL.String(), rw.status, duration)
 	})
 }

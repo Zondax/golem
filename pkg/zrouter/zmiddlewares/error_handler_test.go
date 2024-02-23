@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestErrorHandlerMiddleware(t *testing.T) {
+	logger.InitLogger(logger.Config{})
 	r := chi.NewRouter()
 	r.Use(ErrorHandlerMiddleware())
 

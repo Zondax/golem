@@ -30,7 +30,10 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next h
 				rw := &responseWriter{ResponseWriter: w}
 				next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
 				cacheResponseIfNeeded(rw, r, cache, key, ttl)
+				return
 			}
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }
