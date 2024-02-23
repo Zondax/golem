@@ -50,27 +50,30 @@ func InitLogger(config Config) {
 	baseLogger = configureAndBuildLogger(config)
 	zap.ReplaceGlobals(baseLogger)
 }
+
 func NewLogger(opts ...interface{}) *Logger {
 	lock.Lock()
 	defer lock.Unlock()
 
-	var config Config
+	var config *Config
 	var fields []Field
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case Config:
-			config = opt
+			config = &opt
 		case Field:
 			fields = append(fields, opt)
 		}
 	}
 
-	if config == (Config{}) {
-		config = DefaultConfig()
+	var logger *zap.Logger
+	logger = baseLogger.WithOptions(zap.AddCallerSkip(1))
+	if config != nil {
+		logger = configureAndBuildLogger(*config)
 	}
 
-	logger := configureAndBuildLogger(config).With(toZapFields(fields)...)
+	logger = logger.With(toZapFields(fields)...)
 	return &Logger{logger: logger}
 }
 
