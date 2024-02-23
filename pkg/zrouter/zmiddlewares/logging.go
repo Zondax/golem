@@ -2,7 +2,7 @@ package zmiddlewares
 
 import (
 	"bytes"
-	"go.uber.org/zap"
+	"github.com/zondax/golem/pkg/logger"
 	"net/http"
 	"time"
 )
@@ -19,9 +19,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		next.ServeHTTP(rw, r)
 		duration := time.Since(start)
-		requestID := r.Header.Get(RequestIDHeader)
+		ctx := r.Context()
 
-		zap.S().Debugf("request_id: %s - Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
-			requestID, r.Method, r.URL.String(), rw.status, duration, rw.Body())
+		logger.GetLoggerFromContext(ctx).Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
+			r.Method, r.URL.String(), rw.status, duration, rw.Body())
 	})
 }

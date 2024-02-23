@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/zondax/golem/pkg/zrouter/domain"
-	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,8 +12,7 @@ import (
 
 func TestErrorHandlerMiddleware(t *testing.T) {
 	r := chi.NewRouter()
-
-	r.Use(ErrorHandlerMiddleware(zap.S()))
+	r.Use(ErrorHandlerMiddleware())
 
 	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("Some unexpected error")

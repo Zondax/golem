@@ -2,9 +2,9 @@ package zmiddlewares
 
 import (
 	"fmt"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
-	"go.uber.org/zap"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -14,7 +14,7 @@ const (
 	cacheKeyPrefix = "zrouter_cache"
 )
 
-func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig, logger *zap.SugaredLogger) func(next http.Handler) http.Handler {
+func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
@@ -29,7 +29,7 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig, logger *zap
 
 				rw := &responseWriter{ResponseWriter: w}
 				next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
-				cacheResponseIfNeeded(rw, r, cache, key, ttl, logger)
+				cacheResponseIfNeeded(rw, r, cache, key, ttl)
 			}
 		})
 	}
@@ -55,20 +55,20 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		_, _ = w.Write(cachedResponse)
 		requestID := r.Header.Get(RequestIDHeader)
 
-		zap.S().Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
+		logger.GetLoggerFromContext(r.Context()).Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
 			requestID, r.Method, r.URL.String(), http.StatusOK, string(cachedResponse))
 		return true
 	}
 	return false
 }
 
-func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCache, key string, ttl time.Duration, logger *zap.SugaredLogger) {
+func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCache, key string, ttl time.Duration) {
 	if rw.status != http.StatusOK {
 		return
 	}
 
 	responseBody := rw.Body()
 	if err := cache.Set(r.Context(), key, responseBody, ttl); err != nil {
-		logger.Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
+		logger.GetLoggerFromContext(r.Context()).Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
 	}
 }

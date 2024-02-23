@@ -1,6 +1,7 @@
 package zmiddlewares
 
 import (
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 	"net/http/httptest"
@@ -11,19 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/zondax/golem/pkg/zcache"
-	"go.uber.org/zap"
 )
 
 func TestCacheMiddleware(t *testing.T) {
 	r := chi.NewRouter()
-	logger, _ := zap.NewDevelopment()
 	mockCache := new(zcache.MockZCache)
-
+	logger.InitLogger(logger.Config{})
 	cacheConfig := domain.CacheConfig{Paths: map[string]time.Duration{
 		"/cached-path": 5 * time.Minute,
 	}}
 
-	r.Use(CacheMiddleware(mockCache, cacheConfig, logger.Sugar()))
+	r.Use(CacheMiddleware(mockCache, cacheConfig))
 
 	// Simulate a response that should be cached
 	r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {

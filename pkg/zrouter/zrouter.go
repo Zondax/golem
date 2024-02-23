@@ -1,10 +1,11 @@
 package zrouter
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
-	"go.uber.org/zap"
 	"net/http"
 	"sync"
 	"time"
@@ -18,7 +19,7 @@ const (
 type Config struct {
 	ReadTimeOut  time.Duration
 	WriteTimeOut time.Duration
-	Logger       *zap.SugaredLogger
+	Logger       *logger.Logger
 }
 
 func (c *Config) setDefaultValues() {
@@ -31,8 +32,8 @@ func (c *Config) setDefaultValues() {
 	}
 
 	if c.Logger == nil {
-		l, _ := zap.NewProduction()
-		c.Logger = l.Sugar()
+		l := logger.NewLogger()
+		c.Logger = l
 	}
 }
 
@@ -92,13 +93,13 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 }
 
 func (r *zrouter) SetDefaultMiddlewares() {
-	r.Use(zmiddlewares.ErrorHandlerMiddleware(r.config.Logger))
-	r.Use(zmiddlewares.RequestID())
+	r.Use(zmiddlewares.ErrorHandlerMiddleware())
 	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
-		r.config.Logger.With("err", err).Error("Error registering metrics")
+		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
 	}
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
+	r.Use(zmiddlewares.RequestID())
 	r.Use(zmiddlewares.Logger())
 }
 

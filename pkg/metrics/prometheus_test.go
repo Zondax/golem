@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/zondax/golem/pkg/logger"
 	"net/http"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ func TestName(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
+	logger.InitLogger(logger.Config{})
 	metrics := NewTaskMetrics("/metrics", "9091")
 
 	go func() {
