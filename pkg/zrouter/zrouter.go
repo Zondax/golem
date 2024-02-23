@@ -93,13 +93,13 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 }
 
 func (r *zrouter) SetDefaultMiddlewares() {
-	r.Use(zmiddlewares.RequestID())
 	r.Use(zmiddlewares.ErrorHandlerMiddleware())
 	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
 	}
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
+	r.Use(zmiddlewares.RequestID())
 	r.Use(zmiddlewares.Logger())
 }
 
