@@ -67,8 +67,11 @@ func NewLogger(opts ...interface{}) *Logger {
 		}
 	}
 
-	var logger *zap.Logger
-	logger = baseLogger.WithOptions(zap.AddCallerSkip(1))
+	logger := configureAndBuildLogger(defaultConfig)
+	if baseLogger != nil {
+		logger = baseLogger.WithOptions(zap.AddCallerSkip(1))
+	}
+
 	if config != nil {
 		logger = configureAndBuildLogger(*config)
 	}

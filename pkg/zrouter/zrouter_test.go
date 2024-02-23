@@ -3,6 +3,7 @@ package zrouter
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ type ZRouterSuite struct {
 
 func (suite *ZRouterSuite) SetupTest() {
 	suite.router = New("testApp", nil, nil)
+	logger.InitLogger(logger.Config{})
 }
 
 func (suite *ZRouterSuite) TestRegisterAndGetRoutes() {
