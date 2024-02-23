@@ -53,7 +53,7 @@ func (t *taskMetrics) Name() string {
 func (t *taskMetrics) Start() error {
 	router := chi.NewRouter()
 
-	logger.Log(context.Background()).Infof("Metrics (prometheus) starting: %v", t.port)
+	logger.GetLoggerFromContext(context.Background()).Infof("Metrics (prometheus) starting: %v", t.port)
 
 	// Prometheus path
 	router.Get(t.path, promhttp.Handler().(http.HandlerFunc))
@@ -66,9 +66,9 @@ func (t *taskMetrics) Start() error {
 
 	err := server.ListenAndServe()
 	if err != nil {
-		logger.Log(context.Background()).Errorf("Prometheus server error: %v", err)
+		logger.GetLoggerFromContext(context.Background()).Errorf("Prometheus server error: %v", err)
 	} else {
-		logger.Log(context.Background()).Errorf("Prometheus server serving at port %s", t.port)
+		logger.GetLoggerFromContext(context.Background()).Errorf("Prometheus server serving at port %s", t.port)
 	}
 
 	return err

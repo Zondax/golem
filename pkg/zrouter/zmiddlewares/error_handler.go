@@ -18,7 +18,7 @@ func ErrorHandlerMiddleware() Middleware {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if err := recover(); err != nil {
-					logger.Log(r.Context()).Errorf("Internal error: %v\n%s", err, debug.Stack())
+					logger.GetLoggerFromContext(r.Context()).Errorf("Internal error: %v\n%s", err, debug.Stack())
 					message := fmt.Sprintf("An internal error occurred: %v", err)
 					apiError := domain.NewAPIErrorResponse(http.StatusInternalServerError, internalErrorCode, message)
 

@@ -56,7 +56,7 @@ func buildClickhouseDSN(params zdbconfig.ConnectionParams) string {
 	case strings.EqualFold(params.Protocol, clickhouse2.Native.String()), params.Protocol == "":
 		protocol = clickhouse2.Native.String()
 	default:
-		logger.Log(context.Background()).Errorf("Failed to identify connection protocol [%s]", params.Protocol)
+		logger.GetLoggerFromContext(context.Background()).Errorf("Failed to identify connection protocol [%s]", params.Protocol)
 	}
 
 	dsn := fmt.Sprintf(

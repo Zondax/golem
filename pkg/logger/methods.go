@@ -70,7 +70,7 @@ func (l *Logger) WithFields(fields ...zap.Field) *Logger {
 	return &Logger{logger: l.logger.With(fields...)}
 }
 
-func Log(ctx context.Context) *Logger {
+func GetLoggerFromContext(ctx context.Context) *Logger {
 	logger, ok := ctx.Value(loggerKey).(*Logger)
 	if !ok {
 		return NewLogger()
