@@ -75,3 +75,17 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 		logger.GetLoggerFromContext(r.Context()).Errorf("Internal error when setting cache response: %v\n%s", err, debug.Stack())
 	}
 }
+
+func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) {
+	parsedPaths := make(map[string]time.Duration)
+
+	for path, ttlStr := range paths {
+		ttl, err := time.ParseDuration(ttlStr)
+		if err != nil {
+			return domain.CacheConfig{}, fmt.Errorf("error parsing TTL duration for the path %s: %w", path, err)
+		}
+		parsedPaths[path] = ttl
+	}
+
+	return domain.CacheConfig{Paths: parsedPaths}, nil
+}
