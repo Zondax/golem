@@ -70,6 +70,10 @@ func (l *Logger) WithFields(fields ...zap.Field) *Logger {
 	return &Logger{logger: l.logger.With(fields...)}
 }
 
+func (l *Logger) IsDebugEnabled() bool {
+	return baseLogger.Core().Enabled(zap.DebugLevel)
+}
+
 func GetLoggerFromContext(ctx context.Context) *Logger {
 	logger, ok := ctx.Value(loggerKey).(*Logger)
 	if !ok {
