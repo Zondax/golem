@@ -58,7 +58,7 @@ type Routes interface {
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
-	SetDefaultMiddlewares()
+	SetDefaultMiddlewares(options zmiddlewares.LoggingMiddlewareOptions)
 	GetHandler() http.Handler
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
