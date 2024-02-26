@@ -15,7 +15,7 @@ type LoggingMiddlewareOptions struct {
 func LoggingMiddleware(options LoggingMiddlewareOptions) func(http.Handler) http.Handler {
 	excludeRegexps := make([]*regexp.Regexp, len(options.ExcludePaths))
 	for i, path := range options.ExcludePaths {
-		excludeRegexps[i] = pathToRegexp(path)
+		excludeRegexps[i] = PathToRegexp(path)
 	}
 
 	return func(next http.Handler) http.Handler {

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func pathToRegexp(path string) *regexp.Regexp {
+func PathToRegexp(path string) *regexp.Regexp {
 	escapedPath := regexp.QuoteMeta(path)
 	escapedPath = strings.ReplaceAll(escapedPath, "\\{", "{")
 	escapedPath = strings.ReplaceAll(escapedPath, "\\}", "}")

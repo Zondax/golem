@@ -6,6 +6,7 @@ import (
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
+	"regexp"
 	"runtime/debug"
 	"time"
 )
@@ -14,39 +15,35 @@ const (
 	cacheKeyPrefix = "zrouter_cache"
 )
 
-func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next http.Handler) http.Handler {
+type CacheProcessedPath struct {
+	Regex *regexp.Regexp
+	TTL   time.Duration
+}
+
+func CacheMiddleware(cache zcache.ZCache, processedPaths []CacheProcessedPath) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
-			if ttl, found := matchPathWithConfig(path, config.Paths); found {
-				key := constructCacheKey(fullURL)
+			for _, pPath := range processedPaths {
+				if pPath.Regex.MatchString(path) {
+					key := constructCacheKey(fullURL)
 
-				if tryServeFromCache(w, r, cache, key) {
+					if tryServeFromCache(w, r, cache, key) {
+						return
+					}
+
+					rw := &responseWriter{ResponseWriter: w}
+					next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
+					cacheResponseIfNeeded(rw, r, cache, key, pPath.TTL)
 					return
 				}
-
-				rw := &responseWriter{ResponseWriter: w}
-				next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
-				cacheResponseIfNeeded(rw, r, cache, key, ttl)
-				return
 			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func matchPathWithConfig(path string, configPaths map[string]time.Duration) (time.Duration, bool) {
-	for configPath, ttl := range configPaths {
-		regex := pathToRegexp(configPath)
-
-		if regex.MatchString(path) {
-			return ttl, true
-		}
-	}
-	return 0, false
 }
 
 func constructFullURL(r *http.Request) string {
@@ -99,4 +96,15 @@ func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) 
 	}
 
 	return domain.CacheConfig{Paths: parsedPaths}, nil
+}
+
+func ProcessCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
+	var processedPaths []CacheProcessedPath
+	for path, ttl := range paths {
+		processedPaths = append(processedPaths, CacheProcessedPath{
+			Regex: PathToRegexp(path),
+			TTL:   ttl,
+		})
+	}
+	return processedPaths
 }
