@@ -20,7 +20,9 @@ type CacheProcessedPath struct {
 	TTL   time.Duration
 }
 
-func CacheMiddleware(cache zcache.ZCache, processedPaths []CacheProcessedPath) func(next http.Handler) http.Handler {
+func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next http.Handler) http.Handler {
+	processedPaths := processCachePaths(config.Paths)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
@@ -98,7 +100,7 @@ func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) 
 	return domain.CacheConfig{Paths: parsedPaths}, nil
 }
 
-func ProcessCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
+func processCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
 	var processedPaths []CacheProcessedPath
 	for path, ttl := range paths {
 		processedPaths = append(processedPaths, CacheProcessedPath{
