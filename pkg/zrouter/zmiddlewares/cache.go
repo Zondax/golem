@@ -6,6 +6,7 @@ import (
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
+	"regexp"
 	"runtime/debug"
 	"time"
 )
@@ -20,7 +21,7 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next h
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
-			if ttl, found := config.Paths[path]; found {
+			if ttl, found := matchPathWithConfig(path, config.Paths); found {
 				key := constructCacheKey(fullURL)
 
 				if tryServeFromCache(w, r, cache, key) {
@@ -36,6 +37,18 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next h
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func matchPathWithConfig(path string, configPaths map[string]time.Duration) (time.Duration, bool) {
+	for configPath, ttl := range configPaths {
+		regexPattern := regexp.MustCompile(`\{[^}]+\}`).ReplaceAllString(regexp.QuoteMeta(configPath), `[^/]+`)
+		regex := regexp.MustCompile("^" + regexPattern + "$")
+
+		if regex.MatchString(path) {
+			return ttl, true
+		}
+	}
+	return 0, false
 }
 
 func constructFullURL(r *http.Request) string {
