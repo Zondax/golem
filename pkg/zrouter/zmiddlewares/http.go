@@ -33,6 +33,6 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func Logger() Middleware {
-	return LoggingMiddleware
+func Logger(options LoggingMiddlewareOptions) Middleware {
+	return LoggingMiddleware(options)
 }

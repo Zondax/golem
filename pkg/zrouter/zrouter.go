@@ -100,7 +100,6 @@ func (r *zrouter) SetDefaultMiddlewares() {
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
 	r.Use(zmiddlewares.RequestID())
-	r.Use(zmiddlewares.Logger())
 }
 
 func (r *zrouter) Group(prefix string) Routes {

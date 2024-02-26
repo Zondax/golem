@@ -6,6 +6,7 @@ import (
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
+	"regexp"
 	"runtime/debug"
 	"time"
 )
@@ -14,23 +15,32 @@ const (
 	cacheKeyPrefix = "zrouter_cache"
 )
 
+type CacheProcessedPath struct {
+	Regex *regexp.Regexp
+	TTL   time.Duration
+}
+
 func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next http.Handler) http.Handler {
+	processedPaths := processCachePaths(config.Paths)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
-			if ttl, found := config.Paths[path]; found {
-				key := constructCacheKey(fullURL)
+			for _, pPath := range processedPaths {
+				if pPath.Regex.MatchString(path) {
+					key := constructCacheKey(fullURL)
 
-				if tryServeFromCache(w, r, cache, key) {
+					if tryServeFromCache(w, r, cache, key) {
+						return
+					}
+
+					rw := &responseWriter{ResponseWriter: w}
+					next.ServeHTTP(rw, r) // Important: this line needs to be BEFORE setting the cache.
+					cacheResponseIfNeeded(rw, r, cache, key, pPath.TTL)
 					return
 				}
-
-				rw := &responseWriter{ResponseWriter: w}
-				next.ServeHTTP(rw, r) // Important: This line needs to be BEFORE setting the cache.
-				cacheResponseIfNeeded(rw, r, cache, key, ttl)
-				return
 			}
 
 			next.ServeHTTP(w, r)
@@ -88,4 +98,15 @@ func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) 
 	}
 
 	return domain.CacheConfig{Paths: parsedPaths}, nil
+}
+
+func processCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
+	var processedPaths []CacheProcessedPath
+	for path, ttl := range paths {
+		processedPaths = append(processedPaths, CacheProcessedPath{
+			Regex: PathToRegexp(path),
+			TTL:   ttl,
+		})
+	}
+	return processedPaths
 }
