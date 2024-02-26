@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -41,7 +42,8 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next h
 
 func matchPathWithConfig(path string, configPaths map[string]time.Duration) (time.Duration, bool) {
 	for configPath, ttl := range configPaths {
-		regexPattern := regexp.MustCompile(`\{[^}]+\}`).ReplaceAllString(regexp.QuoteMeta(configPath), `[^/]+`)
+		escapedConfigPath := regexp.QuoteMeta(configPath)
+		regexPattern := strings.Replace(escapedConfigPath, "\\{address\\}", "[^/]+", -1)
 		regex := regexp.MustCompile("^" + regexPattern + "$")
 
 		if regex.MatchString(path) {

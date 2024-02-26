@@ -58,7 +58,7 @@ type Routes interface {
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
-	SetDefaultMiddlewares(options zmiddlewares.LoggingMiddlewareOptions)
+	SetDefaultMiddlewares()
 	GetHandler() http.Handler
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
@@ -92,7 +92,7 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 	return zr
 }
 
-func (r *zrouter) SetDefaultMiddlewares(options zmiddlewares.LoggingMiddlewareOptions) {
+func (r *zrouter) SetDefaultMiddlewares() {
 	r.Use(zmiddlewares.ErrorHandlerMiddleware())
 	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
@@ -100,7 +100,6 @@ func (r *zrouter) SetDefaultMiddlewares(options zmiddlewares.LoggingMiddlewareOp
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
 	r.Use(zmiddlewares.RequestID())
-	r.Use(zmiddlewares.Logger(options))
 }
 
 func (r *zrouter) Group(prefix string) Routes {
