@@ -6,9 +6,7 @@ import (
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
-	"regexp"
 	"runtime/debug"
-	"strings"
 	"time"
 )
 
@@ -42,9 +40,7 @@ func CacheMiddleware(cache zcache.ZCache, config domain.CacheConfig) func(next h
 
 func matchPathWithConfig(path string, configPaths map[string]time.Duration) (time.Duration, bool) {
 	for configPath, ttl := range configPaths {
-		escapedConfigPath := regexp.QuoteMeta(configPath)
-		regexPattern := strings.ReplaceAll(escapedConfigPath, "\\{address\\}", "[^/]+")
-		regex := regexp.MustCompile("^" + regexPattern + "$")
+		regex := pathToRegexp(configPath)
 
 		if regex.MatchString(path) {
 			return ttl, true

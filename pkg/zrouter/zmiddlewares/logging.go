@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/zondax/golem/pkg/logger"
 	"net/http"
+	"regexp"
 	"time"
 )
 
@@ -12,10 +13,16 @@ type LoggingMiddlewareOptions struct {
 }
 
 func LoggingMiddleware(options LoggingMiddlewareOptions) func(http.Handler) http.Handler {
+	excludeRegexps := make([]*regexp.Regexp, len(options.ExcludePaths))
+	for i, path := range options.ExcludePaths {
+		excludeRegexps[i] = pathToRegexp(path)
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			for _, path := range options.ExcludePaths {
-				if r.URL.Path == path {
+			requestPath := r.URL.Path
+			for _, re := range excludeRegexps {
+				if re.MatchString(requestPath) {
 					next.ServeHTTP(w, r)
 					return
 				}
