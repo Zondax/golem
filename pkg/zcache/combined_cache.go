@@ -69,7 +69,7 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 		}
 
 		// Refresh data TTL on both caches
-		if ttl > 0 {
+		if ttl != 0 {
 			_ = c.localCache.Set(ctx, key, data, ttl)
 		}
 	}
