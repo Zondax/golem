@@ -27,6 +27,7 @@ type RemoteCache interface {
 	HGet(ctx context.Context, key, field string) (string, error)
 	FlushAll(ctx context.Context) error
 	Exists(ctx context.Context, keys ...string) (int64, error)
+	TTL(ctx context.Context, key string) (time.Duration, error)
 }
 
 type redisCache struct {
@@ -140,6 +141,13 @@ func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error
 	realKey := getKeyWithPrefix(c.prefix, key)
 	c.logger.Sugar().Debugf("hget on redis cache, fullKey: [%s]", realKey)
 	return c.client.HGet(ctx, realKey, field).Result()
+}
+
+func (c *redisCache) TTL(ctx context.Context, key string) (time.Duration, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Sugar().Debugf("ttl on redis cache, realKey: [%s]", realKey)
+
+	return c.client.TTL(ctx, realKey).Result()
 }
 
 func (c *redisCache) GetStats() ZCacheStats {
