@@ -68,7 +68,7 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		_, _ = w.Write(cachedResponse)
 		requestID := r.Header.Get(RequestIDHeader)
 
-		logger.GetLoggerFromContext(r.Context()).Debugf("[Cache] request_id: %s - Method: %s - URL: %s | Status: %d - Response Body: %s",
+		logger.GetLoggerFromContext(r.Context()).Debugf("[Cache] Method: %s - URL: %s | Status: %d - Response Body: %s",
 			requestID, r.Method, r.URL.String(), http.StatusOK, string(cachedResponse))
 		return true
 	}

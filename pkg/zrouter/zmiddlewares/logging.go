@@ -10,6 +10,7 @@ import (
 
 type LoggingMiddlewareOptions struct {
 	ExcludePaths []string
+	Enable       bool
 }
 
 func LoggingMiddleware(options LoggingMiddlewareOptions) func(http.Handler) http.Handler {
@@ -38,10 +39,7 @@ func LoggingMiddleware(options LoggingMiddlewareOptions) func(http.Handler) http
 			start := time.Now()
 			next.ServeHTTP(rw, r)
 			duration := time.Since(start)
-			ctx := r.Context()
-
-			log := logger.GetLoggerFromContext(ctx)
-
+			log := logger.GetLoggerFromContext(r.Context())
 			if log.IsDebugEnabled() {
 				log.Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
 					r.Method, r.URL.String(), rw.status, duration, string(rw.Body()))
