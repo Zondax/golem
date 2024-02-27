@@ -66,8 +66,11 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 		c.logger.Sugar().Debugf("set value found on remote cache in the local cache, key: [%s]", key)
 
 		// Refresh data TTL on both caches
+
 		_ = c.localCache.Set(ctx, key, data, c.ttl)
-		_ = c.remoteCache.Set(ctx, key, data, c.ttl)
+		if c.ttl <= 0 {
+			_ = c.remoteCache.Set(ctx, key, data, c.ttl)
+		}
 	}
 
 	return nil
