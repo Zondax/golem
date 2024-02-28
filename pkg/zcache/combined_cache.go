@@ -18,7 +18,6 @@ type combinedCache struct {
 	localCache         LocalCache
 	remoteCache        RemoteCache
 	logger             *zap.Logger
-	ttl                time.Duration
 	isRemoteBestEffort bool
 	metricsServer      *metrics.TaskMetrics
 	appName            string
@@ -27,7 +26,7 @@ type combinedCache struct {
 func (c *combinedCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	c.logger.Sugar().Debugf("set key on combined cache, key: [%s]", key)
 
-	if err := c.remoteCache.Set(ctx, key, value, c.ttl); err != nil {
+	if err := c.remoteCache.Set(ctx, key, value, ttl); err != nil {
 		c.logger.Sugar().Errorf("error setting key on combined/remote cache, key: [%s], err: %s", key, err)
 		if !c.isRemoteBestEffort {
 			c.logger.Sugar().Debugf("emitting error as remote best effort is false, key: [%s]", key)
@@ -64,10 +63,14 @@ func (c *combinedCache) Get(ctx context.Context, key string, data interface{}) e
 		}
 
 		c.logger.Sugar().Debugf("set value found on remote cache in the local cache, key: [%s]", key)
+		ttl, ttlErr := c.remoteCache.TTL(ctx, key)
 
 		// Refresh data TTL on both caches
-		_ = c.localCache.Set(ctx, key, data, c.ttl)
-		_ = c.remoteCache.Set(ctx, key, data, c.ttl)
+		if ttlErr == nil {
+			_ = c.localCache.Set(ctx, key, data, ttl)
+		} else {
+			c.logger.Sugar().Errorf("error getting TTL for key [%s] from remote cache, err: %s", key, ttlErr)
+		}
 	}
 
 	return nil

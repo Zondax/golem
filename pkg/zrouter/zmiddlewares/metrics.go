@@ -30,20 +30,23 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 		}
 	}
 
-	totalRequestsMetricName := getMetricName(appName, totalRequestMetricType)
-	responseSizeMetricName := getMetricName(appName, responseSizeMetricType)
-	durationMillisecondsMetricName := getMetricName(appName, durationMillisecondsMetricType)
-	activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
-	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Counter{})
-	register(durationMillisecondsMetricName, "Duration of HTTP requests.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Histogram{})
-	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{methodLabel, pathLabel, statusLabel}, &collectors.Histogram{})
+	totalRequestsMetricName := getMetricName(appName, "total_requests")
+	responseSizeMetricName := getMetricName(appName, "response_size")
+	durationMillisecondsMetricName := getMetricName(appName, "request_duration_ms")
+	activeConnectionsMetricName := getMetricName(appName, "active_connections")
+	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{"method", "path", "status"}, &collectors.Counter{})
+	register(durationMillisecondsMetricName, "Duration of HTTP requests in milliseconds.", []string{"method", "path", "status"}, &collectors.Histogram{})
+	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{"method", "path", "status"}, &collectors.Histogram{})
 	register(activeConnectionsMetricName, "Number of active HTTP connections.", nil, &collectors.Gauge{})
 
-	if len(errs) > 0 {
-		return errs
-	}
+	cacheHitsMetricName := getMetricName(appName, cacheHitsMetric)
+	cacheMissesMetricName := getMetricName(appName, cacheMissesMetric)
+	cacheSetsMetricName := getMetricName(appName, cacheSetsMetric)
+	register(cacheHitsMetricName, "Number of cache hits.", []string{pathLabel}, &collectors.Counter{})
+	register(cacheMissesMetricName, "Number of cache misses.", []string{pathLabel}, &collectors.Counter{})
+	register(cacheSetsMetricName, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Counter{})
 
-	return nil
+	return errs
 }
 
 func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware {

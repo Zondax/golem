@@ -57,7 +57,6 @@ type CombinedConfig struct {
 	Local              *LocalConfig
 	Remote             *RemoteConfig
 	GlobalLogger       *zap.Logger
-	GlobalTtlSeconds   int
 	GlobalPrefix       string
 	IsRemoteBestEffort bool
 }

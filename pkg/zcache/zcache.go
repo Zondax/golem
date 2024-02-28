@@ -81,7 +81,6 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 		remoteCache:        remoteClient,
 		localCache:         localClient,
 		isRemoteBestEffort: combinedConfig.IsRemoteBestEffort,
-		ttl:                time.Duration(combinedConfig.GlobalTtlSeconds) * time.Second,
 		logger:             combinedConfig.GlobalLogger,
 	}, nil
 }

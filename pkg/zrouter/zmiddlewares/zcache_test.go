@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"github.com/zondax/golem/pkg/logger"
+	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,7 @@ func TestCacheMiddleware(t *testing.T) {
 		"/cached-path": 5 * time.Minute,
 	}}
 
-	r.Use(CacheMiddleware(mockCache, cacheConfig))
+	r.Use(CacheMiddleware(metrics.NewTaskMetrics("", ""), mockCache, cacheConfig))
 
 	// Simulate a response that should be cached
 	r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {

@@ -17,9 +17,10 @@ const (
 )
 
 type Config struct {
-	ReadTimeOut  time.Duration
-	WriteTimeOut time.Duration
-	Logger       *logger.Logger
+	ReadTimeOut     time.Duration
+	WriteTimeOut    time.Duration
+	Logger          *logger.Logger
+	EnableRequestID bool
 }
 
 func (c *Config) setDefaultValues() {
@@ -58,7 +59,7 @@ type Routes interface {
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
-	SetDefaultMiddlewares()
+	SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions)
 	GetHandler() http.Handler
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 }
@@ -92,14 +93,16 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 	return zr
 }
 
-func (r *zrouter) SetDefaultMiddlewares() {
+func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
 	r.Use(zmiddlewares.ErrorHandlerMiddleware())
 	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
 	}
 
 	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
-	r.Use(zmiddlewares.RequestID())
+	if loggingOptions.Enable {
+		r.Use(zmiddlewares.LoggingMiddleware(loggingOptions))
+	}
 }
 
 func (r *zrouter) Group(prefix string) Routes {
@@ -147,6 +150,9 @@ func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmid
 		wrappedHandler = mw(wrappedHandler)
 	}
 
+	if r.config.EnableRequestID {
+		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
+	}
 	return wrappedHandler
 }
 

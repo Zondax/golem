@@ -90,3 +90,8 @@ func (m *MockZCache) HGet(ctx context.Context, key, field string) (string, error
 	args := m.Called(ctx, key, field)
 	return args.Get(0).(string), args.Error(1)
 }
+
+func (m *MockZCache) TTL(ctx context.Context, key string) (time.Duration, error) {
+	args := m.Called(ctx, key)
+	return args.Get(0).(time.Duration), args.Error(1)
+}
