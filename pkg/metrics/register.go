@@ -38,7 +38,12 @@ func (t *taskMetrics) RegisterMetric(name string, help string, labels []string, 
 
 	t.mux.Lock()
 	defer t.mux.Unlock()
-	t.metrics[name] = MetricDetail{Collector: metric, Handler: handler}
+	t.metrics[name] = MetricDetail{
+		Collector: metric,
+		Handler:   handler,
+		Help:      help,
+		Labels:    labels,
+	}
 
 	return nil
 }

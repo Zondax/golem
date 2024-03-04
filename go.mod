@@ -1,6 +1,8 @@
 module github.com/zondax/golem
 
-go 1.19
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.19.0

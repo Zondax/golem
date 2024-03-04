@@ -2,12 +2,18 @@ package zrouter
 
 import (
 	"context"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
 	"net/http"
+	"os"
+	"os/signal"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -16,11 +22,17 @@ const (
 	defaultTimeOut = 240000
 )
 
+type TopJWTMetrics struct {
+	RemoteCache zcache.RemoteCache
+	Enable      bool
+}
+
 type Config struct {
 	ReadTimeOut     time.Duration
 	WriteTimeOut    time.Duration
 	Logger          *logger.Logger
 	EnableRequestID bool
+	TopJWTMetrics   TopJWTMetrics
 }
 
 func (c *Config) setDefaultValues() {
@@ -103,6 +115,10 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 	if loggingOptions.Enable {
 		r.Use(zmiddlewares.LoggingMiddleware(loggingOptions))
 	}
+
+	if r.config.TopJWTMetrics.Enable {
+		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.metricsServer, "test_metric_name"))
+	}
 }
 
 func (r *zrouter) Group(prefix string) Routes {
@@ -125,13 +141,37 @@ func (r *zrouter) Run(addr ...string) error {
 
 	r.config.Logger.Infof("Start server at %v", address)
 
+	if r.config.TopJWTMetrics.Enable {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, "your_usage_metric_name", 10) // TODO
+	}
+
 	server := &http.Server{
 		Addr:         address,
 		Handler:      r.router,
 		ReadTimeout:  r.config.ReadTimeOut,
 		WriteTimeout: r.config.WriteTimeOut,
 	}
-	return server.ListenAndServe()
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			r.config.Logger.Fatalf("Could not listen on %s: %v\n", address, err)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		r.config.Logger.Fatalf("Server Shutdown Failed:%+v", err)
+	}
+
+	r.config.Logger.Info("Server Exited Properly")
+
+	return nil
 }
 
 func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
@@ -221,4 +261,37 @@ func (r *zrouter) GetHandler() http.Handler {
 
 func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
+}
+
+func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, topN int) {
+	ticker := time.NewTicker(time.Minute) // TODO
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			topTokens, err := zCache.ZRevRangeWithScores(ctx, zmiddlewares.PathUsageByJWTKey, 0, int64(topN-1))
+			if err != nil {
+				logger.GetLoggerFromContext(ctx).Errorf("Error fetching top tokens from cache: %v", err)
+				continue
+			}
+
+			metricsServer.ResetMetric(usageMetricName)
+
+			for _, item := range topTokens {
+				metricKey := item.Member.(string)
+				parts := strings.Split(metricKey, ":")
+				if len(parts) != 2 {
+					logger.GetLoggerFromContext(ctx).Errorf("Unexpected metric key format: %v", metricKey)
+					continue
+				}
+				jti, path := parts[0], parts[1]
+				count := item.Score
+
+				_ = metricsServer.UpdateMetric(usageMetricName, count, jti, path)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }

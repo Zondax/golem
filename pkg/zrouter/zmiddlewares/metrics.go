@@ -19,6 +19,7 @@ const (
 	pathLabel                      = "path"
 	methodLabel                    = "method"
 	statusLabel                    = "status"
+	TopNRequestsByJTIMetricName    = "topN_requests_by_jti"
 )
 
 func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) []error {
@@ -45,6 +46,8 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 	register(cacheHitsMetricName, "Number of cache hits.", []string{pathLabel}, &collectors.Counter{})
 	register(cacheMissesMetricName, "Number of cache misses.", []string{pathLabel}, &collectors.Counter{})
 	register(cacheSetsMetricName, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Counter{})
+	jwtRequestsMetricName := getMetricName(appName, TopNRequestsByJTIMetricName)
+	register(jwtRequestsMetricName, "Number of requests made by JWT tokens per path.", []string{"jti", "path"}, &collectors.Gauge{})
 
 	return errs
 }
