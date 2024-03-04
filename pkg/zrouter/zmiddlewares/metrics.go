@@ -3,6 +3,7 @@ package zmiddlewares
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
 	"net/http"
@@ -61,7 +62,9 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 
 			mu.Lock()
 			activeConnections++
-			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections), r.Method, path)
+			if err := metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections), r.Method, path); err != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("error updating active connections metric: %v", err.Error())
+			}
 			mu.Unlock()
 
 			mrw := &responseWriter{ResponseWriter: w}
@@ -69,7 +72,9 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 
 			mu.Lock()
 			activeConnections--
-			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
+			if err := metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections), r.Method, path); err != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("error updating active connections metric: %v", err.Error())
+			}
 			mu.Unlock()
 
 			duration := float64(time.Since(startTime).Milliseconds())
