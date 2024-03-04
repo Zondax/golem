@@ -37,7 +37,7 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{"method", "path", "status"}, &collectors.Counter{})
 	register(durationMillisecondsMetricName, "Duration of HTTP requests in milliseconds.", []string{"method", "path", "status"}, &collectors.Histogram{})
 	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{"method", "path", "status"}, &collectors.Histogram{})
-	register(activeConnectionsMetricName, "Number of active HTTP connections.", nil, &collectors.Gauge{})
+	register(activeConnectionsMetricName, "Number of active HTTP connections.", []string{"method", "path"}, &collectors.Gauge{})
 
 	cacheHitsMetricName := getMetricName(appName, cacheHitsMetric)
 	cacheMissesMetricName := getMetricName(appName, cacheMissesMetric)
@@ -55,12 +55,13 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			path := chi.RouteContext(r.Context()).RoutePattern()
 			startTime := time.Now()
 			activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
 
 			mu.Lock()
 			activeConnections++
-			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections))
+			_ = metricsServer.UpdateMetric(activeConnectionsMetricName, float64(activeConnections), r.Method, path)
 			mu.Unlock()
 
 			mrw := &responseWriter{ResponseWriter: w}
@@ -72,7 +73,6 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 			mu.Unlock()
 
 			duration := float64(time.Since(startTime).Milliseconds())
-			path := chi.RouteContext(r.Context()).RoutePattern()
 
 			responseStatus := mrw.status
 			bytesWritten := mrw.written
