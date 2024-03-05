@@ -13,7 +13,7 @@ func main() {
 	logger.InitLogger(logger.Config{Level: constants.DebugLevel})
 	r := runner.NewRunner()
 
-	r.AddTask(metrics.NewTaskMetrics("/metrics", "9090"))
+	r.AddTask(metrics.NewTaskMetrics("/metrics", "9090", "demo"))
 
 	// Now start all the tasks
 	r.StartAndWait()

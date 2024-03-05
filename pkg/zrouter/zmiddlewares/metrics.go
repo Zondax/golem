@@ -22,9 +22,10 @@ const (
 	statusLabel                    = "status"
 )
 
-func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) []error {
+func RegisterRequestMetrics(metricsServer metrics.TaskMetrics) []error {
 	var errs []error
 
+	appName := metricsServer.AppName()
 	register := func(name, help string, labels []string, handler metrics.MetricHandler) {
 		if err := metricsServer.RegisterMetric(name, help, labels, handler); err != nil {
 			errs = append(errs, err)
@@ -43,14 +44,14 @@ func RegisterRequestMetrics(appName string, metricsServer metrics.TaskMetrics) [
 	cacheHitsMetricName := getMetricName(appName, cacheHitsMetric)
 	cacheMissesMetricName := getMetricName(appName, cacheMissesMetric)
 	cacheSetsMetricName := getMetricName(appName, cacheSetsMetric)
-	register(cacheHitsMetricName, "Number of cache hits.", []string{pathLabel}, &collectors.Counter{})
-	register(cacheMissesMetricName, "Number of cache misses.", []string{pathLabel}, &collectors.Counter{})
-	register(cacheSetsMetricName, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Counter{})
+	register(cacheHitsMetricName, "Number of cache hits.", []string{pathLabel}, &collectors.Gauge{})
+	register(cacheMissesMetricName, "Number of cache misses.", []string{pathLabel}, &collectors.Gauge{})
+	register(cacheSetsMetricName, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Gauge{})
 
 	return errs
 }
 
-func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middleware {
+func RequestMetrics(metricsServer metrics.TaskMetrics) Middleware {
 	var activeConnections int64
 	var mu sync.Mutex
 
@@ -58,6 +59,7 @@ func RequestMetrics(appName string, metricsServer metrics.TaskMetrics) Middlewar
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := chi.RouteContext(r.Context()).RoutePattern()
 			startTime := time.Now()
+			appName := metricsServer.AppName()
 			activeConnectionsMetricName := getMetricName(appName, activeConnectionsMetricType)
 
 			mu.Lock()
