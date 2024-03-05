@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	activeConnectionsMetricType    = "active_connections"
-	durationMillisecondsMetricType = "duration_milliseconds"
-	responseSizeMetricType         = "response_size_bytes"
-	totalRequestMetricType         = "total_requests"
+	activeConnectionsMetricName    = "active_connections"
+	durationMillisecondsMetricName = "request_duration_ms"
+	responseSizeMetricName         = "response_size"
+	totalRequestsMetricName        = "total_requests"
 	pathLabel                      = "path"
 	methodLabel                    = "method"
 	statusLabel                    = "status"
@@ -30,10 +30,6 @@ func RegisterRequestMetrics(metricsServer metrics.TaskMetrics) []error {
 		}
 	}
 
-	totalRequestsMetricName := "total_requests"
-	responseSizeMetricName := "response_size"
-	durationMillisecondsMetricName := "request_duration_ms"
-	activeConnectionsMetricName := "active_connections"
 	register(totalRequestsMetricName, "Total number of HTTP requests made.", []string{"method", "path", "status"}, &collectors.Counter{})
 	register(durationMillisecondsMetricName, "Duration of HTTP requests in milliseconds.", []string{"method", "path", "status"}, &collectors.Gauge{})
 	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{"method", "path", "status"}, &collectors.Histogram{})
@@ -57,7 +53,6 @@ func RequestMetrics(metricsServer metrics.TaskMetrics) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := chi.RouteContext(r.Context()).RoutePattern()
 			startTime := time.Now()
-			activeConnectionsMetricName := activeConnectionsMetricType
 
 			mu.Lock()
 			activeConnections++
@@ -83,9 +78,15 @@ func RequestMetrics(metricsServer metrics.TaskMetrics) Middleware {
 
 			labels := []string{r.Method, path, strconv.Itoa(responseStatus)}
 
-			_ = metricsServer.UpdateMetric(durationMillisecondsMetricType, duration, labels...)
-			_ = metricsServer.UpdateMetric(responseSizeMetricType, float64(bytesWritten), labels...)
-			_ = metricsServer.UpdateMetric(totalRequestMetricType, 1, labels...)
+			if err := metricsServer.UpdateMetric(durationMillisecondsMetricName, duration, labels...); err != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("error updating request duration metric: %v", err.Error())
+			}
+			if err := metricsServer.UpdateMetric(responseSizeMetricName, float64(bytesWritten), labels...); err != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("error updating response size metric: %v", err.Error())
+			}
+			if err := metricsServer.UpdateMetric(totalRequestsMetricName, 1, labels...); err != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("error updating total requests metric: %v", err.Error())
+			}
 		})
 	}
 }
