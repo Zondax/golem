@@ -14,7 +14,7 @@ func main() {
 	r := runner.NewRunner()
 
 	// This will panic
-	r.AddTask(metrics.NewTaskMetrics("BADURL", "8080", "demo"))
+	r.AddTask(metrics.NewTaskMetrics("BADURL", "8080", "demo", "v1.0"))
 
 	// Now start all the tasks
 	r.StartAndWait()

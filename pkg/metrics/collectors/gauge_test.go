@@ -33,3 +33,12 @@ func TestGaugeDec(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, float64(-1), testutil.ToFloat64(gauge))
 }
+
+func TestCounterInc(t *testing.T) {
+	counter := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_counter"})
+	c := &Counter{}
+
+	err := c.Inc(counter)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(1), testutil.ToFloat64(counter))
+}

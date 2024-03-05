@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/metrics/collectors"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
 	"net/http"
 	"sync"
@@ -14,6 +15,7 @@ import (
 const (
 	defaultAddress = ":8080"
 	defaultTimeOut = 240000
+	appStartMetric = "app_start"
 )
 
 type Config struct {
@@ -68,17 +70,12 @@ type zrouter struct {
 	router        *chi.Mux
 	middlewares   []zmiddlewares.Middleware
 	metricsServer metrics.TaskMetrics
-	appName       string
 	routes        []RegisteredRoute
 	mutex         sync.Mutex
 	config        *Config
 }
 
-func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRouter {
-	if appName == "" {
-		panic("appName cannot be an empty string")
-	}
-
+func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 	if config == nil {
 		config = &Config{}
 	}
@@ -87,7 +84,6 @@ func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRou
 	zr := &zrouter{
 		router:        chi.NewRouter(),
 		metricsServer: metricsServer,
-		appName:       appName,
 		config:        config,
 	}
 	return zr
@@ -130,6 +126,14 @@ func (r *zrouter) Run(addr ...string) error {
 		Handler:      r.router,
 		ReadTimeout:  r.config.ReadTimeOut,
 		WriteTimeout: r.config.WriteTimeOut,
+	}
+
+	if err := r.metricsServer.RegisterMetric(appStartMetric, "Timestamp of when the application was started", []string{}, &collectors.Gauge{}); err != nil {
+		panic(err)
+	}
+
+	if err := r.metricsServer.UpdateMetric(appStartMetric, float64(time.Now().Unix())); err != nil {
+		panic(err)
 	}
 	return server.ListenAndServe()
 }

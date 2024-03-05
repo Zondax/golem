@@ -71,14 +71,14 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeApplicationJSON)
 		_, _ = w.Write(cachedResponse)
 
-		if err = metricServer.IncrementMetric(getMetricName(metricServer.AppName(), cacheHitsMetric), r.URL.Path); err != nil {
+		if err = metricServer.IncrementMetric(cacheHitsMetric, r.URL.Path); err != nil {
 			logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_hits metric: %v", err)
 		}
 
 		return true
 	}
 
-	if err = metricServer.IncrementMetric(getMetricName(metricServer.AppName(), cacheMissesMetric), r.URL.Path); err != nil {
+	if err = metricServer.IncrementMetric(cacheMissesMetric, r.URL.Path); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_misses metric: %v", err)
 	}
 
@@ -96,7 +96,7 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 		return
 	}
 
-	if err := metricServer.IncrementMetric(getMetricName(metricServer.AppName(), cacheSetsMetric), r.URL.Path); err != nil {
+	if err := metricServer.IncrementMetric(cacheSetsMetric, r.URL.Path); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_sets metric: %v", err)
 	}
 }
