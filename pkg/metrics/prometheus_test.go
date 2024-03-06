@@ -9,13 +9,13 @@ import (
 )
 
 func TestName(t *testing.T) {
-	metrics := NewTaskMetrics("/metrics", "9090", "test", "v1.0")
+	metrics := NewTaskMetrics("/metrics", "9090", "test")
 	assert.Equal(t, "metrics", metrics.Name())
 }
 
 func TestStart(t *testing.T) {
 	logger.InitLogger(logger.Config{})
-	metrics := NewTaskMetrics("/metrics", "9091", "test", "v1.0")
+	metrics := NewTaskMetrics("/metrics", "9091", "test")
 
 	go func() {
 		err := metrics.Start()

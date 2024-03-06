@@ -24,7 +24,6 @@ type TaskMetrics interface {
 	DecrementMetric(name string, labels ...string) error
 	Name() string
 	AppName() string
-	AppVersion() string
 	Stop() error
 }
 
@@ -34,25 +33,23 @@ type MetricDetail struct {
 }
 
 type taskMetrics struct {
-	path       string
-	port       string
-	metrics    map[string]MetricDetail
-	mux        sync.RWMutex
-	appName    string
-	appVersion string
+	path    string
+	port    string
+	metrics map[string]MetricDetail
+	mux     sync.RWMutex
+	appName string
 }
 
-func NewTaskMetrics(path, port, appName, appVersion string) TaskMetrics {
-	if appName == "" || appVersion == "" {
-		panic("appName and appVersion are mandatory")
+func NewTaskMetrics(path, port, appName string) TaskMetrics {
+	if appName == "" {
+		panic("appName is mandatory")
 	}
 
 	return &taskMetrics{
-		path:       path,
-		port:       port,
-		appName:    appName,
-		appVersion: appVersion,
-		metrics:    make(map[string]MetricDetail),
+		path:    path,
+		port:    port,
+		appName: appName,
+		metrics: make(map[string]MetricDetail),
 	}
 }
 
@@ -62,10 +59,6 @@ func (t *taskMetrics) Name() string {
 
 func (t *taskMetrics) AppName() string {
 	return t.appName
-}
-
-func (t *taskMetrics) AppVersion() string {
-	return t.appVersion
 }
 
 func (t *taskMetrics) Start() error {
