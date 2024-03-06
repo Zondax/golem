@@ -14,7 +14,7 @@ func TestRegisterMetric(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tm.metrics["test_counter"])
 	assert.IsType(t, MetricDetail{}, tm.metrics["test_counter"])
-	assert.IsType(t, prometheus.NewCounter(prometheus.CounterOpts{}), tm.metrics["test_counter"].Collector)
+	assert.IsType(t, prometheus.NewCounterVec(prometheus.CounterOpts{}, []string{"app_name", "app_version"}), tm.metrics["test_counter"].Collector)
 }
 
 func TestFormatMetricName(t *testing.T) {
