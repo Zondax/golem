@@ -23,6 +23,11 @@ func (rw *responseWriter) Write(p []byte) (int, error) {
 	if rw.body == nil {
 		rw.body = new(bytes.Buffer)
 	}
+
+	if rw.status == 0 {
+		rw.WriteHeader(http.StatusOK)
+	}
+
 	rw.body.Write(p)
 	n, err := rw.ResponseWriter.Write(p)
 	rw.written += int64(n)

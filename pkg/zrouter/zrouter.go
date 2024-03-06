@@ -67,12 +67,13 @@ type Routes interface {
 }
 
 type zrouter struct {
-	router        *chi.Mux
-	middlewares   []zmiddlewares.Middleware
-	metricsServer metrics.TaskMetrics
-	routes        []RegisteredRoute
-	mutex         sync.Mutex
-	config        *Config
+	router             *chi.Mux
+	middlewares        []zmiddlewares.Middleware
+	defaultMiddlewares []zmiddlewares.Middleware
+	metricsServer      metrics.TaskMetrics
+	routes             []RegisteredRoute
+	mutex              sync.Mutex
+	config             *Config
 }
 
 func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
@@ -90,14 +91,14 @@ func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 }
 
 func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
-	r.Use(zmiddlewares.ErrorHandlerMiddleware())
 	if err := zmiddlewares.RegisterRequestMetrics(r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
 	}
 
-	r.Use(zmiddlewares.RequestMetrics(r.metricsServer))
+	r.useDefaultMiddleware(zmiddlewares.ErrorHandlerMiddleware())
+	r.useDefaultMiddleware(zmiddlewares.RequestMetrics(r.metricsServer))
 	if loggingOptions.Enable {
-		r.Use(zmiddlewares.LoggingMiddleware(loggingOptions))
+		r.useDefaultMiddleware(zmiddlewares.LoggingMiddleware(loggingOptions))
 	}
 }
 
@@ -154,6 +155,10 @@ func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmid
 		wrappedHandler = mw(wrappedHandler)
 	}
 
+	for _, mw := range r.defaultMiddlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
 	if r.config.EnableRequestID {
 		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
 	}
@@ -207,6 +212,11 @@ func (r *zrouter) NoRoute(handler HandlerFunc) {
 
 func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	r.middlewares = append(r.middlewares, middlewares...)
+	return r
+}
+
+func (r *zrouter) useDefaultMiddleware(middlewares ...zmiddlewares.Middleware) Routes {
+	r.defaultMiddlewares = append(r.defaultMiddlewares, middlewares...)
 	return r
 }
 

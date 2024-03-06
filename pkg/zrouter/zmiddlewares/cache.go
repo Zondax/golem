@@ -32,22 +32,22 @@ func CacheMiddleware(metricServer metrics.TaskMetrics, cache zcache.ZCache, conf
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
+			rw := &responseWriter{ResponseWriter: w}
 			for _, pPath := range processedPaths {
 				if pPath.Regex.MatchString(path) {
 					key := constructCacheKey(fullURL)
 
-					if tryServeFromCache(w, r, cache, key, metricServer) {
+					if tryServeFromCache(rw, r, cache, key, metricServer) {
 						return
 					}
 
-					rw := &responseWriter{ResponseWriter: w}
 					next.ServeHTTP(rw, r) // Important: this line needs to be BEFORE setting the cache.
 					cacheResponseIfNeeded(rw, r, cache, key, pPath.TTL, metricServer)
 					return
 				}
 			}
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(rw, r)
 		})
 	}
 }
@@ -100,6 +100,7 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_sets metric: %v", err)
 	}
 }
+
 func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) {
 	parsedPaths := make(map[string]time.Duration)
 
