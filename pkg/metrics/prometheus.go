@@ -23,6 +23,7 @@ type TaskMetrics interface {
 	IncrementMetric(name string, labels ...string) error
 	DecrementMetric(name string, labels ...string) error
 	Name() string
+	AppName() string
 	Stop() error
 }
 
@@ -36,18 +37,28 @@ type taskMetrics struct {
 	port    string
 	metrics map[string]MetricDetail
 	mux     sync.RWMutex
+	appName string
 }
 
-func NewTaskMetrics(path string, port string) TaskMetrics {
+func NewTaskMetrics(path, port, appName string) TaskMetrics {
+	if appName == "" {
+		panic("appName is mandatory")
+	}
+
 	return &taskMetrics{
 		path:    path,
 		port:    port,
+		appName: appName,
 		metrics: make(map[string]MetricDetail),
 	}
 }
 
 func (t *taskMetrics) Name() string {
 	return "metrics"
+}
+
+func (t *taskMetrics) AppName() string {
+	return t.appName
 }
 
 func (t *taskMetrics) Start() error {

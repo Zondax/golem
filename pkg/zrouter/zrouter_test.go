@@ -16,7 +16,7 @@ type ZRouterSuite struct {
 }
 
 func (suite *ZRouterSuite) SetupTest() {
-	suite.router = New("testApp", nil, nil)
+	suite.router = New(nil, nil)
 	logger.InitLogger(logger.Config{})
 }
 
