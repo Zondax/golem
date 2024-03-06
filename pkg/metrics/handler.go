@@ -3,7 +3,6 @@ package metrics
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/zondax/golem/internal/version"
 )
 
 type MetricHandler interface {
@@ -18,7 +17,7 @@ type IncrementDecrementHandler interface {
 }
 
 func (t *taskMetrics) performMetricAction(name string, action func(MetricHandler, prometheus.Collector, ...string) error, labels ...string) error {
-	labels = append(labels, t.appName, version.GitVersion, version.GitRevision)
+	labels = append(labels, t.appName)
 
 	t.mux.RLock()
 	metricDetail, ok := t.metrics[name]

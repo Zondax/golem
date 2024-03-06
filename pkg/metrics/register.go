@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	appNameLabel     = "app_name"
-	appVersionLabel  = "app_version"
-	appRevisionLabel = "app_revision"
+	APPNameLabel = "app_name"
 )
 
 type collectorRegister func(name, help string, labels []string, handler MetricHandler) (prometheus.Collector, error)
@@ -25,7 +23,7 @@ var (
 )
 
 func (t *taskMetrics) RegisterMetric(name string, help string, labels []string, handler MetricHandler) error {
-	labels = append(labels, appNameLabel, appVersionLabel, appRevisionLabel)
+	labels = append(labels, APPNameLabel)
 	var metric prometheus.Collector
 
 	name = formatMetricName(name)

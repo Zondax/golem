@@ -3,6 +3,7 @@ package zrouter
 import (
 	"context"
 	"github.com/go-chi/chi/v5"
+	"github.com/zondax/golem/internal/version"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
@@ -13,9 +14,11 @@ import (
 )
 
 const (
-	defaultAddress = ":8080"
-	defaultTimeOut = 240000
-	appStartMetric = "app_start"
+	defaultAddress    = ":8080"
+	defaultTimeOut    = 240000
+	appStartMetric    = "app_start"
+	appVersionMetric  = "app_version"
+	appRevisionMetric = "app_revision"
 )
 
 type Config struct {
@@ -136,6 +139,23 @@ func (r *zrouter) Run(addr ...string) error {
 	if err := r.metricsServer.UpdateMetric(appStartMetric, float64(time.Now().Unix())); err != nil {
 		panic(err)
 	}
+
+	if err := r.metricsServer.RegisterMetric(appVersionMetric, "Current version of the application", []string{appVersionMetric}, &collectors.Gauge{}); err != nil {
+		panic(err)
+	}
+
+	if err := r.metricsServer.UpdateMetric(appVersionMetric, 1, version.GitVersion); err != nil {
+		panic(err)
+	}
+
+	if err := r.metricsServer.RegisterMetric(appRevisionMetric, "Current revision of the application", []string{appRevisionMetric}, &collectors.Gauge{}); err != nil {
+		panic(err)
+	}
+
+	if err := r.metricsServer.UpdateMetric(appRevisionMetric, 1, version.GitRevision); err != nil {
+		panic(err)
+	}
+
 	return server.ListenAndServe()
 }
 
