@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	appNameLabel     = "appName"
-	appVersionLabel  = "appVersion"
-	appRevisionLabel = "appRevision"
+	appNameLabel     = "app_name"
+	appVersionLabel  = "app_version"
+	appRevisionLabel = "app_revision"
 )
 
 type collectorRegister func(name, help string, labels []string, handler MetricHandler) (prometheus.Collector, error)

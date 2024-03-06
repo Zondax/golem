@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Features](#features)
+- [Default Labels](#default-labels)
 - [Code Structure](#code-structure)
 - [Metrics Collectors](#metrics-collectors)
   - [Counter](#counter)
@@ -27,6 +28,22 @@ This project provides a comprehensive metrics collection and reporting framework
 - Support for custom labels.
 - Thread-safe metric updates with read-write mutexes.
 - Auto-registering of metrics based on type.
+
+## Default Labels
+
+Every metric reported by the framework automatically includes the following labels to provide more context about the application's environment:
+
+- `app_name`: Identifies the name of the application.
+- `app_revision`: Specifies the current revision of the application, typically a Git commit hash or a similar identifier.
+- `app_version`: Indicates the current version of the application.
+
+These labels help in distinguishing metrics across different environments, versions, and revisions of the application. For example, a metric for request duration might look like this:
+
+```
+request_duration_ms{app_name="ledger-live",app_revision="main-9a60456",app_version="v0.8.3",method="GET",path="/addresses/{address}/transactions",status="200"} 435
+```
+
+This approach ensures that metrics data can be correlated with specific releases and deployments of the application, providing valuable insights during analysis and troubleshooting.
 
 ## Code Structure
 
