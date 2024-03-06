@@ -139,32 +139,6 @@ func (r *zrouter) Run(addr ...string) error {
 	return server.ListenAndServe()
 }
 
-func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
-	var wrappedHandler http.Handler = handler
-	// The order of middleware application is crucial: Route-specific middlewares are applied first,
-	// followed by router-level general middlewares. This ensures that general middlewares, which often
-	// handle logging, security, etc... are executed first. This sequence is
-	// important to maintain consistency in logging and to apply security measures before route-specific
-	// logic is executed.
-
-	for _, mw := range middlewares {
-		wrappedHandler = mw(wrappedHandler)
-	}
-
-	for _, mw := range r.middlewares {
-		wrappedHandler = mw(wrappedHandler)
-	}
-
-	for _, mw := range r.defaultMiddlewares {
-		wrappedHandler = mw(wrappedHandler)
-	}
-
-	if r.config.EnableRequestID {
-		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
-	}
-	return wrappedHandler
-}
-
 func (r *zrouter) Method(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes {
 	chiHandler := getChiHandler(handler)
 	finalHandler := r.applyMiddlewares(chiHandler, middlewares...)
@@ -215,11 +189,6 @@ func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	return r
 }
 
-func (r *zrouter) useDefaultMiddleware(middlewares ...zmiddlewares.Middleware) Routes {
-	r.defaultMiddlewares = append(r.defaultMiddlewares, middlewares...)
-	return r
-}
-
 func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -235,4 +204,34 @@ func (r *zrouter) GetHandler() http.Handler {
 
 func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
+}
+
+func (r *zrouter) useDefaultMiddleware(middlewares ...zmiddlewares.Middleware) {
+	r.defaultMiddlewares = append(r.defaultMiddlewares, middlewares...)
+}
+
+func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
+	var wrappedHandler http.Handler = handler
+	// The order of middleware application is crucial: Route-specific middlewares are applied first,
+	// followed by router-level general middlewares. This ensures that general middlewares, which often
+	// handle logging, security, etc... are executed first. This sequence is
+	// important to maintain consistency in logging and to apply security measures before route-specific
+	// logic is executed.
+
+	for _, mw := range middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	for _, mw := range r.middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	for _, mw := range r.defaultMiddlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	if r.config.EnableRequestID {
+		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
+	}
+	return wrappedHandler
 }
