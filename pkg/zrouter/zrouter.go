@@ -16,7 +16,7 @@ import (
 const (
 	defaultAddress    = ":8080"
 	defaultTimeOut    = 240000
-	appStartMetric    = "app_start"
+	uptimeMetricName  = "uptime"
 	appVersionMetric  = "app_version"
 	appRevisionMetric = "app_revision"
 )
@@ -132,11 +132,11 @@ func (r *zrouter) Run(addr ...string) error {
 		WriteTimeout: r.config.WriteTimeOut,
 	}
 
-	if err := r.metricsServer.RegisterMetric(appStartMetric, "Timestamp of when the application was started", []string{}, &collectors.Gauge{}); err != nil {
+	if err := r.metricsServer.RegisterMetric(uptimeMetricName, "Timestamp of when the application was started", []string{}, &collectors.Gauge{}); err != nil {
 		panic(err)
 	}
 
-	if err := r.metricsServer.UpdateMetric(appStartMetric, float64(time.Now().Unix())); err != nil {
+	if err := r.metricsServer.UpdateMetric(uptimeMetricName, float64(time.Now().Unix())); err != nil {
 		panic(err)
 	}
 
