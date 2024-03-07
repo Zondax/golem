@@ -41,7 +41,7 @@ func RegisterSystemMetrics(metricsServer TaskMetrics) []error {
 	return errs
 }
 
-func UpdateSystemMetrics(metricsServer TaskMetrics, timeInSeconds time.Duration) {
+func UpdateSystemMetrics(metricsServer TaskMetrics, updateInterval time.Duration) {
 	for {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
@@ -76,6 +76,6 @@ func UpdateSystemMetrics(metricsServer TaskMetrics, timeInSeconds time.Duration)
 			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", threadsCount, err)
 		}
 
-		time.Sleep(timeInSeconds * time.Second)
+		time.Sleep(updateInterval)
 	}
 }
