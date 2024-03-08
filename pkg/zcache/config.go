@@ -26,8 +26,9 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	Prefix string
-	Logger *zap.Logger
+	Prefix          string
+	Logger          *zap.Logger
+	CleanupInterval time.Duration
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {

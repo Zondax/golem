@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	defaultCleanupInterval = 12 * time.Hour
+)
+
 type ZCacheStats struct {
 	Local  *bigcache.Stats
 	Remote *RedisStats
@@ -26,13 +30,24 @@ type ZCache interface {
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 	bigCacheConfig := config.ToBigCacheConfig()
 	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	logger := config.Logger
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 
-	return &localCache{client: client, prefix: config.Prefix, logger: logger}, err
+	lc := &localCache{client: client, prefix: config.Prefix, logger: logger}
+
+	interval := config.CleanupInterval
+	if interval <= 0 {
+		interval = defaultCleanupInterval
+	}
+
+	lc.startCleanupProcess(interval)
+	return lc, nil
 }
 
 func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {

@@ -58,10 +58,17 @@ func main() {
 
 ## Usage Local cache - BigCache
 
+The LocalConfig for zcache allows you to optionally specify a CleanupInterval that determines how often the expired keys cleanup process will run. 
+If a CleanupInterval is not set, a *default value of 12 hours* will be used.
+
 ```go
 func main() {
-    config := zcache.LocalConfig{}
-    cache, err := zcache.NewLocalCache(config)
+    config := zcache.LocalConfig{
+    // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
+    CleanupInterval: 30 * time.Minute,
+    }
+    
+    cache, err := zcache.NewLocalCache(&config)
     if err != nil {
         // Handle error
     }

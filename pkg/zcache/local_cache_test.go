@@ -2,6 +2,8 @@ package zcache
 
 import (
 	"context"
+	"errors"
+	"github.com/allegro/bigcache/v3"
 	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
@@ -69,4 +71,46 @@ func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
 	time.Sleep(2 * time.Second)
 
 	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire, even after some time")
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcess() {
+	cleanupInterval := 1 * time.Second
+	ttl := 500 * time.Millisecond
+
+	cache, err := NewLocalCache(&LocalConfig{Prefix: "test", CleanupInterval: cleanupInterval})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := "expireKey"
+	value := "testValue"
+
+	err = cache.Set(ctx, key, value, ttl)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+
+	var result string
+	err = cache.Get(ctx, key, &result)
+
+	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcessItemNeverExpires() {
+	cleanupInterval := 1 * time.Second
+	cache, err := NewLocalCache(&LocalConfig{Prefix: "test", CleanupInterval: cleanupInterval})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := "expireKey"
+	value := "testValue"
+
+	err = cache.Set(ctx, key, value, neverExpires)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+
+	var result string
+	err = cache.Get(ctx, key, &result)
+
+	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
 }

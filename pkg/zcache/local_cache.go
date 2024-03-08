@@ -142,3 +142,39 @@ func (c *localCache) registerInternalCacheMetrics() []error {
 
 	return []error{}
 }
+
+func (c *localCache) startCleanupProcess(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		for range ticker.C {
+			c.cleanupExpiredKeys()
+		}
+	}()
+}
+
+func (c *localCache) cleanupExpiredKeys() {
+	iterator := c.client.Iterator()
+	for iterator.SetNext() {
+		entry, err := iterator.Value()
+
+		if err != nil {
+			c.logger.Sugar().Errorf("error iterating cache keys: %s", err)
+			continue
+		}
+
+		var cachedItem CacheItem
+		err = json.Unmarshal(entry.Value(), &cachedItem)
+		if err != nil {
+			c.logger.Sugar().Errorf("error unmarshalling cache item during cleanup: %s", err)
+			continue
+		}
+
+		key := entry.Key()
+		if err = c.client.Delete(key); err != nil {
+			c.logger.Sugar().Errorf("error deleting expired key during cleanup: %s", err)
+			return
+		}
+
+		c.logger.Sugar().Debugf("expired key deleted during cleanup: %s", key)
+	}
+}
