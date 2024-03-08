@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/allegro/bigcache/v3"
 	"github.com/stretchr/testify/suite"
+	"github.com/zondax/golem/pkg/metrics"
 	"os"
 	"testing"
 	"time"
@@ -28,7 +29,8 @@ func (suite *LocalCacheTestSuite) SetupSuite() {
 	prefix := os.Getenv("PREFIX")
 	var err error
 	config := LocalConfig{
-		Prefix: prefix,
+		Prefix:       prefix,
+		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
 	}
 	suite.cache, err = NewLocalCache(&config)
 	suite.Nil(err)
@@ -82,7 +84,10 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	cleanupInterval := 1 * time.Second
 	ttl := 500 * time.Millisecond
 
-	cache, err := NewLocalCache(&LocalConfig{Prefix: "test", CleanupInterval: cleanupInterval})
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname")})
 	suite.NoError(err)
 
 	ctx := context.Background()
@@ -102,7 +107,10 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 
 func (suite *LocalCacheTestSuite) TestCleanupProcessItemNeverExpires() {
 	cleanupInterval := 1 * time.Second
-	cache, err := NewLocalCache(&LocalConfig{Prefix: "test", CleanupInterval: cleanupInterval})
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname")})
 	suite.NoError(err)
 
 	ctx := context.Background()
