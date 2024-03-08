@@ -19,7 +19,7 @@ type combinedCache struct {
 	remoteCache        RemoteCache
 	logger             *zap.Logger
 	isRemoteBestEffort bool
-	metricsServer      *metrics.TaskMetrics
+	metricsServer      metrics.TaskMetrics
 	appName            string
 }
 
@@ -111,7 +111,7 @@ func (c *combinedCache) IsNotFoundError(err error) bool {
 }
 
 func (c *combinedCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
-	c.metricsServer = &metricsServer
+	c.metricsServer = metricsServer
 	c.appName = appName
 
 	errs := setupAndMonitorCacheMetrics(appName, metricsServer, c, updateInterval)

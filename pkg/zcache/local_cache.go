@@ -7,12 +7,18 @@ import (
 	"fmt"
 	"github.com/allegro/bigcache/v3"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/metrics/collectors"
 	"go.uber.org/zap"
 	"time"
 )
 
 const (
-	neverExpires = -1
+	neverExpires          = -1
+	errorTypeLabel        = "error_type"
+	cleanupErrorMetricKey = "localCacheCleanupErrors"
+	iterationErrorLabel   = "iteration_error"
+	unmarshalErrorLabel   = "unmarshal_error"
+	deletionErrorLabel    = "deletion_error"
 )
 
 type CacheItem struct {
@@ -44,11 +50,14 @@ type LocalCache interface {
 }
 
 type localCache struct {
-	client        *bigcache.BigCache
-	prefix        string
-	logger        *zap.Logger
-	metricsServer *metrics.TaskMetrics
-	appName       string
+	client          *bigcache.BigCache
+	prefix          string
+	logger          *zap.Logger
+	metricsServer   metrics.TaskMetrics
+	appName         string
+	cleanupInterval time.Duration
+	batchSize       int
+	throttleTime    time.Duration
 }
 
 func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -126,7 +135,7 @@ func (c *localCache) IsNotFoundError(err error) bool {
 }
 
 func (c *localCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
-	c.metricsServer = &metricsServer
+	c.metricsServer = metricsServer
 	c.appName = appName
 
 	errs := setupAndMonitorCacheMetrics(appName, metricsServer, c, updateInterval)
@@ -154,27 +163,46 @@ func (c *localCache) startCleanupProcess(interval time.Duration) {
 
 func (c *localCache) cleanupExpiredKeys() {
 	iterator := c.client.Iterator()
+	var keysToDelete []string
+
 	for iterator.SetNext() {
 		entry, err := iterator.Value()
-
 		if err != nil {
-			c.logger.Sugar().Errorf("error iterating cache keys: %s", err)
+			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, iterationErrorLabel)
 			continue
 		}
 
 		var cachedItem CacheItem
-		err = json.Unmarshal(entry.Value(), &cachedItem)
-		if err != nil {
-			c.logger.Sugar().Errorf("error unmarshalling cache item during cleanup: %s", err)
+		if err = json.Unmarshal(entry.Value(), &cachedItem); err != nil {
+			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel)
 			continue
 		}
 
-		key := entry.Key()
-		if err = c.client.Delete(key); err != nil {
-			c.logger.Sugar().Errorf("error deleting expired key during cleanup: %s", err)
-			return
+		timeSinceAdded := time.Now().Unix() - cachedItem.ExpiresAt + int64(c.cleanupInterval.Seconds())
+		if timeSinceAdded >= 0 {
+			keysToDelete = append(keysToDelete, entry.Key())
 		}
 
-		c.logger.Sugar().Debugf("expired key deleted during cleanup: %s", key)
+		if len(keysToDelete) >= c.batchSize {
+			c.deleteKeysInBatch(keysToDelete)
+			keysToDelete = keysToDelete[:0]
+			time.Sleep(c.throttleTime)
+		}
+
+		if len(keysToDelete) > 0 {
+			c.deleteKeysInBatch(keysToDelete)
+		}
 	}
+}
+
+func (c *localCache) deleteKeysInBatch(keys []string) {
+	for _, key := range keys {
+		if err := c.client.Delete(key); err != nil {
+			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel)
+		}
+	}
+}
+
+func (c *localCache) registerCleanupMetrics() {
+	_ = c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{})
 }

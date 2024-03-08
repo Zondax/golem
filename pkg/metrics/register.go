@@ -23,6 +23,10 @@ var (
 )
 
 func (t *taskMetrics) RegisterMetric(name string, help string, labels []string, handler MetricHandler) error {
+	if handler == nil {
+		panic("handler is mandatory")
+	}
+
 	labels = append(labels, APPNameLabel)
 	var metric prometheus.Collector
 

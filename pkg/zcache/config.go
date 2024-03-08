@@ -3,6 +3,7 @@ package zcache
 import (
 	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
+	"github.com/zondax/golem/pkg/metrics"
 	"go.uber.org/zap"
 	"time"
 )
@@ -28,7 +29,10 @@ type RemoteConfig struct {
 type LocalConfig struct {
 	Prefix          string
 	Logger          *zap.Logger
+	MetricServer    metrics.TaskMetrics
 	CleanupInterval time.Duration
+	BatchSize       int
+	ThrottleTime    time.Duration
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {

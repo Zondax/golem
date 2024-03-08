@@ -11,6 +11,8 @@ import (
 
 const (
 	defaultCleanupInterval = 12 * time.Hour
+	defaultBatchSize       = 200
+	defaultThrottleTime    = time.Second
 )
 
 type ZCacheStats struct {
@@ -28,6 +30,10 @@ type ZCache interface {
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
+	if config.MetricServer == nil {
+		panic("metric server is mandatory")
+	}
+
 	bigCacheConfig := config.ToBigCacheConfig()
 	client, err := bigcache.New(context.Background(), bigCacheConfig)
 	if err != nil {
@@ -39,14 +45,34 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		logger = zap.NewNop()
 	}
 
-	lc := &localCache{client: client, prefix: config.Prefix, logger: logger}
-
-	interval := config.CleanupInterval
-	if interval <= 0 {
-		interval = defaultCleanupInterval
+	cleanupInterval := config.CleanupInterval
+	if cleanupInterval <= 0 {
+		cleanupInterval = defaultCleanupInterval
 	}
 
-	lc.startCleanupProcess(interval)
+	batchSize := config.BatchSize
+	if batchSize <= 0 {
+		batchSize = defaultBatchSize
+	}
+
+	throttleTime := config.ThrottleTime
+	if throttleTime <= 0 {
+		throttleTime = defaultThrottleTime
+	}
+
+	lc := &localCache{
+		client:          client,
+		prefix:          config.Prefix,
+		logger:          logger,
+		cleanupInterval: cleanupInterval,
+		batchSize:       batchSize,
+		throttleTime:    throttleTime,
+		metricsServer:   config.MetricServer,
+	}
+
+	lc.startCleanupProcess(cleanupInterval)
+	lc.registerCleanupMetrics()
+
 	return lc, nil
 }
 
