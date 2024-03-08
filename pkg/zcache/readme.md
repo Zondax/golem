@@ -58,14 +58,15 @@ func main() {
 
 ## Usage Local cache - BigCache
 
-The LocalConfig for zcache allows you to optionally specify a CleanupInterval that determines how often the expired keys cleanup process will run. 
-If a CleanupInterval is not set, a *default value of 12 hours* will be used.
+The LocalConfig for zcache not only allows you to specify a CleanupInterval that determines how often the expired keys cleanup process will run but also includes configurations for BatchSize and ThrottleTime to optimize the cleanup process. If CleanupInterval is not set, a default value of 12 hours will be used. Both BatchSize and ThrottleTime also have default values (200 and 1 second respectively) if not explicitly set.
+It's important to note that MetricServer is a mandatory configuration field in LocalConfig to facilitate the monitoring of cache operations and errors.
 
 ```go
 func main() {
     config := zcache.LocalConfig{
-    // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
-    CleanupInterval: 30 * time.Minute,
+        // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
+        CleanupInterval: 30 * time.Minute,
+        MetricServer:    metricServer, // Mandatory
     }
     
     cache, err := zcache.NewLocalCache(&config)
@@ -89,7 +90,9 @@ func main() {
 
 ```go
 func main() {
-    localConfig := zcache.LocalConfig{}
+    localConfig := zcache.LocalConfig{
+        MetricServer:    metricServer, // Mandatory
+    }
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
 	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
     cache, err := zcache.NewCombinedCache(config)
