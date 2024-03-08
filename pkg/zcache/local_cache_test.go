@@ -83,7 +83,7 @@ func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
 
 func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	cleanupInterval := 1 * time.Second
-	ttl := 500 * time.Millisecond
+	ttl := 10 * time.Millisecond
 
 	cache, err := NewLocalCache(&LocalConfig{
 		Prefix:          "test",
