@@ -198,11 +198,15 @@ func (c *localCache) cleanupExpiredKeys() {
 func (c *localCache) deleteKeysInBatch(keys []string) {
 	for _, key := range keys {
 		if err := c.client.Delete(key); err != nil {
-			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel)
+			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel); err != nil {
+				c.logger.Error("Failed to update deletion error metric", zap.Error(err))
+			}
 		}
 	}
 }
 
 func (c *localCache) registerCleanupMetrics() {
-	_ = c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{})
+	if err := c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{}); err != nil {
+		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
+	}
 }
