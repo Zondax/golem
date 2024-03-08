@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	testValue = "testValue"
+	expireKey = "expireKey"
+)
+
 func TestLocalCacheTestSuite(t *testing.T) {
 	suite.Run(t, new(LocalCacheTestSuite))
 }
@@ -32,7 +37,7 @@ func (suite *LocalCacheTestSuite) SetupSuite() {
 func (suite *LocalCacheTestSuite) TestSetAndGet() {
 	ctx := context.Background()
 	key := "testKey"
-	value := "testValue"
+	value := testValue
 
 	err := suite.cache.Set(ctx, key, value, 0)
 	suite.NoError(err)
@@ -46,7 +51,7 @@ func (suite *LocalCacheTestSuite) TestSetAndGet() {
 func (suite *LocalCacheTestSuite) TestDelete() {
 	ctx := context.Background()
 	key := "testKey"
-	value := "testValue"
+	value := testValue
 
 	suite.NoError(suite.cache.Set(ctx, key, value, 0))
 
@@ -58,7 +63,7 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
-	item := NewCacheItem([]byte("testValue"), 1*time.Second)
+	item := NewCacheItem([]byte(testValue), 1*time.Second)
 	suite.False(item.IsExpired(), "CacheItem should not be expired right after creation")
 	time.Sleep(2 * time.Second)
 
@@ -66,7 +71,7 @@ func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
-	item := NewCacheItem([]byte("testValue"), -1)
+	item := NewCacheItem([]byte(testValue), -1)
 	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire")
 	time.Sleep(2 * time.Second)
 
@@ -81,8 +86,8 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	suite.NoError(err)
 
 	ctx := context.Background()
-	key := "expireKey"
-	value := "testValue"
+	key := expireKey
+	value := testValue
 
 	err = cache.Set(ctx, key, value, ttl)
 	suite.NoError(err)
@@ -101,8 +106,8 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemNeverExpires() {
 	suite.NoError(err)
 
 	ctx := context.Background()
-	key := "expireKey"
-	value := "testValue"
+	key := expireKey
+	value := testValue
 
 	err = cache.Set(ctx, key, value, neverExpires)
 	suite.NoError(err)
