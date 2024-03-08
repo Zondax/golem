@@ -3,7 +3,6 @@ package zrouter
 import (
 	"context"
 	"github.com/go-chi/chi/v5"
-	"github.com/zondax/golem/internal/version"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
@@ -26,6 +25,8 @@ type Config struct {
 	WriteTimeOut    time.Duration
 	Logger          *logger.Logger
 	EnableRequestID bool
+	AppVersion      string
+	AppRevision     string
 }
 
 func (c *Config) setDefaultValues() {
@@ -82,6 +83,10 @@ type zrouter struct {
 func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 	if config == nil {
 		config = &Config{}
+	}
+
+	if config.AppVersion == "" || config.AppRevision == "" {
+		panic("appVersion and appRevision are mandatory.")
 	}
 
 	config.setDefaultValues()
@@ -144,7 +149,7 @@ func (r *zrouter) Run(addr ...string) error {
 		panic(err)
 	}
 
-	if err := r.metricsServer.UpdateMetric(appVersionMetric, 1, version.GitVersion); err != nil {
+	if err := r.metricsServer.UpdateMetric(appVersionMetric, 1, r.config.AppVersion); err != nil {
 		panic(err)
 	}
 
@@ -152,7 +157,7 @@ func (r *zrouter) Run(addr ...string) error {
 		panic(err)
 	}
 
-	if err := r.metricsServer.UpdateMetric(appRevisionMetric, 1, version.GitRevision); err != nil {
+	if err := r.metricsServer.UpdateMetric(appRevisionMetric, 1, r.config.AppRevision); err != nil {
 		panic(err)
 	}
 
