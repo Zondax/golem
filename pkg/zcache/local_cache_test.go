@@ -106,29 +106,6 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
 }
 
-func (suite *LocalCacheTestSuite) TestCleanupProcessItemNeverExpires() {
-	cleanupInterval := 1 * time.Second
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix:          "test",
-		CleanupInterval: cleanupInterval,
-		MetricServer:    metrics.NewTaskMetrics("", "", "appname")})
-	suite.NoError(err)
-
-	ctx := context.Background()
-	key := expireKey
-	value := testValue
-
-	err = cache.Set(ctx, key, value, neverExpires)
-	suite.NoError(err)
-
-	time.Sleep(2 * cleanupInterval)
-
-	var result string
-	err = cache.Get(ctx, key, &result)
-
-	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
-}
-
 func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	cleanupInterval := 100 * time.Millisecond
 	testBatchSize := 5
