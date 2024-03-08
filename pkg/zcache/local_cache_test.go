@@ -3,6 +3,7 @@ package zcache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/allegro/bigcache/v3"
 	"github.com/stretchr/testify/suite"
 	"github.com/zondax/golem/pkg/metrics"
@@ -126,4 +127,62 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemNeverExpires() {
 	err = cache.Get(ctx, key, &result)
 
 	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
+	cleanupInterval := 100 * time.Millisecond
+	testBatchSize := 5
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "testBatch",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
+		BatchSize:       testBatchSize,
+	})
+	suite.NoError(err)
+
+	ctx := context.Background()
+
+	for i := 0; i < testBatchSize*2; i++ {
+		key := fmt.Sprintf("key%d", i)
+		value := fmt.Sprintf("value%d", i)
+		err = cache.Set(ctx, key, value, 1*time.Millisecond)
+		suite.NoError(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	for i := 0; i < testBatchSize*2; i++ {
+		key := fmt.Sprintf("key%d", i)
+		var result string
+		err = cache.Get(ctx, key, &result)
+
+		suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'ErrEntryNotFound' for key: %s, but got a different error or no error: %s", key, err.Error())
+	}
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
+	cleanupInterval := 1 * time.Second
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
+	})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := "permanentKey"
+	value := "thisValueShouldPersist"
+
+	err = cache.Set(ctx, key, value, neverExpires)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+
+	var result string
+	err = cache.Get(ctx, key, &result)
+
+	suite.NoError(err, "Did not expect an error when retrieving a non-expiring item")
+	suite.Equal(value, result, "The retrieved value should match the original value")
 }

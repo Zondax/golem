@@ -178,8 +178,7 @@ func (c *localCache) cleanupExpiredKeys() {
 			continue
 		}
 
-		timeSinceAdded := time.Now().Unix() - cachedItem.ExpiresAt + int64(c.cleanupInterval.Seconds())
-		if timeSinceAdded >= 0 {
+		if cachedItem.IsExpired() {
 			keysToDelete = append(keysToDelete, entry.Key())
 		}
 
@@ -188,10 +187,10 @@ func (c *localCache) cleanupExpiredKeys() {
 			keysToDelete = keysToDelete[:0]
 			time.Sleep(c.throttleTime)
 		}
+	}
 
-		if len(keysToDelete) > 0 {
-			c.deleteKeysInBatch(keysToDelete)
-		}
+	if len(keysToDelete) > 0 {
+		c.deleteKeysInBatch(keysToDelete)
 	}
 }
 
