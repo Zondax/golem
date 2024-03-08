@@ -2,10 +2,19 @@ package zcache
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"github.com/allegro/bigcache/v3"
 	"github.com/stretchr/testify/suite"
+	"github.com/zondax/golem/pkg/metrics"
 	"os"
 	"testing"
 	"time"
+)
+
+const (
+	testValue = "testValue"
+	expireKey = "expireKey"
 )
 
 func TestLocalCacheTestSuite(t *testing.T) {
@@ -21,7 +30,8 @@ func (suite *LocalCacheTestSuite) SetupSuite() {
 	prefix := os.Getenv("PREFIX")
 	var err error
 	config := LocalConfig{
-		Prefix: prefix,
+		Prefix:       prefix,
+		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
 	}
 	suite.cache, err = NewLocalCache(&config)
 	suite.Nil(err)
@@ -30,7 +40,7 @@ func (suite *LocalCacheTestSuite) SetupSuite() {
 func (suite *LocalCacheTestSuite) TestSetAndGet() {
 	ctx := context.Background()
 	key := "testKey"
-	value := "testValue"
+	value := testValue
 
 	err := suite.cache.Set(ctx, key, value, 0)
 	suite.NoError(err)
@@ -44,7 +54,7 @@ func (suite *LocalCacheTestSuite) TestSetAndGet() {
 func (suite *LocalCacheTestSuite) TestDelete() {
 	ctx := context.Background()
 	key := "testKey"
-	value := "testValue"
+	value := testValue
 
 	suite.NoError(suite.cache.Set(ctx, key, value, 0))
 
@@ -56,7 +66,7 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
-	item := NewCacheItem([]byte("testValue"), 1*time.Second)
+	item := NewCacheItem([]byte(testValue), 1*time.Second)
 	suite.False(item.IsExpired(), "CacheItem should not be expired right after creation")
 	time.Sleep(2 * time.Second)
 
@@ -64,9 +74,92 @@ func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
-	item := NewCacheItem([]byte("testValue"), -1)
+	item := NewCacheItem([]byte(testValue), -1)
 	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire")
 	time.Sleep(2 * time.Second)
 
 	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire, even after some time")
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcess() {
+	cleanupInterval := 1 * time.Second
+	ttl := 10 * time.Millisecond
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname")})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := expireKey
+	value := testValue
+
+	err = cache.Set(ctx, key, value, ttl)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+
+	var result string
+	err = cache.Get(ctx, key, &result)
+
+	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
+	cleanupInterval := 100 * time.Millisecond
+	testBatchSize := 5
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "testBatch",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
+		BatchSize:       testBatchSize,
+	})
+	suite.NoError(err)
+
+	ctx := context.Background()
+
+	for i := 0; i < testBatchSize*2; i++ {
+		key := fmt.Sprintf("key%d", i)
+		value := fmt.Sprintf("value%d", i)
+		err = cache.Set(ctx, key, value, 1*time.Millisecond)
+		suite.NoError(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	for i := 0; i < testBatchSize*2; i++ {
+		key := fmt.Sprintf("key%d", i)
+		var result string
+		err = cache.Get(ctx, key, &result)
+
+		suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'ErrEntryNotFound' for key: %s, but got a different error or no error: %s", key, err.Error())
+	}
+}
+
+func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
+	cleanupInterval := 1 * time.Second
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
+	})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := "permanentKey"
+	value := "thisValueShouldPersist"
+
+	err = cache.Set(ctx, key, value, neverExpires)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+
+	var result string
+	err = cache.Get(ctx, key, &result)
+
+	suite.NoError(err, "Did not expect an error when retrieving a non-expiring item")
+	suite.Equal(value, result, "The retrieved value should match the original value")
 }

@@ -7,12 +7,18 @@ import (
 	"fmt"
 	"github.com/allegro/bigcache/v3"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/metrics/collectors"
 	"go.uber.org/zap"
 	"time"
 )
 
 const (
-	neverExpires = -1
+	neverExpires          = -1
+	errorTypeLabel        = "error_type"
+	cleanupErrorMetricKey = "localCacheCleanupErrors"
+	iterationErrorLabel   = "iteration_error"
+	unmarshalErrorLabel   = "unmarshal_error"
+	deletionErrorLabel    = "deletion_error"
 )
 
 type CacheItem struct {
@@ -44,11 +50,14 @@ type LocalCache interface {
 }
 
 type localCache struct {
-	client        *bigcache.BigCache
-	prefix        string
-	logger        *zap.Logger
-	metricsServer *metrics.TaskMetrics
-	appName       string
+	client          *bigcache.BigCache
+	prefix          string
+	logger          *zap.Logger
+	metricsServer   metrics.TaskMetrics
+	appName         string
+	cleanupInterval time.Duration
+	batchSize       int
+	throttleTime    time.Duration
 }
 
 func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -126,7 +135,7 @@ func (c *localCache) IsNotFoundError(err error) bool {
 }
 
 func (c *localCache) SetupAndMonitorMetrics(appName string, metricsServer metrics.TaskMetrics, updateInterval time.Duration) []error {
-	c.metricsServer = &metricsServer
+	c.metricsServer = metricsServer
 	c.appName = appName
 
 	errs := setupAndMonitorCacheMetrics(appName, metricsServer, c, updateInterval)
@@ -141,4 +150,62 @@ func (c *localCache) registerInternalCacheMetrics() []error {
 	}
 
 	return []error{}
+}
+
+func (c *localCache) startCleanupProcess(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		for range ticker.C {
+			c.cleanupExpiredKeys()
+		}
+	}()
+}
+
+func (c *localCache) cleanupExpiredKeys() {
+	iterator := c.client.Iterator()
+	var keysToDelete []string
+
+	for iterator.SetNext() {
+		entry, err := iterator.Value()
+		if err != nil {
+			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, iterationErrorLabel)
+			continue
+		}
+
+		var cachedItem CacheItem
+		if err = json.Unmarshal(entry.Value(), &cachedItem); err != nil {
+			_ = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel)
+			continue
+		}
+
+		if cachedItem.IsExpired() {
+			keysToDelete = append(keysToDelete, entry.Key())
+		}
+
+		if len(keysToDelete) >= c.batchSize {
+			c.deleteKeysInBatch(keysToDelete)
+			keysToDelete = keysToDelete[:0]
+			time.Sleep(c.throttleTime)
+		}
+	}
+
+	if len(keysToDelete) > 0 {
+		c.deleteKeysInBatch(keysToDelete)
+	}
+}
+
+func (c *localCache) deleteKeysInBatch(keys []string) {
+	for _, key := range keys {
+		if err := c.client.Delete(key); err != nil {
+			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel); err != nil {
+				c.logger.Error("Failed to update deletion error metric", zap.Error(err))
+			}
+		}
+	}
+}
+
+func (c *localCache) registerCleanupMetrics() {
+	if err := c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{}); err != nil {
+		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
+	}
 }
