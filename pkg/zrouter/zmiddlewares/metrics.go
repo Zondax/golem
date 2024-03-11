@@ -1,7 +1,6 @@
 package zmiddlewares
 
 import (
-	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
@@ -51,7 +50,7 @@ func RequestMetrics(metricsServer metrics.TaskMetrics) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			path := chi.RouteContext(r.Context()).RoutePattern()
+			path := GetRoutePattern(r)
 			startTime := time.Now()
 
 			mu.Lock()
