@@ -20,10 +20,16 @@ const (
 	appRevisionMetric = "app_revision"
 )
 
+type SystemMetrics struct {
+	Enable         bool
+	UpdateInterval time.Duration
+}
+
 type Config struct {
 	ReadTimeOut     time.Duration
 	WriteTimeOut    time.Duration
 	Logger          *logger.Logger
+	SystemMetrics   SystemMetrics
 	EnableRequestID bool
 	AppVersion      string
 	AppRevision     string
@@ -95,6 +101,16 @@ func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 		metricsServer: metricsServer,
 		config:        config,
 	}
+
+	if config.SystemMetrics.Enable {
+		if err := metrics.RegisterSystemMetrics(metricsServer); err != nil {
+			logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
+		}
+
+		updateInterval := config.SystemMetrics.UpdateInterval
+		go metrics.UpdateSystemMetrics(metricsServer, updateInterval)
+	}
+
 	return zr
 }
 
