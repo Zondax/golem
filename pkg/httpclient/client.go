@@ -37,6 +37,7 @@ func NewHTTPClient(config Config) *HTTPClient {
 }
 
 // Do executes the request and applies the RetryPolicy specified when creating the client if any.
+// The caller is still responsible for closing the response body.
 func (c *HTTPClient) Do(ctx context.Context, req *http.Request) (resp *http.Response, err error) {
 	var attempt uint
 	var wait time.Duration
@@ -53,6 +54,8 @@ func (c *HTTPClient) Do(ctx context.Context, req *http.Request) (resp *http.Resp
 		}
 
 		t := time.AfterFunc(wait, func() {
+			// caller is responsible for closing the body
+			//nolint:bodyclose
 			resp, err = c.client.Do(req.WithContext(ctx))
 			done <- true
 		})

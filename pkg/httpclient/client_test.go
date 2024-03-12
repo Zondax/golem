@@ -17,6 +17,7 @@ import (
 // testSrv is used as a test handler to set custom response body and code and to
 // collect statistics on the number of requests and request timings.
 type testSrv struct {
+	t                *testing.T
 	code             int
 	body             []byte
 	sleepMs          int64
@@ -26,8 +27,9 @@ type testSrv struct {
 	waitBetweenCalls int64
 }
 
-func newTestSrv(code int, body []byte, sleepMs int64) *testSrv {
+func newTestSrv(t *testing.T, code int, body []byte, sleepMs int64) *testSrv {
 	return &testSrv{
+		t:       t,
 		code:    code,
 		body:    body,
 		sleepMs: sleepMs,
@@ -47,7 +49,8 @@ func (ts *testSrv) Handle(w http.ResponseWriter, r *http.Request) {
 	ts.lastCalled = time.Now().UnixMilli()
 
 	w.WriteHeader(ts.code)
-	w.Write(ts.body)
+	_, err := w.Write(ts.body)
+	assert.NoError(ts.t, err)
 }
 
 func TestHTTPClient(t *testing.T) {
@@ -76,7 +79,7 @@ func TestHTTPClient(t *testing.T) {
 		// the request should not be retried if there are no retry codes specified and request did not timeout.
 		{
 			name: "no retries when codes are not specified",
-			srv:  newTestSrv(http.StatusInternalServerError, nil, 0),
+			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
 
 			backoff:     httpclient.BackoffLinear,
 			ctxDeadline: 5 * time.Second,
@@ -89,7 +92,7 @@ func TestHTTPClient(t *testing.T) {
 		// retries should be stopped.
 		{
 			name: "context deadline exceeds retries",
-			srv:  newTestSrv(http.StatusInternalServerError, nil, 0),
+			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
 
 			ctxDeadline:     2 * time.Second,
 			backoff:         httpclient.BackoffLinear,
@@ -104,7 +107,7 @@ func TestHTTPClient(t *testing.T) {
 		// the response code and body should not be modified.
 		{
 			name: "succesful request no retries",
-			srv:  newTestSrv(http.StatusOK, []byte("OK"), 0),
+			srv:  newTestSrv(t, http.StatusOK, []byte("OK"), 0),
 
 			backoff:         httpclient.BackoffLinear,
 			ctxDeadline:     5 * time.Second,
@@ -123,7 +126,7 @@ func TestHTTPClient(t *testing.T) {
 		// the time between retries should be 100ms
 		{
 			name: "linear retry when no codes specified but the request times out",
-			srv:  newTestSrv(http.StatusOK, []byte("OK"), 450),
+			srv:  newTestSrv(t, http.StatusOK, []byte("OK"), 450),
 
 			ctxDeadline:     5 * time.Second,
 			backoff:         httpclient.BackoffLinear,
@@ -141,7 +144,7 @@ func TestHTTPClient(t *testing.T) {
 		// the time between retries should be 500ms
 		{
 			name: "linear retry",
-			srv:  newTestSrv(http.StatusInternalServerError, nil, 0),
+			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
 
 			codes:           []int{http.StatusInternalServerError},
 			ctxDeadline:     5 * time.Second,
@@ -166,7 +169,7 @@ func TestHTTPClient(t *testing.T) {
 		// the time between retries ( we will only check the last retry attempt) = 800ms
 		{
 			name: "exponential retry",
-			srv:  newTestSrv(http.StatusInternalServerError, nil, 0),
+			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
 
 			codes:           []int{http.StatusInternalServerError},
 			ctxDeadline:     5 * time.Second,
