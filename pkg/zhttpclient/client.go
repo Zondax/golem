@@ -3,20 +3,17 @@ package httpclient
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 )
 
 type ZHTTPClient interface {
-	SetRetryPolicy(retryPolicy *RetryPolicy) error
-	Post(ctx context.Context, url string, body io.Reader, headers map[string]string) (int, []byte, error)
-	Get(ctx context.Context, url string, headers map[string]string, params url.Values) (int, []byte, error)
+	SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient
+	NewRequest() ZRequest
 	Do(ctx context.Context, req *http.Request) (int, []byte, error)
 }
 
@@ -28,11 +25,15 @@ type Config struct {
 
 // zHTTPClient abstracts over the std http.Client and provides a retry mechanism.
 type zHTTPClient struct {
-	client *resty.Client
+	client      *resty.Client
+	config      *Config
+	retryPolicy RetryPolicy
 }
 
-func NewZHTTPClient(config Config) ZHTTPClient {
-	z := &zHTTPClient{}
+func New(config Config) ZHTTPClient {
+	z := &zHTTPClient{
+		config: &config,
+	}
 
 	if config.BaseClient == nil {
 		z.client = resty.New()
@@ -47,10 +48,13 @@ func NewZHTTPClient(config Config) ZHTTPClient {
 	return z
 }
 
-func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) error {
-	if retryPolicy == nil {
-		return errors.New("retryPolicy cannot be nil")
-	}
+func (z *zHTTPClient) NewRequest() ZRequest {
+	return newZRequest(z)
+}
+
+func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient {
+	z.retryPolicy = *retryPolicy
+
 	z.client.SetRetryCount(retryPolicy.MaxAttempts)
 	z.client.SetRetryWaitTime(retryPolicy.WaitBeforeRetry)
 	z.client.SetRetryMaxWaitTime(retryPolicy.MaxWaitBeforeRetry)
@@ -75,26 +79,7 @@ func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) error {
 			return retryPolicy.backoffFn(uint(r.Request.Attempt), r.RawResponse, nil), nil
 		})
 	}
-	return nil
-}
-
-func (z *zHTTPClient) Post(ctx context.Context, url string, body io.Reader, headers map[string]string) (int, []byte, error) {
-	req := z.client.R().SetContext(ctx).SetHeaders(headers).SetBody(body)
-	resp, err := req.Post(url)
-	if err != nil {
-		return 0, nil, err
-	}
-	return resp.StatusCode(), resp.Body(), nil
-}
-
-func (z *zHTTPClient) Get(ctx context.Context, url string, headers map[string]string, params url.Values) (int, []byte, error) {
-	req := z.client.R().SetContext(ctx).SetHeaders(headers).SetQueryParamsFromValues(params)
-
-	resp, err := req.Get(url)
-	if err != nil {
-		return 0, nil, err
-	}
-	return resp.StatusCode(), resp.Body(), nil
+	return z
 }
 
 func (z *zHTTPClient) Do(ctx context.Context, req *http.Request) (int, []byte, error) {
