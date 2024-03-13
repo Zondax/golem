@@ -8,7 +8,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	url "net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 // testSrv is used as a test handler to set custom response body and code and to
 // collect statistics on the number of requests and request timings.
 type testSrv struct {
+	lck              sync.Mutex
 	t                *testing.T
 	code             int
 	body             []byte
@@ -39,6 +41,9 @@ func newTestSrv(t *testing.T, code int, body []byte, sleepMs int64) *testSrv {
 }
 
 func (ts *testSrv) Handle(w http.ResponseWriter, r *http.Request) {
+	ts.lck.Lock()
+	defer ts.lck.Unlock()
+
 	if ts.sleepMs > 0 {
 		time.Sleep(time.Duration(ts.sleepMs) * time.Millisecond)
 	}
@@ -137,13 +142,16 @@ func TestHTTPClient(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tb {
+	for i := range tb {
+		tt := tb[i]
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			srv := httptest.NewServer(tt.handler(t))
 			defer srv.Close()
 
-			client := httpclient.NewZHTTPClient(httpclient.Config{
+			client := httpclient.New(httpclient.Config{
 				BaseClient: srv.Client(),
 			})
 
@@ -163,11 +171,14 @@ func TestHTTPClient(t *testing.T) {
 				}
 				gotStatus, gotBody, gotErr = client.Do(ctx, req)
 			} else {
+				r := client.NewRequest().SetURL(srv.URL).SetHeaders(headers)
 				switch tt.method {
 				case http.MethodGet:
-					gotStatus, gotBody, gotErr = client.Get(ctx, srv.URL, headers, getParams)
+					r = r.SetQueryParams(getParams)
+					gotStatus, gotBody, gotErr = r.Get(ctx)
 				case http.MethodPost:
-					gotStatus, gotBody, gotErr = client.Post(ctx, srv.URL, bytes.NewBuffer(postBody), headers)
+					r = r.SetBody(bytes.NewBuffer(postBody))
+					gotStatus, gotBody, gotErr = r.Post(ctx)
 				}
 			}
 
@@ -183,6 +194,8 @@ func TestHTTPClient(t *testing.T) {
 }
 
 func TestHTTPClient_Retry(t *testing.T) {
+	defaultRetryPolicy := &httpclient.RetryPolicy{}
+
 	tb := []struct {
 		name string
 		srv  *testSrv
@@ -368,17 +381,21 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(tt.srv.Handle))
 			defer srv.Close()
 
-			client := httpclient.NewZHTTPClient(httpclient.Config{
+			client := httpclient.New(httpclient.Config{
 				BaseClient: srv.Client(),
 				Timeout:    tt.timeout,
 			})
-			if r := tt.getRetryPolicy(); r != nil {
-				client.SetRetryPolicy(r)
-			}
+			client.SetRetryPolicy(defaultRetryPolicy)
 
 			// execute the request and measure the time it takes
+
+			r := client.NewRequest().SetURL(srv.URL).SetBody(bytes.NewBuffer(tt.body))
+			if p := tt.getRetryPolicy(); p != nil {
+				r = r.SetRetryPolicy(p)
+			}
+
 			start := time.Now().UnixMilli()
-			code, resp, err := client.Post(ctx, srv.URL, bytes.NewBuffer(tt.body), nil)
+			code, resp, err := r.Post(ctx)
 			end := time.Now().UnixMilli()
 
 			if tt.wantErr != nil {
