@@ -19,11 +19,9 @@ type ZRequest interface {
 }
 
 type zRequest struct {
-	c           *zHTTPClient
-	request     *resty.Request
-	url         string
-	method      string
-	retryPolicy *RetryPolicy
+	c       *zHTTPClient
+	request *resty.Request
+	url     string
 }
 
 func newZRequest(client *zHTTPClient) ZRequest {

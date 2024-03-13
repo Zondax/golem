@@ -98,7 +98,8 @@ func TestHTTPClient(t *testing.T) {
 					}
 
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("OK"))
+					_, err := w.Write([]byte("OK"))
+					assert.NoError(t, err)
 				}
 			},
 			method:   http.MethodGet,
@@ -115,7 +116,8 @@ func TestHTTPClient(t *testing.T) {
 					assert.Equal(t, string(postBody), string(data))
 
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("OK"))
+					_, err = w.Write([]byte("OK"))
+					assert.NoError(t, err)
 				}
 			},
 			method:   http.MethodPost,
@@ -132,7 +134,8 @@ func TestHTTPClient(t *testing.T) {
 					assert.Equal(t, string(postBody), string(data))
 
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("OK"))
+					_, err = w.Write([]byte("OK"))
+					assert.NoError(t, err)
 				}
 			},
 			custom:   true,
