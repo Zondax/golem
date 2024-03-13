@@ -15,7 +15,7 @@ abstractions and backoff functions for common http requests.
 
 - **Convenience Methods**: Convenient methods for http operations.
 - **Retry Mechanism**: Automatic retries depending on configurable conditions.
-- **Mocks**: Provides mock implementations for the ZHTTPClient interface.
+- **Mocks**: Provides mock implementations for the ZHTTPClient and ZRequest interface.
 
 ## Installation
 
@@ -39,12 +39,13 @@ func main() {
         BaseClient: ..., // a pre-configured http.Client
     }
 
-    client, err := zhttpclient.NewZHTTPClient(config)
+    client, err := zhttpclient.New(config)
     if err != nil {
         panic(err)
     }
 
-    // create a retry policy
+
+    // all requests with this client will use it
     retry := &RetryPolicy{
         MaxAttempts: ..., // max number of retries
         WaitBeforeRetry: ..., // the minimum default wait before retry
@@ -57,13 +58,20 @@ func main() {
     // or
     retry.SetExponentialBackoff(duration)
 
+    // top-level retry policy
     client.SetRetryPolicy(retry)
 
+    req := client.NewRequest().SetURL(srv.URL).SetHeaders(headers)
 
-    // Perform operations
-    client.Get(ctx, url, headers, getParams)
-    client.Post(ctx, srv.URL, body, headers)
+    // GET
+    code,respBody,err := req.SetQueryParams(getParams).
+    		SetRetryPolicy(&zhttpclient.RetryPolicy{}). // override client retry policy
+      	Get(ctx)
 
+    // POST
+    code,respBody,err := req.SetBody(body).Post(ctx)
+
+    // Do raw request
     req, _ := http.NewRequest(method, URL, body)
     client.Do(ctx,req)
 
