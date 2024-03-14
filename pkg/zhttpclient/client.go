@@ -1,4 +1,4 @@
-package httpclient
+package zhttpclient
 
 import (
 	"context"
@@ -23,7 +23,7 @@ type Config struct {
 	BaseClient *http.Client
 }
 
-// zHTTPClient abstracts over the std http.Client and provides a retry mechanism.
+// zHTTPClient abstracts over the resty.Client and provides per-request retry configurations.
 type zHTTPClient struct {
 	client      *resty.Client
 	config      *Config

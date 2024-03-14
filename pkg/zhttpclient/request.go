@@ -1,4 +1,4 @@
-package httpclient
+package zhttpclient
 
 import (
 	"context"

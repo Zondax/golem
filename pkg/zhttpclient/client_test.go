@@ -1,4 +1,4 @@
-package httpclient_test
+package zhttpclient_test
 
 import (
 	"bytes"
