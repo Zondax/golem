@@ -19,7 +19,7 @@ import (
 )
 
 func TestCacheMiddleware(t *testing.T) {
-	expectedCacheKey := "GET.zrouter_cache:/cached-path"
+	expectedCacheKey := "zrouter_cache.GET:/cached-path"
 	r := chi.NewRouter()
 	mockCache := new(zcache.MockZCache)
 	logger.InitLogger(logger.Config{})
@@ -94,7 +94,7 @@ func TestCacheMiddlewareWithRequestBody(t *testing.T) {
 
 	requestBody := []byte("Request Body Content")
 	hashedBody := generateBodyHash(requestBody)
-	expectedCacheKey := fmt.Sprintf("POST.zrouter_cache:/post-path.body:%s", hashedBody)
+	expectedCacheKey := fmt.Sprintf("zrouter_cache.POST:/post-path.body:%s", hashedBody)
 
 	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Once()
 	mockCache.On("Set", mock.Anything, expectedCacheKey, mock.Anything, 5*time.Minute).Return(nil).Once()
