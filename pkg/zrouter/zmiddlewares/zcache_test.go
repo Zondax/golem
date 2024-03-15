@@ -7,7 +7,6 @@ import (
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/zrouter/domain"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -84,7 +83,7 @@ func TestCacheMiddlewareWithRequestBody(t *testing.T) {
 	r.Use(CacheMiddleware(mockMetrics, mockCache, cacheConfig))
 
 	r.Post("/post-path", func(w http.ResponseWriter, r *http.Request) {
-		bodyBytes, err := ioutil.ReadAll(r.Body)
+		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Fatalf("Failed to read request body: %v", err)
 		}
