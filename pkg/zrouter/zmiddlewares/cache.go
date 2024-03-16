@@ -78,10 +78,10 @@ func constructCacheKey(fullURL string, r *http.Request, metricServer metrics.Tas
 		}
 
 		bodyHash := generateBodyHash(body)
-		return fmt.Sprintf("%s.%s:%s.body:%s", r.Method, cacheKeyPrefix, fullURL, bodyHash), nil
+		return fmt.Sprintf("%s.%s:%s.body:%s", cacheKeyPrefix, r.Method, fullURL, bodyHash), nil
 	}
 
-	return fmt.Sprintf("%s.%s:%s", r.Method, cacheKeyPrefix, fullURL), nil
+	return fmt.Sprintf("%s.%s:%s", cacheKeyPrefix, r.Method, fullURL), nil
 }
 
 func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCache, key string, metricServer metrics.TaskMetrics) bool {

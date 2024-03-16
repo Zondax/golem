@@ -109,6 +109,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	cleanupInterval := 100 * time.Millisecond
 	testBatchSize := 5
+	itemExpiration := 200 * time.Millisecond
 
 	cache, err := NewLocalCache(&LocalConfig{
 		Prefix:          "testBatch",
@@ -123,7 +124,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	for i := 0; i < testBatchSize*2; i++ {
 		key := fmt.Sprintf("key%d", i)
 		value := fmt.Sprintf("value%d", i)
-		err = cache.Set(ctx, key, value, 1*time.Millisecond)
+		err = cache.Set(ctx, key, value, itemExpiration)
 		suite.NoError(err)
 	}
 
@@ -134,6 +135,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 		var result string
 		err = cache.Get(ctx, key, &result)
 
+		suite.NotNil(err, "Expected an error for key: %s, but got nil", key)
 		suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'ErrEntryNotFound' for key: %s, but got a different error or no error: %s", key, err.Error())
 	}
 }
