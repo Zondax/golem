@@ -2,24 +2,24 @@ package zrouter
 
 import (
 	"context"
-	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/metrics/collectors"
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
 const (
-	defaultAddress = ":8080"
-	defaultTimeOut = 240000
+	defaultAddress    = ":8080"
+	defaultTimeOut    = 240000
+	uptimeMetricName  = "uptime"
+	appVersionMetric  = "app_version"
+	appRevisionMetric = "app_revision"
 )
 
 type TopJWTMetrics struct {
@@ -27,12 +27,20 @@ type TopJWTMetrics struct {
 	Enable      bool
 }
 
+type SystemMetrics struct {
+	Enable         bool
+	UpdateInterval time.Duration
+}
+
 type Config struct {
 	ReadTimeOut     time.Duration
 	WriteTimeOut    time.Duration
 	Logger          *logger.Logger
+	SystemMetrics   SystemMetrics
 	EnableRequestID bool
 	TopJWTMetrics   TopJWTMetrics
+	AppVersion      string
+	AppRevision     string
 }
 
 func (c *Config) setDefaultValues() {
@@ -77,43 +85,52 @@ type Routes interface {
 }
 
 type zrouter struct {
-	router        *chi.Mux
-	middlewares   []zmiddlewares.Middleware
-	metricsServer metrics.TaskMetrics
-	appName       string
-	routes        []RegisteredRoute
-	mutex         sync.Mutex
-	config        *Config
+	router             *chi.Mux
+	middlewares        []zmiddlewares.Middleware
+	defaultMiddlewares []zmiddlewares.Middleware
+	metricsServer      metrics.TaskMetrics
+	routes             []RegisteredRoute
+	mutex              sync.Mutex
+	config             *Config
 }
 
-func New(appName string, metricsServer metrics.TaskMetrics, config *Config) ZRouter {
-	if appName == "" {
-		panic("appName cannot be an empty string")
-	}
-
+func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 	if config == nil {
 		config = &Config{}
+	}
+
+	if config.AppVersion == "" || config.AppRevision == "" {
+		panic("appVersion and appRevision are mandatory.")
 	}
 
 	config.setDefaultValues()
 	zr := &zrouter{
 		router:        chi.NewRouter(),
 		metricsServer: metricsServer,
-		appName:       appName,
 		config:        config,
 	}
+
+	if config.SystemMetrics.Enable {
+		if err := metrics.RegisterSystemMetrics(metricsServer); err != nil {
+			logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
+		}
+
+		updateInterval := config.SystemMetrics.UpdateInterval
+		go metrics.UpdateSystemMetrics(metricsServer, updateInterval)
+	}
+
 	return zr
 }
 
 func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
-	r.Use(zmiddlewares.ErrorHandlerMiddleware())
-	if err := zmiddlewares.RegisterRequestMetrics(r.appName, r.metricsServer); err != nil {
+	if err := zmiddlewares.RegisterRequestMetrics(r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
 	}
 
-	r.Use(zmiddlewares.RequestMetrics(r.appName, r.metricsServer))
+	r.useDefaultMiddleware(zmiddlewares.ErrorHandlerMiddleware())
+	r.useDefaultMiddleware(zmiddlewares.RequestMetrics(r.metricsServer))
 	if loggingOptions.Enable {
-		r.Use(zmiddlewares.LoggingMiddleware(loggingOptions))
+		r.useDefaultMiddleware(zmiddlewares.LoggingMiddleware(loggingOptions))
 	}
 
 	if r.config.TopJWTMetrics.Enable {
@@ -155,45 +172,31 @@ func (r *zrouter) Run(addr ...string) error {
 		WriteTimeout: r.config.WriteTimeOut,
 	}
 
-	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			r.config.Logger.Fatalf("Could not listen on %s: %v\n", address, err)
-		}
-	}()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-
-	if err := server.Shutdown(context.Background()); err != nil {
-		r.config.Logger.Fatalf("Server Shutdown Failed:%+v", err)
+	if err := r.metricsServer.RegisterMetric(uptimeMetricName, "Timestamp of when the application was started", []string{}, &collectors.Gauge{}); err != nil {
+		panic(err)
 	}
 
-	r.config.Logger.Info("Server Exited Properly")
-
-	return nil
-}
-
-func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
-	var wrappedHandler http.Handler = handler
-	// The order of middleware application is crucial: Route-specific middlewares are applied first,
-	// followed by router-level general middlewares. This ensures that general middlewares, which often
-	// handle logging, security, etc... are executed first. This sequence is
-	// important to maintain consistency in logging and to apply security measures before route-specific
-	// logic is executed.
-
-	for _, mw := range middlewares {
-		wrappedHandler = mw(wrappedHandler)
+	if err := r.metricsServer.UpdateMetric(uptimeMetricName, float64(time.Now().Unix())); err != nil {
+		panic(err)
 	}
 
-	for _, mw := range r.middlewares {
-		wrappedHandler = mw(wrappedHandler)
+	if err := r.metricsServer.RegisterMetric(appVersionMetric, "Current version of the application", []string{appVersionMetric}, &collectors.Gauge{}); err != nil {
+		panic(err)
 	}
 
-	if r.config.EnableRequestID {
-		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
+	if err := r.metricsServer.UpdateMetric(appVersionMetric, 1, r.config.AppVersion); err != nil {
+		panic(err)
 	}
-	return wrappedHandler
+
+	if err := r.metricsServer.RegisterMetric(appRevisionMetric, "Current revision of the application", []string{appRevisionMetric}, &collectors.Gauge{}); err != nil {
+		panic(err)
+	}
+
+	if err := r.metricsServer.UpdateMetric(appRevisionMetric, 1, r.config.AppRevision); err != nil {
+		panic(err)
+	}
+
+	return server.ListenAndServe()
 }
 
 func (r *zrouter) Method(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes {
@@ -276,7 +279,7 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 				continue
 			}
 
-			metricsServer.ResetMetric(usageMetricName)
+			_ = metricsServer.ResetMetric(usageMetricName) // TODO: Check error
 
 			for _, item := range topTokens {
 				metricKey := item.Member.(string)
@@ -294,4 +297,34 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 			return
 		}
 	}
+}
+
+func (r *zrouter) useDefaultMiddleware(middlewares ...zmiddlewares.Middleware) {
+	r.defaultMiddlewares = append(r.defaultMiddlewares, middlewares...)
+}
+
+func (r *zrouter) applyMiddlewares(handler http.HandlerFunc, middlewares ...zmiddlewares.Middleware) http.Handler {
+	var wrappedHandler http.Handler = handler
+	// The order of middleware application is crucial: Route-specific middlewares are applied first,
+	// followed by router-level general middlewares. This ensures that general middlewares, which often
+	// handle logging, security, etc... are executed first. This sequence is
+	// important to maintain consistency in logging and to apply security measures before route-specific
+	// logic is executed.
+
+	for _, mw := range middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	for _, mw := range r.middlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	for _, mw := range r.defaultMiddlewares {
+		wrappedHandler = mw(wrappedHandler)
+	}
+
+	if r.config.EnableRequestID {
+		r.Use(zmiddlewares.RequestID()) // IMPORTANT: RequestID MUST always be the LAST middleware applied
+	}
+	return wrappedHandler
 }

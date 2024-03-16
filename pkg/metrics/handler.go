@@ -17,20 +17,17 @@ type IncrementDecrementHandler interface {
 }
 
 func (t *taskMetrics) performMetricAction(name string, action func(MetricHandler, prometheus.Collector, ...string) error, labels ...string) error {
-	name = formatMetricName(name)
+	labels = append(labels, t.appName)
+
 	t.mux.RLock()
 	metricDetail, ok := t.metrics[name]
 	t.mux.RUnlock()
 
 	if !ok {
-		return fmt.Errorf("error: Metric not found for %s", name)
+		return fmt.Errorf("metric %s not registered", name)
 	}
 
-	if err := action(metricDetail.Handler, metricDetail.Collector, labels...); err != nil {
-		return fmt.Errorf("error performing action on metric %s. Err: %s", name, err.Error())
-	}
-
-	return nil
+	return action(metricDetail.Handler, metricDetail.Collector, labels...)
 }
 
 func (t *taskMetrics) UpdateMetric(name string, value float64, labels ...string) error {

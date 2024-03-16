@@ -3,6 +3,7 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	"github.com/zondax/golem/pkg/metrics"
 	"go.uber.org/zap"
 	"os"
 	"testing"
@@ -22,20 +23,23 @@ type CombinedCacheTestSuite struct {
 	cacheRemoteBrokenNotBestEffort CombinedCache
 	cacheOkNotBestEffort           CombinedCache
 	cacheRemote                    RemoteCache
+	ms                             metrics.TaskMetrics
 }
 
 func (suite *CombinedCacheTestSuite) SetupSuite() {
 	mr, err := miniredis.Run()
 	suite.Require().NoError(err)
 	suite.mr = mr
-
+	suite.ms = metrics.NewTaskMetrics("", "", "appname")
 	logger, err := zap.NewDevelopment()
 	suite.Require().NoError(err)
 
 	prefix := os.Getenv("PREFIX")
 	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{},
+			Local: &LocalConfig{
+				MetricServer: suite.ms,
+			},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
@@ -46,7 +50,9 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	suite.Nil(err)
 
 	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{
-		Local: &LocalConfig{},
+		Local: &LocalConfig{
+			MetricServer: suite.ms,
+		},
 		Remote: &RemoteConfig{
 			Addr: mr.Addr(),
 		},
@@ -58,7 +64,9 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 
 	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{},
+			Local: &LocalConfig{
+				MetricServer: suite.ms,
+			},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},

@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	defaultCleanupInterval = 12 * time.Hour
+	defaultBatchSize       = 200
+	defaultThrottleTime    = time.Second
+)
+
 type ZCacheStats struct {
 	Local  *bigcache.Stats
 	Remote *RedisStats
@@ -24,15 +30,50 @@ type ZCache interface {
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
+	if config.MetricServer == nil {
+		panic("metric server is mandatory")
+	}
+
 	bigCacheConfig := config.ToBigCacheConfig()
 	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	logger := config.Logger
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 
-	return &localCache{client: client, prefix: config.Prefix, logger: logger}, err
+	cleanupInterval := config.CleanupInterval
+	if cleanupInterval <= 0 {
+		cleanupInterval = defaultCleanupInterval
+	}
+
+	batchSize := config.BatchSize
+	if batchSize <= 0 {
+		batchSize = defaultBatchSize
+	}
+
+	throttleTime := config.ThrottleTime
+	if throttleTime <= 0 {
+		throttleTime = defaultThrottleTime
+	}
+
+	lc := &localCache{
+		client:          client,
+		prefix:          config.Prefix,
+		logger:          logger,
+		cleanupInterval: cleanupInterval,
+		batchSize:       batchSize,
+		throttleTime:    throttleTime,
+		metricsServer:   config.MetricServer,
+	}
+
+	lc.startCleanupProcess(cleanupInterval)
+	lc.registerCleanupMetrics()
+
+	return lc, nil
 }
 
 func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {

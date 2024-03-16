@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
 const (
-	cacheKeyPrefix    = "zrouter_cache"
-	cacheSetsMetric   = "cache_sets"
-	cacheHitsMetric   = "cache_hits"
-	cacheMissesMetric = "cache_misses"
+	cacheKeyPrefix       = "zrouter_cache"
+	cacheSetsMetric      = "cache_sets"
+	cacheHitsMetric      = "cache_hits"
+	cacheMissesMetric    = "cache_misses"
+	getRequestBodyMetric = "get_request_body"
 )
 
 type CacheProcessedPath struct {
@@ -32,22 +34,27 @@ func CacheMiddleware(metricServer metrics.TaskMetrics, cache zcache.ZCache, conf
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
+			rw := &responseWriter{ResponseWriter: w}
 			for _, pPath := range processedPaths {
 				if pPath.Regex.MatchString(path) {
-					key := constructCacheKey(fullURL)
-
-					if tryServeFromCache(w, r, cache, key, metricServer) {
+					key, err := constructCacheKey(fullURL, r, metricServer)
+					if err != nil {
+						logger.GetLoggerFromContext(r.Context()).Errorf("Error constructing cache key: %v", err)
+						next.ServeHTTP(rw, r)
 						return
 					}
 
-					rw := &responseWriter{ResponseWriter: w}
+					if tryServeFromCache(rw, r, cache, key, metricServer) {
+						return
+					}
+
 					next.ServeHTTP(rw, r) // Important: this line needs to be BEFORE setting the cache.
 					cacheResponseIfNeeded(rw, r, cache, key, pPath.TTL, metricServer)
 					return
 				}
 			}
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(rw, r)
 		})
 	}
 }
@@ -60,8 +67,21 @@ func constructFullURL(r *http.Request) string {
 	return fullURL
 }
 
-func constructCacheKey(fullURL string) string {
-	return fmt.Sprintf("%s:%s", cacheKeyPrefix, fullURL)
+func constructCacheKey(fullURL string, r *http.Request, metricServer metrics.TaskMetrics) (string, error) {
+	if shouldProcessRequestBody(r.Method) {
+		body, err := getRequestBody(r)
+		if err != nil {
+			if metricErr := metricServer.IncrementMetric(getRequestBodyMetric, GetRoutePattern(r)); metricErr != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing get_request_body metric: %v", metricErr)
+			}
+			return "", err
+		}
+
+		bodyHash := generateBodyHash(body)
+		return fmt.Sprintf("%s.%s:%s.body:%s", cacheKeyPrefix, r.Method, fullURL, bodyHash), nil
+	}
+
+	return fmt.Sprintf("%s.%s:%s", cacheKeyPrefix, r.Method, fullURL), nil
 }
 
 func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCache, key string, metricServer metrics.TaskMetrics) bool {
@@ -71,14 +91,14 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeApplicationJSON)
 		_, _ = w.Write(cachedResponse)
 
-		if err = metricServer.IncrementMetric(cacheHitsMetric, r.URL.Path); err != nil {
+		if err = metricServer.IncrementMetric(cacheHitsMetric, GetRoutePattern(r)); err != nil {
 			logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_hits metric: %v", err)
 		}
 
 		return true
 	}
 
-	if err = metricServer.IncrementMetric(cacheMissesMetric, r.URL.Path); err != nil {
+	if err = metricServer.IncrementMetric(cacheMissesMetric, GetRoutePattern(r)); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_misses metric: %v", err)
 	}
 
@@ -96,10 +116,11 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 		return
 	}
 
-	if err := metricServer.IncrementMetric(cacheSetsMetric, r.URL.Path); err != nil {
+	if err := metricServer.IncrementMetric(cacheSetsMetric, GetRoutePattern(r)); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_sets metric: %v", err)
 	}
 }
+
 func ParseCacheConfigPaths(paths map[string]string) (domain.CacheConfig, error) {
 	parsedPaths := make(map[string]time.Duration)
 
@@ -123,4 +144,8 @@ func processCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
 		})
 	}
 	return processedPaths
+}
+
+func shouldProcessRequestBody(method string) bool {
+	return strings.EqualFold(method, http.MethodPost) || strings.EqualFold(method, http.MethodPut)
 }
