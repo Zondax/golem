@@ -2,6 +2,8 @@ package zmiddlewares
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/zondax/golem/pkg/logger"
@@ -58,7 +60,11 @@ func extractBearerToken(r *http.Request) (string, error) {
 
 func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string) (auth.TokenDetails, error) {
 	var details auth.TokenDetails
-	err := zCache.Get(ctx, token, &details)
+
+	hash := sha256.Sum256([]byte(token))
+	shaToken := hex.EncodeToString(hash[:])
+
+	err := zCache.Get(ctx, shaToken, &details)
 	if err != nil || (details.JTI == "") {
 		payload, err := auth.DecodeJWT(token)
 		if err != nil {
@@ -67,7 +73,7 @@ func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string) (a
 
 		details.JTI, _ = payload["jti"].(string)
 
-		if err = zCache.Set(ctx, token, details, tokenDetailsTTL); err != nil {
+		if err = zCache.Set(ctx, shaToken, details, tokenDetailsTTL); err != nil {
 			logger.GetLoggerFromContext(ctx).Errorf("Cache error setting JWT details %v", err.Error())
 			return auth.TokenDetails{}, err
 		}
