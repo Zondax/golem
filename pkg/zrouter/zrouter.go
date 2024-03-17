@@ -274,39 +274,45 @@ func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
 }
 
-// TODO: Controlar el panic
 func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, topN int) {
-	ticker := time.NewTicker(10 * time.Second) // TODO
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			topTokens, err := zCache.ZRevRangeWithScores(ctx, zmiddlewares.PathUsageByJWTKey, 0, int64(topN-1))
-			if err != nil {
-				logger.GetLoggerFromContext(ctx).Errorf("Error fetching top tokens from cache: %v", err)
-				continue
-			}
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.GetLoggerFromContext(ctx).Errorf("Recovered in UpdateTopJWTPathMetrics: %v", r)
+					}
+				}()
 
-			if err = metricsServer.ResetMetric(usageMetricName); err != nil {
-				print("err: ", err.Error()) //TODO
-			}
-
-			for _, item := range topTokens {
-				metricKey := item.Member.(string)
-				parts := strings.Split(metricKey, ":")
-				if len(parts) != 2 {
-					logger.GetLoggerFromContext(ctx).Errorf("Unexpected metric key format: %v", metricKey)
-					continue
-				}
-				jti, path := parts[0], parts[1]
-				count := item.Score
-
-				if err = metricsServer.UpdateMetric(usageMetricName, count, jti, path); err != nil {
-					print("err: ", err.Error()) //TODO
+				topTokens, err := zCache.ZRevRangeWithScores(ctx, zmiddlewares.PathUsageByJWTKey, 0, int64(topN-1))
+				if err != nil {
+					logger.GetLoggerFromContext(ctx).Errorf("Error fetching top tokens from cache: %v", err)
+					return
 				}
 
-			}
+				if err = metricsServer.ResetMetric(usageMetricName); err != nil {
+					logger.GetLoggerFromContext(ctx).Errorf("Error resetting metric %s: %v", usageMetricName, err)
+				}
+
+				for _, item := range topTokens {
+					metricKey := item.Member.(string)
+					parts := strings.Split(metricKey, ":")
+					if len(parts) != 2 {
+						logger.GetLoggerFromContext(ctx).Errorf("Unexpected metric key format: %v", metricKey)
+						continue
+					}
+					jti, path := parts[0], parts[1]
+					count := item.Score
+
+					if err = metricsServer.UpdateMetric(usageMetricName, count, jti, path); err != nil {
+						logger.GetLoggerFromContext(ctx).Errorf("Error updating metric %s: %v", usageMetricName, err)
+					}
+				}
+			}()
 		case <-ctx.Done():
 			return
 		}

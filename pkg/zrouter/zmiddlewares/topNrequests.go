@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	tokenDetailsTTLDefault = 45 * time.Minute // TODO: Config
+	tokenDetailsTTLDefault = 45 * time.Minute
 	PathUsageByJWTKey      = "jwt_path_usage"
 	defaultTTL             = time.Hour
 )
@@ -39,7 +39,7 @@ func TopRequestTokensMiddleware(zCache zcache.RemoteCache, metricsServer metrics
 					if usageMetricTTL == 0 {
 						usageMetricTTL = defaultTTL
 					}
-					incrementUsageCount(r.Context(), zCache, metricsServer, usageMetricName, details.JTI, r.URL.Path, usageMetricTTL)
+					incrementUsageCount(r.Context(), zCache, details.JTI, r.URL.Path, usageMetricTTL)
 				}
 			}
 
@@ -89,7 +89,7 @@ func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string, to
 	return details, nil
 }
 
-func incrementUsageCount(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, metricName, jti, path string, ttl time.Duration) {
+func incrementUsageCount(ctx context.Context, zCache zcache.RemoteCache, jti, path string, ttl time.Duration) {
 	metricKey := fmt.Sprintf("%s:%s", jti, path)
 
 	if _, err := zCache.ZIncrBy(ctx, PathUsageByJWTKey, metricKey, 1); err != nil {

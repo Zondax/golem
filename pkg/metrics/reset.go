@@ -25,7 +25,6 @@ func (t *taskMetrics) ResetMetric(name string) error {
 		Help:      metricDetail.Help,
 		Labels:    metricDetail.Labels,
 	}
-	delete(t.metrics, name)
 	t.mux.Unlock()
 
 	var labels []string
