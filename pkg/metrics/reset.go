@@ -18,11 +18,9 @@ func (t *taskMetrics) ResetMetric(name string) error {
 		return fmt.Errorf("failed to unregister metric %s", name)
 	}
 
-	var metric prometheus.Collector
-
 	t.mux.Lock()
 	t.metrics[name] = MetricDetail{
-		Collector: metric,
+		Collector: metricDetail.Collector,
 		Handler:   metricDetail.Handler,
 		Help:      metricDetail.Help,
 		Labels:    metricDetail.Labels,

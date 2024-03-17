@@ -23,8 +23,10 @@ const (
 )
 
 type TopJWTMetrics struct {
-	RemoteCache zcache.RemoteCache
-	Enable      bool
+	RemoteCache     zcache.RemoteCache
+	Enable          bool
+	TokenDetailsTTL time.Duration
+	UsageMetricTTL  time.Duration
 }
 
 type SystemMetrics struct {
@@ -134,7 +136,10 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 	}
 
 	if r.config.TopJWTMetrics.Enable {
-		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.metricsServer, "test_metric_name"))
+		if r.config.TopJWTMetrics.RemoteCache == nil {
+			panic("If TopJWTMetrics is enable then remote cache is mandatory")
+		}
+		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, r.config.TopJWTMetrics.TokenDetailsTTL, r.config.TopJWTMetrics.UsageMetricTTL))
 	}
 }
 
@@ -162,7 +167,10 @@ func (r *zrouter) Run(addr ...string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, "your_usage_metric_name", 10) // TODO
+		if err := r.metricsServer.RegisterMetric(zmiddlewares.TopNRequestsByJTIMetricName, "Number of requests made by JWT tokens per path.", []string{"jti", "path"}, &collectors.Gauge{}); err != nil {
+			panic(err)
+		}
+		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, 10) // TODO
 	}
 
 	server := &http.Server{
@@ -266,8 +274,9 @@ func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
 }
 
+// TODO: Controlar el panic
 func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, topN int) {
-	ticker := time.NewTicker(time.Minute) // TODO
+	ticker := time.NewTicker(10 * time.Second) // TODO
 	defer ticker.Stop()
 
 	for {
@@ -279,7 +288,9 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 				continue
 			}
 
-			_ = metricsServer.ResetMetric(usageMetricName) // TODO: Check error
+			if err = metricsServer.ResetMetric(usageMetricName); err != nil {
+				print("err: ", err.Error()) //TODO
+			}
 
 			for _, item := range topTokens {
 				metricKey := item.Member.(string)
@@ -291,7 +302,10 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 				jti, path := parts[0], parts[1]
 				count := item.Score
 
-				_ = metricsServer.UpdateMetric(usageMetricName, count, jti, path)
+				if err = metricsServer.UpdateMetric(usageMetricName, count, jti, path); err != nil {
+					print("err: ", err.Error()) //TODO
+				}
+
 			}
 		case <-ctx.Done():
 			return

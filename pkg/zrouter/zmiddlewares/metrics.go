@@ -35,13 +35,9 @@ func RegisterRequestMetrics(metricsServer metrics.TaskMetrics) []error {
 	register(responseSizeMetricName, "Size of HTTP response in bytes.", []string{"method", "path", "status"}, &collectors.Histogram{})
 	register(activeConnectionsMetricName, "Number of active HTTP connections.", []string{"method", "path"}, &collectors.Gauge{})
 
-	cacheHitsMetricName := cacheHitsMetric
-	cacheMissesMetricName := cacheMissesMetric
-	cacheSetsMetricName := cacheSetsMetric
-	register(cacheHitsMetricName, "Number of cache hits.", []string{pathLabel}, &collectors.Counter{})
-	register(cacheMissesMetricName, "Number of cache misses.", []string{pathLabel}, &collectors.Counter{})
-	register(cacheSetsMetricName, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Counter{})
-	register(TopNRequestsByJTIMetricName, "Number of requests made by JWT tokens per path.", []string{"jti", "path"}, &collectors.Gauge{})
+	register(cacheHitsMetric, "Number of cache hits.", []string{pathLabel}, &collectors.Counter{})
+	register(cacheMissesMetric, "Number of cache misses.", []string{pathLabel}, &collectors.Counter{})
+	register(cacheSetsMetric, "Number of responses added to the cache.", []string{pathLabel}, &collectors.Counter{})
 
 	return errs
 }

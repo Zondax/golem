@@ -16,11 +16,12 @@ import (
 )
 
 const (
-	tokenDetailsTTL   = 45 * time.Minute // TODO: Config
-	PathUsageByJWTKey = "jwt_path_usage"
+	tokenDetailsTTLDefault = 45 * time.Minute // TODO: Config
+	PathUsageByJWTKey      = "jwt_path_usage"
+	defaultTTL             = time.Hour
 )
 
-func TopRequestTokensMiddleware(zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string) func(next http.Handler) http.Handler {
+func TopRequestTokensMiddleware(zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, tokenDetailsTTL, usageMetricTTL time.Duration) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := extractBearerToken(r)
@@ -29,13 +30,16 @@ func TopRequestTokensMiddleware(zCache zcache.RemoteCache, metricsServer metrics
 			}
 
 			if token != "" {
-				details, err := getTokenDetails(r.Context(), zCache, token)
+				details, err := getTokenDetails(r.Context(), zCache, token, tokenDetailsTTL)
 				if err != nil {
 					logger.GetLoggerFromContext(r.Context()).Errorf("Error getting token details %v", err.Error())
 				}
 
 				if details.JTI != "" {
-					incrementUsageCount(r.Context(), zCache, metricsServer, usageMetricName, details.JTI, r.URL.Path)
+					if usageMetricTTL == 0 {
+						usageMetricTTL = defaultTTL
+					}
+					incrementUsageCount(r.Context(), zCache, metricsServer, usageMetricName, details.JTI, r.URL.Path, usageMetricTTL)
 				}
 			}
 
@@ -58,7 +62,7 @@ func extractBearerToken(r *http.Request) (string, error) {
 	return tokenParts[1], nil
 }
 
-func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string) (auth.TokenDetails, error) {
+func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string, tokenDetailsTTL time.Duration) (auth.TokenDetails, error) {
 	var details auth.TokenDetails
 
 	hash := sha256.Sum256([]byte(token))
@@ -73,6 +77,9 @@ func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string) (a
 
 		details.JTI, _ = payload["jti"].(string)
 
+		if tokenDetailsTTL == 0 {
+			tokenDetailsTTL = tokenDetailsTTLDefault
+		}
 		if err = zCache.Set(ctx, shaToken, details, tokenDetailsTTL); err != nil {
 			logger.GetLoggerFromContext(ctx).Errorf("Cache error setting JWT details %v", err.Error())
 			return auth.TokenDetails{}, err
@@ -82,7 +89,7 @@ func getTokenDetails(ctx context.Context, zCache zcache.ZCache, token string) (a
 	return details, nil
 }
 
-func incrementUsageCount(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, metricName, jti, path string) {
+func incrementUsageCount(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, metricName, jti, path string, ttl time.Duration) {
 	metricKey := fmt.Sprintf("%s:%s", jti, path)
 
 	if _, err := zCache.ZIncrBy(ctx, PathUsageByJWTKey, metricKey, 1); err != nil {
@@ -90,13 +97,8 @@ func incrementUsageCount(ctx context.Context, zCache zcache.RemoteCache, metrics
 		return
 	}
 
-	ttl := time.Hour * 1 // TODO
 	if _, err := zCache.Expire(ctx, metricKey, ttl); err != nil {
 		logger.GetLoggerFromContext(ctx).Errorf("Error setting expire in cache %v", err.Error())
 		return
-	}
-
-	if err := metricsServer.IncrementMetric(metricName, metricKey); err != nil {
-		logger.GetLoggerFromContext(ctx).Errorf("Error incrementing usage metric %v", err.Error())
 	}
 }
