@@ -20,6 +20,10 @@ const (
 	uptimeMetricName  = "uptime"
 	appVersionMetric  = "app_version"
 	appRevisionMetric = "app_revision"
+
+	// metrics
+
+	topNRequestMetric = 5
 )
 
 type TopJWTMetrics struct {
@@ -170,7 +174,8 @@ func (r *zrouter) Run(addr ...string) error {
 		if err := r.metricsServer.RegisterMetric(zmiddlewares.TopNRequestsByJTIMetricName, "Number of requests made by JWT tokens per path.", []string{"jti", "path"}, &collectors.Gauge{}); err != nil {
 			panic(err)
 		}
-		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, 10) // TODO
+
+		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, topNRequestMetric)
 	}
 
 	server := &http.Server{
