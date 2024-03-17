@@ -25,7 +25,15 @@ func (t *taskMetrics) ResetMetric(name string) error {
 		Help:      metricDetail.Help,
 		Labels:    metricDetail.Labels,
 	}
+	delete(t.metrics, name)
 	t.mux.Unlock()
 
+	var labels []string
+	if len(metricDetail.Labels) > 0 {
+		labels = metricDetail.Labels[:len(metricDetail.Labels)-1] // Delete "app_name" label to avoid duplicate error
+	}
+	if err := t.RegisterMetric(name, metricDetail.Help, labels, metricDetail.Handler); err != nil {
+		return err
+	}
 	return nil
 }
