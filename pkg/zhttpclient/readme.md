@@ -64,16 +64,27 @@ func main() {
     req := client.NewRequest().SetURL(srv.URL).SetHeaders(headers)
 
     // GET
-    code,respBody,err := req.SetQueryParams(getParams).
+    resp,err := req.SetQueryParams(getParams).
     		SetRetryPolicy(&zhttpclient.RetryPolicy{}). // override client retry policy
       	Get(ctx)
 
     // POST
-    code,respBody,err := req.SetBody(body).Post(ctx)
+    resp,err := req.SetBody(body).Post(ctx)
+    fmt.Println(resp.Code,string(resp.Body))
+
+    // AUTO-decode response
+    resp,err := req.SetBody(body).SetResponse(&MyRespStruct{}).SetError(&MyErrStruct{}).Post(ctx)
+    if resp.Response != nil{
+    	parsedResp := resp.Response.(*MyRespStruct)
+    }
+    if resp.Error != nil{
+    	parsedErr := resp.Error.(*MyErrStruct)
+    }
 
     // Do raw request
     req, _ := http.NewRequest(method, URL, body)
-    client.Do(ctx,req)
+    resp,err := client.Do(ctx,req)
+    fmt.Println(string(resp.Body))
 
 }
 ```
