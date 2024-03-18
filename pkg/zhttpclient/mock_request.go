@@ -17,69 +17,55 @@ type MockZRequest struct {
 }
 
 // Get provides a mock function with given fields: ctx
-func (_m *MockZRequest) Get(ctx context.Context) (int, []byte, error) {
+func (_m *MockZRequest) Get(ctx context.Context) (*Response, error) {
 	ret := _m.Called(ctx)
 
-	var r0 int
-	var r1 []byte
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context) (int, []byte, error)); ok {
+	var r0 *Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*Response, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *Response); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) []byte); ok {
-		r1 = rf(ctx)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]byte)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Response)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
-		r2 = ret.Error(2)
+		r1 = ret.Error(1)
 	}
 
-	return r0, r1, r2
+	return r0, r1
 }
 
 // Post provides a mock function with given fields: ctx
-func (_m *MockZRequest) Post(ctx context.Context) (int, []byte, error) {
+func (_m *MockZRequest) Post(ctx context.Context) (*Response, error) {
 	ret := _m.Called(ctx)
 
-	var r0 int
-	var r1 []byte
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context) (int, []byte, error)); ok {
+	var r0 *Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*Response, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *Response); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) []byte); ok {
-		r1 = rf(ctx)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]byte)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Response)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
-		r2 = ret.Error(2)
+		r1 = ret.Error(1)
 	}
 
-	return r0, r1, r2
+	return r0, r1
 }
 
 // SetBody provides a mock function with given fields: body
@@ -89,6 +75,22 @@ func (_m *MockZRequest) SetBody(body io.Reader) ZRequest {
 	var r0 ZRequest
 	if rf, ok := ret.Get(0).(func(io.Reader) ZRequest); ok {
 		r0 = rf(body)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ZRequest)
+		}
+	}
+
+	return r0
+}
+
+// SetError provides a mock function with given fields: err
+func (_m *MockZRequest) SetError(err interface{}) ZRequest {
+	ret := _m.Called(err)
+
+	var r0 ZRequest
+	if rf, ok := ret.Get(0).(func(interface{}) ZRequest); ok {
+		r0 = rf(err)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ZRequest)
@@ -121,6 +123,22 @@ func (_m *MockZRequest) SetQueryParams(params url.Values) ZRequest {
 	var r0 ZRequest
 	if rf, ok := ret.Get(0).(func(url.Values) ZRequest); ok {
 		r0 = rf(params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ZRequest)
+		}
+	}
+
+	return r0
+}
+
+// SetResult provides a mock function with given fields: result
+func (_m *MockZRequest) SetResult(result interface{}) ZRequest {
+	ret := _m.Called(result)
+
+	var r0 ZRequest
+	if rf, ok := ret.Get(0).(func(interface{}) ZRequest); ok {
+		r0 = rf(result)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ZRequest)

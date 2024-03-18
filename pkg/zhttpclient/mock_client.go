@@ -15,36 +15,29 @@ type MockZHTTPClient struct {
 }
 
 // Do provides a mock function with given fields: ctx, req
-func (_m *MockZHTTPClient) Do(ctx context.Context, req *http.Request) (int, []byte, error) {
+func (_m *MockZHTTPClient) Do(ctx context.Context, req *http.Request) (*Response, error) {
 	ret := _m.Called(ctx, req)
 
-	var r0 int
-	var r1 []byte
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) (int, []byte, error)); ok {
+	var r0 *Response
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) (*Response, error)); ok {
 		return rf(ctx, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) *Response); ok {
 		r0 = rf(ctx, req)
 	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *http.Request) []byte); ok {
-		r1 = rf(ctx, req)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]byte)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Response)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, *http.Request) error); ok {
-		r2 = rf(ctx, req)
+	if rf, ok := ret.Get(1).(func(context.Context, *http.Request) error); ok {
+		r1 = rf(ctx, req)
 	} else {
-		r2 = ret.Error(2)
+		r1 = ret.Error(1)
 	}
 
-	return r0, r1, r2
+	return r0, r1
 }
 
 // NewRequest provides a mock function with given fields:
