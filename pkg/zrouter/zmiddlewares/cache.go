@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
 const (
-	cacheKeyPrefix    = "zrouter_cache"
-	cacheSetsMetric   = "cache_sets"
-	cacheHitsMetric   = "cache_hits"
-	cacheMissesMetric = "cache_misses"
+	cacheKeyPrefix       = "zrouter_cache"
+	cacheSetsMetric      = "cache_sets"
+	cacheHitsMetric      = "cache_hits"
+	cacheMissesMetric    = "cache_misses"
+	getRequestBodyMetric = "get_request_body"
 )
 
 type CacheProcessedPath struct {
@@ -35,7 +37,12 @@ func CacheMiddleware(metricServer metrics.TaskMetrics, cache zcache.ZCache, conf
 			rw := &responseWriter{ResponseWriter: w}
 			for _, pPath := range processedPaths {
 				if pPath.Regex.MatchString(path) {
-					key := constructCacheKey(fullURL)
+					key, err := constructCacheKey(fullURL, r, metricServer)
+					if err != nil {
+						logger.GetLoggerFromContext(r.Context()).Errorf("Error constructing cache key: %v", err)
+						next.ServeHTTP(rw, r)
+						return
+					}
 
 					if tryServeFromCache(rw, r, cache, key, metricServer) {
 						return
@@ -60,8 +67,21 @@ func constructFullURL(r *http.Request) string {
 	return fullURL
 }
 
-func constructCacheKey(fullURL string) string {
-	return fmt.Sprintf("%s:%s", cacheKeyPrefix, fullURL)
+func constructCacheKey(fullURL string, r *http.Request, metricServer metrics.TaskMetrics) (string, error) {
+	if shouldProcessRequestBody(r.Method) {
+		body, err := getRequestBody(r)
+		if err != nil {
+			if metricErr := metricServer.IncrementMetric(getRequestBodyMetric, GetRoutePattern(r)); metricErr != nil {
+				logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing get_request_body metric: %v", metricErr)
+			}
+			return "", err
+		}
+
+		bodyHash := generateBodyHash(body)
+		return fmt.Sprintf("%s.%s:%s.body:%s", cacheKeyPrefix, r.Method, fullURL, bodyHash), nil
+	}
+
+	return fmt.Sprintf("%s.%s:%s", cacheKeyPrefix, r.Method, fullURL), nil
 }
 
 func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCache, key string, metricServer metrics.TaskMetrics) bool {
@@ -124,4 +144,8 @@ func processCachePaths(paths map[string]time.Duration) []CacheProcessedPath {
 		})
 	}
 	return processedPaths
+}
+
+func shouldProcessRequestBody(method string) bool {
+	return strings.EqualFold(method, http.MethodPost) || strings.EqualFold(method, http.MethodPut)
 }
