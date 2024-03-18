@@ -14,8 +14,17 @@ type ZRequest interface {
 	SetBody(body io.Reader) ZRequest
 	SetQueryParams(params url.Values) ZRequest
 	SetRetryPolicy(retryPolicy *RetryPolicy) ZRequest
-	Post(ctx context.Context) (int, []byte, error)
-	Get(ctx context.Context) (int, []byte, error)
+	SetResult(result interface{}) ZRequest
+	SetError(err interface{}) ZRequest
+	Post(ctx context.Context) (*Response, error)
+	Get(ctx context.Context) (*Response, error)
+}
+
+type Response struct {
+	Code   int
+	Result interface{}
+	Error  interface{}
+	Body   []byte
 }
 
 type zRequest struct {
@@ -50,6 +59,17 @@ func (r *zRequest) SetHeaders(headers map[string]string) ZRequest {
 
 func (r *zRequest) SetBody(body io.Reader) ZRequest {
 	r.request.SetBody(body)
+	// r.request.SetResult(res interface{})
+	return r
+}
+
+func (r *zRequest) SetResult(result interface{}) ZRequest {
+	r.request.SetResult(result)
+	return r
+}
+
+func (r *zRequest) SetError(err interface{}) ZRequest {
+	r.request.SetError(err)
 	return r
 }
 
@@ -67,18 +87,29 @@ func (r *zRequest) SetRetryPolicy(retryPolicy *RetryPolicy) ZRequest {
 	return r
 }
 
-func (r *zRequest) Post(ctx context.Context) (int, []byte, error) {
+func (r *zRequest) Post(ctx context.Context) (*Response, error) {
 	resp, err := r.request.SetContext(ctx).Post(r.url)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return resp.StatusCode(), resp.Body(), nil
+	return &Response{
+		Code:   resp.StatusCode(),
+		Result: resp.Result(),
+		Error:  resp.Error(),
+		Body:   resp.Body(),
+	}, nil
 }
 
-func (r *zRequest) Get(ctx context.Context) (int, []byte, error) {
+func (r *zRequest) Get(ctx context.Context) (*Response, error) {
 	resp, err := r.request.SetContext(ctx).Get(r.url)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	return resp.StatusCode(), resp.Body(), nil
+
+	return &Response{
+		Code:   resp.StatusCode(),
+		Result: resp.Result(),
+		Error:  resp.Error(),
+		Body:   resp.Body(),
+	}, nil
 }
