@@ -14,7 +14,7 @@ import (
 type ZHTTPClient interface {
 	SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient
 	NewRequest() ZRequest
-	Do(ctx context.Context, req *http.Request) (int, []byte, error)
+	Do(ctx context.Context, req *http.Request) (*Response, error)
 }
 
 type Config struct {
@@ -82,17 +82,20 @@ func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient {
 	return z
 }
 
-func (z *zHTTPClient) Do(ctx context.Context, req *http.Request) (int, []byte, error) {
+func (z *zHTTPClient) Do(ctx context.Context, req *http.Request) (*Response, error) {
 	resp, err := z.client.GetClient().Do(req.WithContext(ctx))
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return resp.StatusCode, data, nil
+	return &Response{
+		Code: resp.StatusCode,
+		Body: data,
+	}, nil
 }
