@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zondax/golem/pkg/zhttpclient"
+
 	"github.com/stretchr/testify/assert"
-	httpclient "github.com/zondax/golem/pkg/zhttpclient"
 )
 
 // testSrv is used as a test handler to set custom response body and code and to
@@ -54,7 +55,7 @@ func (ts *testSrv) Handle(w http.ResponseWriter, r *http.Request) {
 		ts.firstCalled = time.Now().UnixMilli()
 	}
 	ts.lastCalled = time.Now().UnixMilli()
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(ts.code)
 	_, err := w.Write(ts.body)
 	assert.NoError(ts.t, err)
@@ -154,15 +155,14 @@ func TestHTTPClient(t *testing.T) {
 			srv := httptest.NewServer(tt.handler(t))
 			defer srv.Close()
 
-			client := httpclient.New(httpclient.Config{
+			client := zhttpclient.New(zhttpclient.Config{
 				BaseClient: srv.Client(),
 			})
 
 			var (
-				req       *http.Request
-				gotStatus int
-				gotBody   []byte
-				gotErr    error
+				req     *http.Request
+				gotResp *zhttpclient.Response
+				gotErr  error
 			)
 
 			if tt.custom {
@@ -172,16 +172,16 @@ func TestHTTPClient(t *testing.T) {
 				for k, v := range headers {
 					req.Header.Add(k, v)
 				}
-				gotStatus, gotBody, gotErr = client.Do(ctx, req)
+				gotResp, gotErr = client.Do(ctx, req)
 			} else {
 				r := client.NewRequest().SetURL(srv.URL).SetHeaders(headers)
 				switch tt.method {
 				case http.MethodGet:
 					r = r.SetQueryParams(getParams)
-					gotStatus, gotBody, gotErr = r.Get(ctx)
+					gotResp, gotErr = r.Get(ctx)
 				case http.MethodPost:
 					r = r.SetBody(bytes.NewBuffer(postBody))
-					gotStatus, gotBody, gotErr = r.Post(ctx)
+					gotResp, gotErr = r.Post(ctx)
 				}
 			}
 
@@ -190,14 +190,14 @@ func TestHTTPClient(t *testing.T) {
 				return
 			}
 			assert.NoError(t, gotErr)
-			assert.Equal(t, tt.wantCode, gotStatus)
-			assert.Equal(t, string(tt.wantBody), string(gotBody))
+			assert.Equal(t, tt.wantCode, gotResp.Code)
+			assert.Equal(t, string(tt.wantBody), string(gotResp.Body))
 		})
 	}
 }
 
 func TestHTTPClient_Retry(t *testing.T) {
-	defaultRetryPolicy := &httpclient.RetryPolicy{}
+	defaultRetryPolicy := &zhttpclient.RetryPolicy{}
 
 	tb := []struct {
 		name string
@@ -206,7 +206,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 		method string
 		body   []byte
 
-		getRetryPolicy func() *httpclient.RetryPolicy
+		getRetryPolicy func() *zhttpclient.RetryPolicy
 		timeout        time.Duration
 		ctxDeadline    time.Duration
 
@@ -224,7 +224,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
 
 			ctxDeadline: 5 * time.Second,
-			getRetryPolicy: func() *httpclient.RetryPolicy {
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
 				return nil
 			},
 			wantCalled: 1,
@@ -238,8 +238,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 1000),
 
 			ctxDeadline: 500 * time.Millisecond,
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts: 3,
 				}
 				r.WithCodes(http.StatusInternalServerError)
@@ -256,8 +256,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv:  newTestSrv(t, http.StatusOK, []byte("OK"), 0),
 
 			ctxDeadline: 5 * time.Second,
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts: 3,
 				}
 				r.WithCodes(http.StatusInternalServerError)
@@ -275,8 +275,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv:  newTestSrv(t, http.StatusOK, []byte("OK"), 0),
 
 			ctxDeadline: 5 * time.Second,
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts: 3,
 				}
 				r.WithCodes(http.StatusInternalServerError)
@@ -299,8 +299,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 			ctxDeadline: 5 * time.Second,
 			timeout:     400 * time.Millisecond,
 
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts: 2,
 				}
 				r.WithCodes(http.StatusInternalServerError)
@@ -324,8 +324,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 
 			timeout: 5 * time.Second,
 
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts:        2,
 					MaxWaitBeforeRetry: 500 * time.Millisecond,
 				}
@@ -355,8 +355,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 
 			ctxDeadline: 5 * time.Second,
 
-			getRetryPolicy: func() *httpclient.RetryPolicy {
-				r := &httpclient.RetryPolicy{
+			getRetryPolicy: func() *zhttpclient.RetryPolicy {
+				r := &zhttpclient.RetryPolicy{
 					MaxAttempts:        2,
 					MaxWaitBeforeRetry: 2 * time.Second,
 				}
@@ -384,7 +384,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(tt.srv.Handle))
 			defer srv.Close()
 
-			client := httpclient.New(httpclient.Config{
+			client := zhttpclient.New(zhttpclient.Config{
 				BaseClient: srv.Client(),
 				Timeout:    tt.timeout,
 			})
@@ -398,7 +398,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 			}
 
 			start := time.Now().UnixMilli()
-			code, resp, err := r.Post(ctx)
+			resp, err := r.Post(ctx)
 			end := time.Now().UnixMilli()
 
 			if tt.wantErr != nil {
@@ -415,8 +415,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 
 			// check that the response is not modified.
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantCode, code)
-			assert.Equal(t, string(tt.wantBody), string(resp))
+			assert.Equal(t, tt.wantCode, resp.Code)
+			assert.Equal(t, string(tt.wantBody), string(resp.Body))
 
 			// check that the request was retried as expected
 			assert.Equal(t, tt.wantCalled, tt.srv.called)
@@ -425,6 +425,57 @@ func TestHTTPClient_Retry(t *testing.T) {
 				assert.Equal(t, (end-start)/tt.wantTotalWait.Milliseconds(), int64(1))
 				assert.Equal(t, tt.srv.waitBetweenCalls/tt.wantWaitBetween.Milliseconds(), int64(1))
 			}
+		})
+	}
+}
+
+type testResp struct {
+	TestField string `json:"testField"`
+}
+type testError struct {
+	TestError string `json:"testError"`
+}
+
+func TestHTTPClient_DecodeResult(t *testing.T) {
+	tb := []struct {
+		name     string
+		srv      *testSrv
+		wantResp interface{}
+		wantErr  interface{}
+	}{
+		{
+			name:     "succesfully decode into result",
+			wantResp: &testResp{TestField: "success"},
+			srv:      newTestSrv(t, http.StatusOK, []byte(`{"testField":"success"}`), 0),
+		},
+		{
+			name:    "succesfully decode into error",
+			wantErr: &testError{TestError: "error"},
+			srv:     newTestSrv(t, http.StatusConflict, []byte(`{"testError":"error"}`), 0),
+		},
+	}
+
+	for i := range tb {
+		tt := tb[i]
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(tt.srv.Handle))
+			defer srv.Close()
+
+			req := zhttpclient.New(zhttpclient.Config{}).NewRequest().SetURL(srv.URL)
+			if tt.wantResp != nil {
+				req = req.SetResult(&testResp{})
+			}
+			if tt.wantErr != nil {
+				req = req.SetError(&testError{})
+			}
+
+			resp, err := req.Post(context.Background())
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.wantResp, resp.Result)
+			assert.Equal(t, tt.wantErr, resp.Error)
 		})
 	}
 }
