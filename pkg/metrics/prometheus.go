@@ -19,7 +19,6 @@ import (
 type TaskMetrics interface {
 	Start() error
 	RegisterMetric(name string, help string, labels []string, handler MetricHandler) error
-	ResetMetric(name string) error
 	UpdateMetric(name string, value float64, labels ...string) error
 	IncrementMetric(name string, labels ...string) error
 	DecrementMetric(name string, labels ...string) error
@@ -31,8 +30,6 @@ type TaskMetrics interface {
 type MetricDetail struct {
 	Collector prometheus.Collector
 	Handler   MetricHandler
-	Help      string
-	Labels    []string
 }
 
 type taskMetrics struct {

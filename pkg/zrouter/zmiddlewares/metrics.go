@@ -18,7 +18,6 @@ const (
 	pathLabel                      = "path"
 	methodLabel                    = "method"
 	statusLabel                    = "status"
-	TopNRequestsByJTIMetricName    = "topN_requests_by_jti"
 )
 
 func RegisterRequestMetrics(metricsServer metrics.TaskMetrics) []error {

@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	defaultAddress    = ":8080"
-	defaultTimeOut    = 240000
-	uptimeMetricName  = "uptime"
-	appVersionMetric  = "app_version"
-	appRevisionMetric = "app_revision"
+	defaultAddress        = ":8080"
+	defaultTimeOut        = 240000
+	uptimeMetricName      = "uptime"
+	appVersionMetric      = "app_version"
+	appRevisionMetric     = "app_revision"
+	defaultUpdateInterval = 5 * time.Minute
 
 	// metrics
 
@@ -31,6 +32,7 @@ type TopJWTMetrics struct {
 	Enable          bool
 	TokenDetailsTTL time.Duration
 	UsageMetricTTL  time.Duration
+	UpdateInterval  time.Duration
 }
 
 type SystemMetrics struct {
@@ -143,7 +145,7 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 		if r.config.TopJWTMetrics.RemoteCache == nil {
 			panic("If TopJWTMetrics is enable then remote cache is mandatory")
 		}
-		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, r.config.TopJWTMetrics.TokenDetailsTTL, r.config.TopJWTMetrics.UsageMetricTTL))
+		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.config.TopJWTMetrics.TokenDetailsTTL, r.config.TopJWTMetrics.UsageMetricTTL))
 	}
 }
 
@@ -171,11 +173,7 @@ func (r *zrouter) Run(addr ...string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		if err := r.metricsServer.RegisterMetric(zmiddlewares.TopNRequestsByJTIMetricName, "Number of requests made by JWT tokens per path.", []string{"jti", "path"}, &collectors.Gauge{}); err != nil {
-			panic(err)
-		}
-
-		go UpdateTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.metricsServer, zmiddlewares.TopNRequestsByJTIMetricName, topNRequestMetric)
+		go LogTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.config.TopJWTMetrics.UpdateInterval, topNRequestMetric)
 	}
 
 	server := &http.Server{
@@ -279,8 +277,11 @@ func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
 }
 
-func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, topN int) {
-	ticker := time.NewTicker(5 * time.Minute)
+func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, updateInterval time.Duration, topN int) {
+	if updateInterval == 0 {
+		updateInterval = defaultUpdateInterval
+	}
+	ticker := time.NewTicker(updateInterval)
 	defer ticker.Stop()
 
 	for {
@@ -289,7 +290,7 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						logger.GetLoggerFromContext(ctx).Errorf("Recovered in UpdateTopJWTPathMetrics: %v", r)
+						logger.GetLoggerFromContext(ctx).Errorf("Recovered in LogTopJWTPathMetrics: %v", r)
 					}
 				}()
 
@@ -299,26 +300,27 @@ func UpdateTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, met
 					return
 				}
 
-				if err = metricsServer.ResetMetric(usageMetricName); err != nil {
-					logger.GetLoggerFromContext(ctx).Errorf("Error resetting metric %s: %v", usageMetricName, err)
-				}
-
 				for _, item := range topTokens {
-					metricKey := item.Member.(string)
+					metricKey, ok := item.Member.(string)
+					if !ok {
+						logger.GetLoggerFromContext(ctx).Errorf("Failed to type assert member to string: %v", item.Member)
+						continue
+					}
+
 					parts := strings.Split(metricKey, ":")
 					if len(parts) != 2 {
 						logger.GetLoggerFromContext(ctx).Errorf("Unexpected metric key format: %v", metricKey)
 						continue
 					}
+
 					jti, path := parts[0], parts[1]
 					count := item.Score
 
-					if err = metricsServer.UpdateMetric(usageMetricName, count, jti, path); err != nil {
-						logger.GetLoggerFromContext(ctx).Errorf("Error updating metric %s: %v", usageMetricName, err)
-					}
+					logger.GetLoggerFromContext(ctx).Infof("JWT ID: %s, Path: %s, Count: %f", jti, path, count)
 				}
 			}()
 		case <-ctx.Done():
+			logger.GetLoggerFromContext(ctx).Info("LogTopJWTPathMetrics stopped due to context cancellation")
 			return
 		}
 	}

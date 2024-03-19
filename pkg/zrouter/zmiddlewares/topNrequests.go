@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zondax/golem/pkg/logger"
-	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/zcache"
 	"github.com/zondax/golem/pkg/zrouter/auth"
 	"net/http"
@@ -21,7 +20,7 @@ const (
 	defaultTTL             = time.Hour
 )
 
-func TopRequestTokensMiddleware(zCache zcache.RemoteCache, metricsServer metrics.TaskMetrics, usageMetricName string, tokenDetailsTTL, usageMetricTTL time.Duration) func(next http.Handler) http.Handler {
+func TopRequestTokensMiddleware(zCache zcache.RemoteCache, tokenDetailsTTL, usageMetricTTL time.Duration) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := extractBearerToken(r)
