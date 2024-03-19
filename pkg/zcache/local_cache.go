@@ -17,15 +17,16 @@ const (
 	neverExpires = -1
 
 	errorTypeLabel         = "error_type"
-	itemCountLabel         = "cleanup_item_count"
+	itemCountLabel         = "item_count"
 	residentItemCountLabel = "resident_item_count"
 	deletedItemCountLabel  = "deleted_item_count"
 	iterationErrorLabel    = "iteration_error"
 	unmarshalErrorLabel    = "unmarshal_error"
 	deletionErrorLabel     = "deletion_error"
 
-	cleanupItemCountMetricKey = "localCacheCleanupItemCount"
-	cleanupErrorMetricKey     = "localCacheCleanupErrors"
+	cleanupItemCountMetricKey        = "local_cache_cleanup_item_count"
+	cleanupDeletedItemCountMetricKey = "local_cache_cleanup_deleted_item_count"
+	cleanupErrorMetricKey            = "local_cache_cleanup_errors"
 )
 
 type CacheItem struct {
@@ -206,7 +207,7 @@ func (c *localCache) cleanupExpiredKeys() {
 
 	// update metrics
 	_ = c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel)
-	_ = c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel)
+	_ = c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel)
 
 }
 
@@ -228,7 +229,11 @@ func (c *localCache) registerCleanupMetrics() {
 		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
 	}
 
-	if err := c.metricsServer.RegisterMetric(cleanupItemCountMetricKey, "Counts the valid and expired (deleted) items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
+	if err := c.metricsServer.RegisterMetric(cleanupItemCountMetricKey, "Counts the valid items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
+		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
+	}
+
+	if err := c.metricsServer.RegisterMetric(cleanupDeletedItemCountMetricKey, "Counts the expired (deleted) items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
 		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
 	}
 }
