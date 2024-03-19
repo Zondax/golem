@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	testToken = "Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6ImtleTAwMSIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6W10sImlzcyI6IlpvbmRheCIsImF1ZCI6WyJiZXJ5eCJdLCJleHAiOjE3MTA2MDU5NjksImp0aSI6IkVtbWFudWVsLGVtbWFudWVsbTQxQGdtYWlsLmNvbSJ9.LoM5lrl9wscuCphqTHoKus5jrBd-YdcgsckLY_-PUBKdsPNxv-G2uR8YmR5WPRn94MqKdbbpOve0h5ttj4H1Hw"
+	testToken = "Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6ImtleTAwMSIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6W10sImlzcyI6IlpvbmRheCIsImF1ZCI6WyJiZXJ5eCJdLCJleHAiOjE3MTA2MDU5NjksImp0aSI6IkVtbWFudWVsLGVtbWFudWVsbTQxQGdtYWlsLmNvbSJ9.LoM5lrl9wscuCphqTHoKus5jrBd-YdcgsckLY_-PUBKdsPNxv-G2uR8YmR5WPRn94MqKdbbpOve0h5ttj4H1Hw" // nolint
 	jtiTest   = "Emmanuel,emmanuelm41@gmail.com"
 )
 
@@ -131,6 +131,7 @@ func TestTopRequestTokensMiddleware(t *testing.T) {
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	mockCache.AssertExpectations(t)
