@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/allegro/bigcache/v3"
-	"github.com/stretchr/testify/suite"
-	"github.com/zondax/golem/pkg/metrics"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/allegro/bigcache/v3"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+	"github.com/zondax/golem/pkg/metrics"
 )
 
 const (
@@ -164,4 +166,54 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
 
 	suite.NoError(err, "Did not expect an error when retrieving a non-expiring item")
 	suite.Equal(value, result, "The retrieved value should match the original value")
+}
+
+// insert 1 persistent key and 1 key with a ttl.
+// after cleanup, there will be 1 key in the cache and 1 deleted expired key.
+func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
+	cleanupInterval := 1 * time.Second
+	ttl := 10 * time.Millisecond
+
+	// label:count
+	expected := map[string]int{
+		"resident_item_count": 1,
+		"deleted_item_count":  1,
+	}
+	got := map[string]int{}
+
+	tm := &metrics.MockTaskMetrics{}
+	tm.On("RegisterMetric", "localCacheCleanupErrors", mock.Anything, []string{"error_type"}, mock.Anything).Once().
+		Return(nil)
+	tm.On("RegisterMetric", "localCacheCleanupItemCount", mock.Anything, []string{"cleanup_item_count"}, mock.Anything).Once().
+		Return(nil)
+
+	tm.On("UpdateMetric", "localCacheCleanupErrors", mock.Anything, mock.Anything).Return(nil)
+	tm.On("UpdateMetric", "localCacheCleanupItemCount", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		total := args.Get(1).(float64)
+		label := args.Get(2).(string)
+
+		got[label] += int(total)
+
+	}).Return(nil)
+
+	cache, err := NewLocalCache(&LocalConfig{
+		Prefix:          "test",
+		CleanupInterval: cleanupInterval,
+		MetricServer:    tm,
+	})
+	suite.NoError(err)
+
+	ctx := context.Background()
+	key := "permanentKey"
+	value := "thisValueShouldPersist"
+
+	err = cache.Set(ctx, key, value, ttl)
+	suite.NoError(err)
+	err = cache.Set(ctx, key+"2", value, neverExpires)
+	suite.NoError(err)
+
+	time.Sleep(2 * cleanupInterval)
+	for k, v := range expected {
+		suite.Assert().Equal(v, got[k])
+	}
 }
