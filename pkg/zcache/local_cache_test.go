@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -179,21 +180,26 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 		"resident_item_count": 1,
 		"deleted_item_count":  1,
 	}
-	got := map[string]int{}
+	got := sync.Map{}
 
 	tm := &metrics.MockTaskMetrics{}
-	tm.On("RegisterMetric", "localCacheCleanupErrors", mock.Anything, []string{"error_type"}, mock.Anything).Once().
+	tm.On("RegisterMetric", "local_cache_cleanup_errors", mock.Anything, []string{"error_type"}, mock.Anything).Once().
 		Return(nil)
-	tm.On("RegisterMetric", "localCacheCleanupItemCount", mock.Anything, []string{"cleanup_item_count"}, mock.Anything).Once().
+	tm.On("RegisterMetric", "local_cache_cleanup_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
+		Return(nil)
+	tm.On("RegisterMetric", "local_cache_cleanup_deleted_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
 		Return(nil)
 
-	tm.On("UpdateMetric", "localCacheCleanupErrors", mock.Anything, mock.Anything).Return(nil)
-	tm.On("UpdateMetric", "localCacheCleanupItemCount", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	tm.On("UpdateMetric", "local_cache_cleanup_errors", mock.Anything, mock.Anything).Return(nil)
+	tm.On("UpdateMetric", "local_cache_cleanup_item_count", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		total := args.Get(1).(float64)
 		label := args.Get(2).(string)
-
-		got[label] += int(total)
-
+		got.Store(label, int(total))
+	}).Return(nil)
+	tm.On("UpdateMetric", "local_cache_cleanup_deleted_item_count", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		total := args.Get(1).(float64)
+		label := args.Get(2).(string)
+		got.Store(label, int(total))
 	}).Return(nil)
 
 	cache, err := NewLocalCache(&LocalConfig{
@@ -214,6 +220,9 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 
 	time.Sleep(2 * cleanupInterval)
 	for k, v := range expected {
-		suite.Assert().Equal(v, got[k])
+		gotV, ok := got.Load(k)
+		suite.Assert().True(ok)
+
+		suite.Assert().Equal(v, gotV)
 	}
 }
