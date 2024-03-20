@@ -96,7 +96,7 @@ func TestIncrementUsageCount(t *testing.T) {
 	mockCache.AssertExpectations(t)
 }
 
-func TestTopRequestTokensMiddleware(t *testing.T) {
+func TestJWTUsageMiddleware(t *testing.T) {
 	mockCache := &zcache.MockZCache{}
 	tokenDetailsTTL := 45 * time.Minute
 	usageMetricTTL := time.Hour
@@ -119,7 +119,7 @@ func TestTopRequestTokensMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := TopRequestTokensMiddleware(mockCache, tokenDetailsTTL, usageMetricTTL)(handler)
+	middleware := JWTUsageMiddleware(mockCache, tokenDetailsTTL, usageMetricTTL)(handler)
 
 	testServer := httptest.NewServer(middleware)
 	defer testServer.Close()

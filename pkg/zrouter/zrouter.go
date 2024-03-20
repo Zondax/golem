@@ -2,6 +2,7 @@ package zrouter
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
@@ -24,15 +25,16 @@ const (
 
 	// metrics
 
-	topNRequestMetric = 5
+	topNRequestMetricDefault = 5
 )
 
-type TopJWTMetrics struct {
-	RemoteCache     zcache.RemoteCache
-	Enable          bool
-	TokenDetailsTTL time.Duration
-	UsageMetricTTL  time.Duration
-	UpdateInterval  time.Duration
+type JWTUsageMetricsConfig struct {
+	RemoteCache       zcache.RemoteCache
+	Enable            bool
+	TokenDetailsTTL   time.Duration
+	UsageMetricTTL    time.Duration
+	UpdateInterval    time.Duration
+	TopNRequestMetric int
 }
 
 type SystemMetrics struct {
@@ -41,14 +43,14 @@ type SystemMetrics struct {
 }
 
 type Config struct {
-	ReadTimeOut     time.Duration
-	WriteTimeOut    time.Duration
-	Logger          *logger.Logger
-	SystemMetrics   SystemMetrics
-	EnableRequestID bool
-	TopJWTMetrics   TopJWTMetrics
-	AppVersion      string
-	AppRevision     string
+	ReadTimeOut           time.Duration
+	WriteTimeOut          time.Duration
+	Logger                *logger.Logger
+	SystemMetrics         SystemMetrics
+	EnableRequestID       bool
+	JWTUsageMetricsConfig JWTUsageMetricsConfig
+	AppVersion            string
+	AppRevision           string
 }
 
 func (c *Config) setDefaultValues() {
@@ -141,11 +143,11 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 		r.useDefaultMiddleware(zmiddlewares.LoggingMiddleware(loggingOptions))
 	}
 
-	if r.config.TopJWTMetrics.Enable {
-		if r.config.TopJWTMetrics.RemoteCache == nil {
-			panic("If TopJWTMetrics is enable then remote cache is mandatory")
+	if r.config.JWTUsageMetricsConfig.Enable {
+		if r.config.JWTUsageMetricsConfig.RemoteCache == nil {
+			panic("If JWTUsageMetricsConfig is enable then remote cache is mandatory")
 		}
-		r.Use(zmiddlewares.TopRequestTokensMiddleware(r.config.TopJWTMetrics.RemoteCache, r.config.TopJWTMetrics.TokenDetailsTTL, r.config.TopJWTMetrics.UsageMetricTTL))
+		r.Use(zmiddlewares.JWTUsageMiddleware(r.config.JWTUsageMetricsConfig.RemoteCache, r.config.JWTUsageMetricsConfig.TokenDetailsTTL, r.config.JWTUsageMetricsConfig.UsageMetricTTL))
 	}
 }
 
@@ -169,11 +171,11 @@ func (r *zrouter) Run(addr ...string) error {
 
 	r.config.Logger.Infof("Start server at %v", address)
 
-	if r.config.TopJWTMetrics.Enable {
+	if r.config.JWTUsageMetricsConfig.Enable {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		go LogTopJWTPathMetrics(ctx, r.config.TopJWTMetrics.RemoteCache, r.config.TopJWTMetrics.UpdateInterval, topNRequestMetric)
+		go LogTopJWTPathMetrics(ctx, r.config.JWTUsageMetricsConfig.RemoteCache, r.config.JWTUsageMetricsConfig.UpdateInterval, r.config.JWTUsageMetricsConfig.TopNRequestMetric)
 	}
 
 	server := &http.Server{
@@ -281,6 +283,11 @@ func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, update
 	if updateInterval == 0 {
 		updateInterval = defaultUpdateInterval
 	}
+
+	if topN == 0 {
+		topN = topNRequestMetricDefault
+	}
+
 	ticker := time.NewTicker(updateInterval)
 	defer ticker.Stop()
 
@@ -294,6 +301,7 @@ func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, update
 					}
 				}()
 
+				var logEntries []string
 				topTokens, err := zCache.ZRevRangeWithScores(ctx, zmiddlewares.PathUsageByJWTKey, 0, int64(topN-1))
 				if err != nil {
 					logger.GetLoggerFromContext(ctx).Errorf("Error fetching top tokens from cache: %v", err)
@@ -315,8 +323,11 @@ func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, update
 
 					jti, path := parts[0], parts[1]
 					count := item.Score
+					logEntries = append(logEntries, fmt.Sprintf("JWT ID: %s, Path: %s, Count: %f", jti, path, count))
+				}
 
-					logger.GetLoggerFromContext(ctx).Infof("JWT ID: %s, Path: %s, Count: %f", jti, path, count)
+				if len(logEntries) > 0 {
+					logger.GetLoggerFromContext(ctx).Info(strings.Join(logEntries, "\n"))
 				}
 			}()
 		case <-ctx.Done():

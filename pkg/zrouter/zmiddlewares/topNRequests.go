@@ -20,7 +20,11 @@ const (
 	defaultTTL             = time.Hour
 )
 
-func TopRequestTokensMiddleware(zCache zcache.RemoteCache, tokenDetailsTTL, usageMetricTTL time.Duration) func(next http.Handler) http.Handler {
+func JWTUsageMiddleware(zCache zcache.RemoteCache, tokenDetailsTTL, usageMetricTTL time.Duration) func(next http.Handler) http.Handler {
+	if usageMetricTTL == 0 {
+		usageMetricTTL = defaultTTL
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := extractBearerToken(r)
@@ -35,9 +39,6 @@ func TopRequestTokensMiddleware(zCache zcache.RemoteCache, tokenDetailsTTL, usag
 				}
 
 				if details.JTI != "" {
-					if usageMetricTTL == 0 {
-						usageMetricTTL = defaultTTL
-					}
 					incrementUsageCount(r.Context(), zCache, details.JTI, r.URL.Path, usageMetricTTL)
 				}
 			}
