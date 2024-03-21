@@ -95,3 +95,18 @@ func (m *MockZCache) TTL(ctx context.Context, key string) (time.Duration, error)
 	args := m.Called(ctx, key)
 	return args.Get(0).(time.Duration), args.Error(1)
 }
+
+func (m *MockZCache) ZIncrBy(ctx context.Context, key string, member string, increment float64) (float64, error) {
+	args := m.Called(ctx, key, member, increment)
+	return args.Get(0).(float64), args.Error(1)
+}
+
+func (m *MockZCache) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) ([]CustomZ, error) {
+	args := m.Called(ctx, key, start, stop)
+	return args.Get(0).([]CustomZ), args.Error(1)
+}
+
+func (m *MockZCache) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	args := m.Called(ctx, key, ttl)
+	return args.Get(0).(bool), args.Error(1)
+}
