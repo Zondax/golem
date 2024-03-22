@@ -4,7 +4,7 @@ func StringToPtr(s string) *string {
 	return &s
 }
 
-func StringOrEmpty(s *string) string {
+func StringOrDefault(s *string) string {
 	if s == nil {
 		return ""
 	}

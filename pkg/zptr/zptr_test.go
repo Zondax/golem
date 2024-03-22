@@ -11,14 +11,14 @@ func TestStringToPtr(t *testing.T) {
 	assert.Equal(t, *sp, s)
 }
 
-func TestStringOrEmpty(t *testing.T) {
+func TestStringOrDefault(t *testing.T) {
 	var s *string
-	result := StringOrEmpty(s)
+	result := StringOrDefault(s)
 	assert.Equal(t, "", result)
 
 	hello := "hello"
 	s = &hello
-	result = StringOrEmpty(s)
+	result = StringOrDefault(s)
 	assert.Equal(t, hello, result)
 }
 
