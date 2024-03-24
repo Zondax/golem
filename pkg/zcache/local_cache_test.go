@@ -128,7 +128,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 		suite.NoError(err)
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(itemExpiration + cleanupInterval + 2*time.Second)
 
 	for i := 0; i < testBatchSize*2; i++ {
 		key := fmt.Sprintf("key%d", i)
