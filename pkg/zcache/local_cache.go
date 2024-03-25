@@ -206,9 +206,12 @@ func (c *localCache) cleanupExpiredKeys() {
 	}
 
 	// update metrics
-	_ = c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel)
-	_ = c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel)
-
+	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
+		c.logger.Error("Failed to update cleanup item count metric", zap.Error(err))
+	}
+	if err := c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel); err != nil {
+		c.logger.Error("Failed to update deletion cleanup deleted item count metric", zap.Error(err))
+	}
 }
 
 func (c *localCache) deleteKeysInBatch(keys []string) (deleted int) {
