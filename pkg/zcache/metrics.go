@@ -1,9 +1,10 @@
 package zcache
 
 import (
-	"fmt"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -23,33 +24,44 @@ const (
 	remoteCachePoolStaleConnsMetricName = "remote_cache_pool_stale_conns"
 )
 
-func setupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetrics, cache ZCache, updateInterval time.Duration) []error {
+func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache, logger *logger.Logger, updateInterval time.Duration) []error {
 	if updateInterval <= 0 {
 		updateInterval = defaultInterval
 	}
 
-	var errs []error
-	register := func(name, help string, labels []string, handler metrics.MetricHandler) {
-		if err := metricsServer.RegisterMetric(name, help, labels, handler); err != nil {
-			errs = append(errs, err)
-		}
+	if err := metricsServer.RegisterMetric(localCacheHitsMetricName, "Number of successfully found keys", []string{}, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(localCacheMissesMetricName, "Number of not found keys", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(localCacheDelHitsMetricName, "Number of successfully deleted keys", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(localCacheDelMissesMetricName, "Number of not deleted keys", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(localCacheCollisionsMetricName, "Number of happened key-collisions", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
 	}
 
-	register(getMetricName(appName, localCacheHitsMetricName), "Number of successfully found keys", []string{}, &collectors.Gauge{})
-	register(getMetricName(appName, localCacheMissesMetricName), "Number of not found keys", nil, &collectors.Gauge{})
-	register(getMetricName(appName, localCacheDelHitsMetricName), "Number of successfully deleted keys", nil, &collectors.Gauge{})
-	register(getMetricName(appName, localCacheDelMissesMetricName), "Number of not deleted keys", nil, &collectors.Gauge{})
-	register(getMetricName(appName, localCacheCollisionsMetricName), "Number of happened key-collisions", nil, &collectors.Gauge{})
-
-	register(getMetricName(appName, remoteCachePoolHitsMetricName), "Number of times free connection was found in the pool", nil, &collectors.Gauge{})
-	register(getMetricName(appName, remoteCachePoolMissesMetricName), "Number of times free connection was NOT found in the pool", nil, &collectors.Gauge{})
-	register(getMetricName(appName, remoteCachePoolTimeoutsMetricName), "Number of times a wait timeout occurred", nil, &collectors.Gauge{})
-	register(getMetricName(appName, remoteCachePoolTotalConnsMetricName), "Number of total connections in the pool", nil, &collectors.Gauge{})
-	register(getMetricName(appName, remoteCachePoolIdleConnsMetricName), "Number of idle connections in the pool", nil, &collectors.Gauge{})
-	register(getMetricName(appName, remoteCachePoolStaleConnsMetricName), "Number of stale connections removed from the pool", nil, &collectors.Gauge{})
-
-	if len(errs) > 0 {
-		return errs
+	if err := metricsServer.RegisterMetric(remoteCachePoolHitsMetricName, "Number of times free connection was found in the pool", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(remoteCachePoolMissesMetricName, "Number of times free connection was NOT found in the pool", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(remoteCachePoolTimeoutsMetricName, "Number of times a wait timeout occurred", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(remoteCachePoolTotalConnsMetricName, "Number of total connections in the pool", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(remoteCachePoolIdleConnsMetricName, "Number of idle connections in the pool", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
+	}
+	if err := metricsServer.RegisterMetric(remoteCachePoolStaleConnsMetricName, "Number of stale connections removed from the pool", nil, &collectors.Gauge{}); err != nil {
+		logger.Errorf("Failed to register cache stats metrics, err: %s", zap.Error(err))
 	}
 
 	go func() {
@@ -58,27 +70,23 @@ func setupAndMonitorCacheMetrics(appName string, metricsServer metrics.TaskMetri
 			stats := cache.GetStats()
 
 			if stats.Local != nil {
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheHitsMetricName), float64(stats.Local.Hits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheMissesMetricName), float64(stats.Local.Misses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelHitsMetricName), float64(stats.Local.DelHits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheDelMissesMetricName), float64(stats.Local.DelMisses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, localCacheCollisionsMetricName), float64(stats.Local.Collisions))
+				_ = metricsServer.UpdateMetric(localCacheHitsMetricName, float64(stats.Local.Hits))
+				_ = metricsServer.UpdateMetric(localCacheMissesMetricName, float64(stats.Local.Misses))
+				_ = metricsServer.UpdateMetric(localCacheDelHitsMetricName, float64(stats.Local.DelHits))
+				_ = metricsServer.UpdateMetric(localCacheDelMissesMetricName, float64(stats.Local.DelMisses))
+				_ = metricsServer.UpdateMetric(localCacheCollisionsMetricName, float64(stats.Local.Collisions))
 			}
 
 			if stats.Remote != nil {
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolHitsMetricName), float64(stats.Remote.Pool.Hits))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolMissesMetricName), float64(stats.Remote.Pool.Misses))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTimeoutsMetricName), float64(stats.Remote.Pool.Timeouts))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolTotalConnsMetricName), float64(stats.Remote.Pool.TotalConns))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolIdleConnsMetricName), float64(stats.Remote.Pool.IdleConns))
-				_ = metricsServer.UpdateMetric(getMetricName(appName, remoteCachePoolStaleConnsMetricName), float64(stats.Remote.Pool.StaleConns))
+				_ = metricsServer.UpdateMetric(remoteCachePoolHitsMetricName, float64(stats.Remote.Pool.Hits))
+				_ = metricsServer.UpdateMetric(remoteCachePoolMissesMetricName, float64(stats.Remote.Pool.Misses))
+				_ = metricsServer.UpdateMetric(remoteCachePoolTimeoutsMetricName, float64(stats.Remote.Pool.Timeouts))
+				_ = metricsServer.UpdateMetric(remoteCachePoolTotalConnsMetricName, float64(stats.Remote.Pool.TotalConns))
+				_ = metricsServer.UpdateMetric(remoteCachePoolIdleConnsMetricName, float64(stats.Remote.Pool.IdleConns))
+				_ = metricsServer.UpdateMetric(remoteCachePoolStaleConnsMetricName, float64(stats.Remote.Pool.StaleConns))
 			}
 		}
 	}()
 
 	return nil
-}
-
-func getMetricName(appName, metricType string) string {
-	return fmt.Sprintf("zcache_%s_%s", appName, metricType)
 }
