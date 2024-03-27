@@ -3,8 +3,8 @@ package zcache
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
+	logger2 "github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
-	"go.uber.org/zap"
 	"os"
 	"testing"
 	"time"
@@ -31,8 +31,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	suite.mr = mr
 	suite.ms = metrics.NewTaskMetrics("", "", "appname")
-	logger, err := zap.NewDevelopment()
-	suite.Require().NoError(err)
+	logger := logger2.NewLogger()
 
 	prefix := os.Getenv("PREFIX")
 	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
