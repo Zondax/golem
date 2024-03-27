@@ -152,14 +152,14 @@ func (c *redisCache) HGet(ctx context.Context, key, field string) (string, error
 func (c *redisCache) ZIncrBy(ctx context.Context, key string, member string, increment float64) (float64, error) {
 	realKey := getKeyWithPrefix(c.prefix, key)
 
-	c.logger.Sugar().Debugf("ZIncrBy on key in redis cache, fullKey: [%s], member: [%s], increment: [%f]", realKey, member, increment)
+	c.logger.Debugf("ZIncrBy on key in redis cache, fullKey: [%s], member: [%s], increment: [%f]", realKey, member, increment)
 	return c.client.ZIncrBy(ctx, realKey, increment, member).Result()
 }
 
 func (c *redisCache) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) ([]CustomZ, error) {
 	realKey := getKeyWithPrefix(c.prefix, key)
 
-	c.logger.Sugar().Debugf("ZRevRangeWithScores on key in redis cache, fullKey: [%s], start: [%d], stop: [%d]", realKey, start, stop)
+	c.logger.Debugf("ZRevRangeWithScores on key in redis cache, fullKey: [%s], start: [%d], stop: [%d]", realKey, start, stop)
 	zSlice, err := c.client.ZRevRangeWithScores(ctx, realKey, start, stop).Result()
 	if err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (c *redisCache) ZRevRangeWithScores(ctx context.Context, key string, start,
 func (c *redisCache) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	realKey := getKeyWithPrefix(c.prefix, key)
 
-	c.logger.Sugar().Debugf("Expire on key in redis cache, fullKey: [%s], member: [%s], increment: [%f]", realKey)
+	c.logger.Debugf("Expire on key in redis cache, fullKey: [%s], member: [%s], increment: [%f]", realKey)
 	return c.client.Expire(ctx, realKey, ttl).Result()
 }
 

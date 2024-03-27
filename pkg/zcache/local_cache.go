@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/zondax/golem/pkg/logger"
 	"time"
 
@@ -143,14 +142,6 @@ func (c *localCache) setupAndMonitorMetrics(updateInterval time.Duration) {
 	setupAndMonitorCacheMetrics(c.metricsServer, c, c.logger, updateInterval)
 }
 
-func (c *localCache) registerInternalCacheMetrics() []error {
-	if c.metricsServer == nil {
-		return []error{fmt.Errorf("metrics server not available")}
-	}
-
-	return []error{}
-}
-
 func (c *localCache) startCleanupProcess(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	go func() {
@@ -202,10 +193,10 @@ func (c *localCache) cleanupExpiredKeys() {
 
 	// update metrics
 	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
-		c.logger.Error("Failed to update cleanup item count metric", zap.Error(err))
+		c.logger.Errorf("Failed to update cleanup item count metric, err: %s", err)
 	}
 	if err := c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel); err != nil {
-		c.logger.Error("Failed to update deletion cleanup deleted item count metric", zap.Error(err))
+		c.logger.Errorf("Failed to update deletion cleanup deleted item count metric, err: %s", err)
 	}
 }
 

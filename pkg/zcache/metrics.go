@@ -24,7 +24,7 @@ const (
 	remoteCachePoolStaleConnsMetricName = "remote_cache_pool_stale_conns"
 )
 
-func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache, logger *logger.Logger, updateInterval time.Duration) []error {
+func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache, logger *logger.Logger, updateInterval time.Duration) {
 	if updateInterval <= 0 {
 		updateInterval = defaultInterval
 	}
@@ -87,6 +87,4 @@ func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache
 			}
 		}
 	}()
-
-	return nil
 }
