@@ -5,20 +5,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/allegro/bigcache/v3"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
-	neverExpires          = -1
-	errorTypeLabel        = "error_type"
-	cleanupErrorMetricKey = "localCacheCleanupErrors"
-	iterationErrorLabel   = "iteration_error"
-	unmarshalErrorLabel   = "unmarshal_error"
-	deletionErrorLabel    = "deletion_error"
+	neverExpires = -1
+
+	errorTypeLabel         = "error_type"
+	itemCountLabel         = "item_count"
+	residentItemCountLabel = "resident_item_count"
+	deletedItemCountLabel  = "deleted_item_count"
+	iterationErrorLabel    = "iteration_error"
+	unmarshalErrorLabel    = "unmarshal_error"
+	deletionErrorLabel     = "deletion_error"
+
+	cleanupItemCountMetricKey        = "local_cache_cleanup_item_count"
+	cleanupDeletedItemCountMetricKey = "local_cache_cleanup_deleted_item_count"
+	cleanupErrorMetricKey            = "local_cache_cleanup_errors"
 )
 
 type CacheItem struct {
@@ -164,6 +172,8 @@ func (c *localCache) startCleanupProcess(interval time.Duration) {
 func (c *localCache) cleanupExpiredKeys() {
 	iterator := c.client.Iterator()
 	var keysToDelete []string
+	var totalDeleted int
+	var totalResident int
 
 	for iterator.SetNext() {
 		entry, err := iterator.Value()
@@ -178,34 +188,55 @@ func (c *localCache) cleanupExpiredKeys() {
 			continue
 		}
 
+		totalResident++
+
 		if cachedItem.IsExpired() {
 			keysToDelete = append(keysToDelete, entry.Key())
 		}
 
 		if len(keysToDelete) >= c.batchSize {
-			c.deleteKeysInBatch(keysToDelete)
+			totalDeleted += c.deleteKeysInBatch(keysToDelete)
 			keysToDelete = keysToDelete[:0]
 			time.Sleep(c.throttleTime)
 		}
 	}
 
 	if len(keysToDelete) > 0 {
-		c.deleteKeysInBatch(keysToDelete)
+		totalDeleted += c.deleteKeysInBatch(keysToDelete)
+	}
+
+	// update metrics
+	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
+		c.logger.Error("Failed to update cleanup item count metric", zap.Error(err))
+	}
+	if err := c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel); err != nil {
+		c.logger.Error("Failed to update deletion cleanup deleted item count metric", zap.Error(err))
 	}
 }
 
-func (c *localCache) deleteKeysInBatch(keys []string) {
+func (c *localCache) deleteKeysInBatch(keys []string) (deleted int) {
 	for _, key := range keys {
 		if err := c.client.Delete(key); err != nil {
 			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel); err != nil {
 				c.logger.Error("Failed to update deletion error metric", zap.Error(err))
 			}
+			continue
 		}
+		deleted++
 	}
+	return
 }
 
 func (c *localCache) registerCleanupMetrics() {
 	if err := c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{}); err != nil {
+		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
+	}
+
+	if err := c.metricsServer.RegisterMetric(cleanupItemCountMetricKey, "Counts the valid items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
+		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
+	}
+
+	if err := c.metricsServer.RegisterMetric(cleanupDeletedItemCountMetricKey, "Counts the expired (deleted) items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
 		c.logger.Error("Failed to register cleanup metrics", zap.Error(err))
 	}
 }

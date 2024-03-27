@@ -112,3 +112,24 @@ metricsServer.IncrementMetric("my_gauge")
 // Decrement a gauge
 metricsServer.DecrementMetric("my_gauge")
 ```
+
+### Mocking Support
+
+Use MockTaskMetrics for testing.
+
+```go
+func TestMetrics(t *testing.T) {
+    tm := &metrics.MockTaskMetrics{}
+	  tm.On("RegisterMetric", "local_cache_cleanup_errors", mock.Anything, []string{"error_type"}, mock.Anything).Once().Return(nil)
+    // Use tm in your tests
+}
+
+```
+
+To generate mocks:
+
+- install: https://github.com/vektra/mockery
+- pull the repo with the correct version of the interface you want to mock
+- ` mockery --name TaskMetrics --dir ./pkg/metrics --output . --filename task_metrics_mock.go --structname MockTaskMetrics --inpackage`
+- For usage in tests
+
