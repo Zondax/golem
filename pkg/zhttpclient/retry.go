@@ -43,7 +43,6 @@ func (r *RetryPolicy) SetBackoff(fn BackoffFn) {
 // SetLinearBackoff sets a constant sleep duration between retries.
 func (r *RetryPolicy) SetLinearBackoff(duration time.Duration) {
 	r.b = zbackoff.New().WithInitialDuration(duration).WithMaxAttempts(r.MaxAttempts).Linear()
-	// r.b = backoff.LinearBackoff(r.MaxAttempts, duration)
 	r.backoffFn = func(uint, *http.Response, error) time.Duration {
 		return r.b.NextBackOff()
 	}
@@ -52,7 +51,6 @@ func (r *RetryPolicy) SetLinearBackoff(duration time.Duration) {
 // SetExponentialBackoff sets an exponential base 2 delay ( duration * 2 ^ attempt ) for each attempt.
 func (r *RetryPolicy) SetExponentialBackoff(duration time.Duration) {
 	r.b = zbackoff.New().WithInitialDuration(duration).WithMaxAttempts(r.MaxAttempts).WithMaxDuration(r.MaxWaitBeforeRetry).Exponential()
-
 	r.backoffFn = func(_ uint, _ *http.Response, _ error) time.Duration {
 		return r.b.NextBackOff()
 	}
