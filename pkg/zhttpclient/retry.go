@@ -1,9 +1,10 @@
 package zhttpclient
 
 import (
-	"math"
 	"net/http"
 	"time"
+
+	"github.com/zondax/golem/pkg/zhttpclient/backoff"
 )
 
 // BackoffFn is a function that returns a backoff duration.
@@ -16,6 +17,8 @@ type RetryPolicy struct {
 	WaitBeforeRetry time.Duration
 	// MaxWaitBeforeRetry is the maximum cap for the wait before retry
 	MaxWaitBeforeRetry time.Duration
+	// b is a wrapped backoff functions provider
+	b backoff.BackOff
 	// backoffFn is a function that returns a custom sleep duration before a retry.
 	// It is capped between WaitBeforeRetry and MaxWaitBeforeRetry
 	backoffFn        BackoffFn
@@ -38,15 +41,17 @@ func (r *RetryPolicy) SetBackoff(fn BackoffFn) {
 
 // SetLinearBackoff sets a constant sleep duration between retries.
 func (r *RetryPolicy) SetLinearBackoff(duration time.Duration) {
+	r.b = backoff.LinearBackoff(r.MaxAttempts, duration)
 	r.backoffFn = func(uint, *http.Response, error) time.Duration {
-		return duration
+		return r.b.NextBackOff()
 	}
 }
 
 // SetExponentialBackoff sets an exponential base 2 delay ( duration * 2 ^ attempt ) for each attempt.
 func (r *RetryPolicy) SetExponentialBackoff(duration time.Duration) {
-	r.backoffFn = func(attempt uint, _ *http.Response, _ error) time.Duration {
-		mul := int64(math.Pow(2.0, float64(attempt)))
-		return time.Millisecond * time.Duration(duration.Milliseconds()*mul)
+	r.b = backoff.ExponentialBackoff(r.MaxAttempts, duration, r.MaxWaitBeforeRetry)
+
+	r.backoffFn = func(_ uint, _ *http.Response, _ error) time.Duration {
+		return r.b.NextBackOff()
 	}
 }
