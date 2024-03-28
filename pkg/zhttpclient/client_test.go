@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/zondax/golem/pkg/zhttpclient"
 
 	"github.com/stretchr/testify/assert"
@@ -345,10 +347,10 @@ func TestHTTPClient_Retry(t *testing.T) {
 		// the request should be retried exponentialy starting from 100ms i.e 100ms * (2 ^ attempt) for a max of 2 times
 		// the total time of the request should be:
 		// 		total = 0ms  // attempt 1
-		//      total += 100ms * (2 ^ 1) = 200ms  // attempt 1
-		// 		total += 100ms * (2 ^ 2) = 400ms // attempt 2
-		//      total = 600ms
-		// the time between retries ( we will only check the last retry attempt) = 400ms
+		//      total += 100ms * (2 ^ 0) = 100ms  // attempt 1
+		// 		total += 100ms * (2 ^ 1) = 200ms // attempt 2
+		//      total = 300ms
+		// the time between retries ( we will only check the last retry attempt) = 200ms
 		{
 			name: "exponential retry",
 			srv:  newTestSrv(t, http.StatusInternalServerError, nil, 0),
@@ -361,14 +363,25 @@ func TestHTTPClient_Retry(t *testing.T) {
 					MaxWaitBeforeRetry: 2 * time.Second,
 				}
 				r.WithCodes(http.StatusInternalServerError)
-				r.SetExponentialBackoff(100 * time.Millisecond)
+
+				tmp := backoff.NewExponentialBackOff(backoff.WithInitialInterval(100*time.Millisecond),
+					backoff.WithMaxElapsedTime(r.MaxWaitBeforeRetry),
+					backoff.WithMultiplier(2),
+				)
+				tmp.RandomizationFactor = 0
+				b := backoff.WithMaxRetries(tmp, uint64(r.MaxAttempts))
+
+				r.SetBackoff(func(_ uint, _ *http.Response, _ error) time.Duration {
+					return b.NextBackOff()
+				})
+
 				return r
 			},
 			wantRetry:       true,
-			wantWaitBetween: 400 * time.Millisecond,
+			wantWaitBetween: 200 * time.Millisecond,
 			wantCalled:      3,
 			wantCode:        http.StatusInternalServerError,
-			wantTotalWait:   600 * time.Millisecond,
+			wantTotalWait:   300 * time.Millisecond,
 			wantBody:        []byte{},
 		},
 	}
@@ -422,6 +435,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 			assert.Equal(t, tt.wantCalled, tt.srv.called)
 			if tt.wantRetry {
 				// ignore minor deviations in millisecond values
+				fmt.Println(end, start, end-start, tt.wantTotalWait.Milliseconds())
 				assert.Equal(t, (end-start)/tt.wantTotalWait.Milliseconds(), int64(1))
 				assert.Equal(t, tt.srv.waitBetweenCalls/tt.wantWaitBetween.Milliseconds(), int64(1))
 			}
