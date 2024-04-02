@@ -84,7 +84,9 @@ type Routes interface {
 	PUT(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	PATCH(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	DELETE(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
+	Handle(pattern string, handler HandlerFunc)
 	Route(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
+	Mount(pattern string, handler HandlerFunc)
 	Group(prefix string) Routes
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
@@ -92,6 +94,7 @@ type Routes interface {
 	SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions)
 	GetHandler() http.Handler
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	ServeFiles(routePattern string, httpHandler http.Handler)
 }
 
 type zrouter struct {
@@ -262,6 +265,22 @@ func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	return r
 }
 
+func (r *zrouter) Mount(pattern string, handler HandlerFunc) {
+	if handler == nil {
+		panic("handler is required for Mount")
+	}
+
+	r.router.Mount(pattern, getChiHandler(handler))
+}
+
+func (r *zrouter) Handle(pattern string, handler HandlerFunc) {
+	if handler == nil {
+		panic("handler is mandatory")
+	}
+
+	r.router.Handle(pattern, getChiHandler(handler))
+}
+
 func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -277,6 +296,10 @@ func (r *zrouter) GetHandler() http.Handler {
 
 func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
+}
+
+func (r *zrouter) ServeFiles(routePattern string, httpHandler http.Handler) {
+	r.router.Handle(routePattern, httpHandler)
 }
 
 func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, updateInterval time.Duration, topN int) {

@@ -14,6 +14,18 @@ func NotFoundHandler(_ Context) (domain.ServiceResponse, error) {
 	return domain.NewErrorNotFound(msg), nil
 }
 
+func ToHandlerFunc(h http.Handler) HandlerFunc {
+	return func(ctx Context) (domain.ServiceResponse, error) {
+		chiCtx, ok := ctx.(*chiContextAdapter)
+		if !ok {
+			return nil, errors.New("context provided is not a *chiContextAdapter")
+		}
+
+		h.ServeHTTP(chiCtx.ctx, chiCtx.req)
+		return nil, nil
+	}
+}
+
 func getChiHandler(handler HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		adaptedContext := &chiContextAdapter{ctx: w, req: r}
