@@ -79,6 +79,7 @@ type ZRouter interface {
 }
 
 type Routes interface {
+	NewSubRouter() ZRouter
 	GET(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	POST(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	PUT(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
@@ -86,8 +87,7 @@ type Routes interface {
 	DELETE(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	Handle(pattern string, handler HandlerFunc)
 	Route(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
-	Mount(pattern string, handler HandlerFunc)
-	Group(prefix string) Routes
+	Mount(pattern string, subRouter Routes)
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
@@ -135,6 +135,16 @@ func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 	return zr
 }
 
+func (r *zrouter) NewSubRouter() ZRouter {
+	newRouter := &zrouter{
+		router:        chi.NewRouter(),
+		metricsServer: r.metricsServer,
+		config:        r.config,
+	}
+
+	return newRouter
+}
+
 func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
 	if err := zmiddlewares.RegisterRequestMetrics(r.metricsServer); err != nil {
 		logger.GetLoggerFromContext(context.Background()).Errorf("Error registering metrics %v", err)
@@ -152,18 +162,6 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 		}
 		r.Use(zmiddlewares.JWTUsageMiddleware(r.config.JWTUsageMetricsConfig.RemoteCache, r.config.JWTUsageMetricsConfig.TokenDetailsTTL, r.config.JWTUsageMetricsConfig.UsageMetricTTL))
 	}
-}
-
-func (r *zrouter) Group(prefix string) Routes {
-	newRouter := &zrouter{
-		router: chi.NewRouter(),
-	}
-
-	r.router.Group(func(groupRouter chi.Router) {
-		groupRouter.Mount(prefix, newRouter.router)
-	})
-
-	return newRouter
 }
 
 func (r *zrouter) Run(addr ...string) error {
@@ -265,12 +263,13 @@ func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	return r
 }
 
-func (r *zrouter) Mount(pattern string, handler HandlerFunc) {
-	if handler == nil {
-		panic("handler is required for Mount")
+func (r *zrouter) Mount(pattern string, subRouter Routes) {
+	sr, ok := subRouter.(*zrouter)
+	if !ok {
+		panic("subRouter is not of expected type *zrouter")
 	}
 
-	r.router.Mount(pattern, getChiHandler(handler))
+	r.router.Mount(pattern, sr.router)
 }
 
 func (r *zrouter) Handle(pattern string, handler HandlerFunc) {
