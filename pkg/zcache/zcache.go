@@ -64,7 +64,7 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 	}
 
 	lc.registerCleanupMetrics()
-	lc.startCleanupProcess(config.CleanupProcess.Interval)
+	lc.startCleanupProcess()
 
 	if config.StatsMetrics.Enable {
 		if config.MetricServer == nil {

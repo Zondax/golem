@@ -142,8 +142,8 @@ func (c *localCache) setupAndMonitorMetrics(updateInterval time.Duration) {
 	setupAndMonitorCacheMetrics(c.metricsServer, c, c.logger, updateInterval)
 }
 
-func (c *localCache) startCleanupProcess(interval time.Duration) {
-	ticker := time.NewTicker(interval)
+func (c *localCache) startCleanupProcess() {
+	ticker := time.NewTicker(c.cleanupProcess.Interval)
 	go func() {
 		for range ticker.C {
 			c.cleanupExpiredKeys()
