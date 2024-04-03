@@ -2,8 +2,6 @@ package zcache
 
 import (
 	"context"
-	"github.com/allegro/bigcache/v3"
-	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"time"
@@ -94,13 +92,11 @@ func (c *combinedCache) Delete(ctx context.Context, key string) error {
 }
 
 func (c *combinedCache) GetStats() ZCacheStats {
-	localStats := c.localCache.(interface{}).(*bigcache.BigCache).Stats()
-	remotePoolStats := c.remoteCache.(interface{}).(*redis.Client).PoolStats()
+	localStats := c.localCache.GetStats()
+	remotePoolStats := c.remoteCache.GetStats()
 	return ZCacheStats{
-		Local: &localStats,
-		Remote: &RedisStats{
-			Pool: remotePoolStats,
-		},
+		Local:  localStats.Local,
+		Remote: remotePoolStats.Remote,
 	}
 }
 

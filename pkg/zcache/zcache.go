@@ -86,7 +86,12 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 		loggerInst = logger.NewLogger()
 	}
 
-	rc := &redisCache{client: client, prefix: config.Prefix, logger: loggerInst}
+	rc := &redisCache{
+		client:        client,
+		prefix:        config.Prefix,
+		logger:        loggerInst,
+		metricsServer: config.MetricServer,
+	}
 
 	if config.StatsMetrics.Enable {
 		rc.setupAndMonitorMetrics(config.StatsMetrics.UpdateInterval)
@@ -115,6 +120,7 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	// Set global configs on remote cache config
 	remoteCacheConfig.Prefix = combinedConfig.GlobalPrefix
 	remoteCacheConfig.Logger = combinedConfig.GlobalLogger
+	remoteCacheConfig.MetricServer = combinedConfig.GlobalMetricServer
 
 	remoteClient, err := NewRemoteCache(remoteCacheConfig)
 	if err != nil {
@@ -125,6 +131,7 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 	// Set global configs on local cache config
 	localCacheConfig.Prefix = combinedConfig.GlobalPrefix
 	localCacheConfig.Logger = combinedConfig.GlobalLogger
+	localCacheConfig.MetricServer = combinedConfig.GlobalMetricServer
 
 	localClient, err := NewLocalCache(localCacheConfig)
 	if err != nil {
@@ -136,6 +143,7 @@ func NewCombinedCache(combinedConfig *CombinedConfig) (CombinedCache, error) {
 		remoteCache:        remoteClient,
 		localCache:         localClient,
 		isRemoteBestEffort: combinedConfig.IsRemoteBestEffort,
+		metricsServer:      combinedConfig.GlobalMetricServer,
 		logger:             combinedConfig.GlobalLogger,
 	}
 

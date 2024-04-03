@@ -35,6 +35,7 @@ type RemoteConfig struct {
 	IdleCheckFrequency time.Duration
 	Prefix             string
 	Logger             *logger.Logger
+	MetricServer       metrics.TaskMetrics
 	StatsMetrics       StatsMetrics
 }
 
@@ -74,6 +75,7 @@ type CombinedConfig struct {
 	Remote             *RemoteConfig
 	GlobalLogger       *logger.Logger
 	GlobalPrefix       string
+	GlobalMetricServer metrics.TaskMetrics
 	GlobalStatsMetrics StatsMetrics
 	IsRemoteBestEffort bool
 }
