@@ -36,26 +36,24 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	prefix := os.Getenv("PREFIX")
 	suite.cacheRemoteBrokenBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{
-				MetricServer: suite.ms,
-			},
+			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
 			IsRemoteBestEffort: true,
+			GlobalMetricServer: suite.ms,
 			GlobalPrefix:       prefix,
 			GlobalLogger:       logger,
 		})
 	suite.Nil(err)
 
 	suite.cacheOkNotBestEffort, err = NewCombinedCache(&CombinedConfig{
-		Local: &LocalConfig{
-			MetricServer: suite.ms,
-		},
+		Local: &LocalConfig{},
 		Remote: &RemoteConfig{
 			Addr: mr.Addr(),
 		},
 		IsRemoteBestEffort: false,
+		GlobalMetricServer: suite.ms,
 		GlobalPrefix:       prefix,
 		GlobalLogger:       logger,
 	})
@@ -63,13 +61,12 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 
 	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(
 		&CombinedConfig{
-			Local: &LocalConfig{
-				MetricServer: suite.ms,
-			},
+			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
 				Addr: "0.0.0.0",
 			},
 			IsRemoteBestEffort: false,
+			GlobalMetricServer: suite.ms,
 			GlobalPrefix:       prefix,
 			GlobalLogger:       logger,
 		})
