@@ -65,8 +65,10 @@ It's important to note that MetricServer is a mandatory configuration field in L
 func main() {
     config := zcache.LocalConfig{
         // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
-        CleanupInterval: 30 * time.Minute,
-        MetricServer:    metricServer, // Mandatory
+        CleanupProcess:  CleanupProcess{
+            Interval: 30 * time.Minute,
+        },
+        MetricServer:    metricServer,
     }
     
     cache, err := zcache.NewLocalCache(&config)
