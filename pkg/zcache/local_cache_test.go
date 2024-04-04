@@ -89,9 +89,11 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	ttl := 10 * time.Millisecond
 
 	cache, err := NewLocalCache(&LocalConfig{
-		Prefix:          "test",
-		CleanupInterval: cleanupInterval,
-		MetricServer:    metrics.NewTaskMetrics("", "", "appname")})
+		Prefix: "test",
+		CleanupProcess: CleanupProcess{
+			Interval: cleanupInterval,
+		},
+		MetricServer: metrics.NewTaskMetrics("", "", "appname")})
 	suite.NoError(err)
 
 	ctx := context.Background()
@@ -115,10 +117,12 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	itemExpiration := 200 * time.Millisecond
 
 	cache, err := NewLocalCache(&LocalConfig{
-		Prefix:          "testBatch",
-		CleanupInterval: cleanupInterval,
-		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
-		BatchSize:       testBatchSize,
+		Prefix: "testBatch",
+		CleanupProcess: CleanupProcess{
+			Interval:  cleanupInterval,
+			BatchSize: testBatchSize,
+		},
+		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
 	})
 	suite.NoError(err)
 
@@ -147,9 +151,11 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
 	cleanupInterval := 1 * time.Second
 
 	cache, err := NewLocalCache(&LocalConfig{
-		Prefix:          "test",
-		CleanupInterval: cleanupInterval,
-		MetricServer:    metrics.NewTaskMetrics("", "", "appname"),
+		Prefix: "test",
+		CleanupProcess: CleanupProcess{
+			Interval: cleanupInterval,
+		},
+		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
 	})
 	suite.NoError(err)
 
@@ -203,9 +209,11 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	}).Return(nil)
 
 	cache, err := NewLocalCache(&LocalConfig{
-		Prefix:          "test",
-		CleanupInterval: cleanupInterval,
-		MetricServer:    tm,
+		Prefix: "test",
+		CleanupProcess: CleanupProcess{
+			Interval: cleanupInterval,
+		},
+		MetricServer: tm,
 	})
 	suite.NoError(err)
 
