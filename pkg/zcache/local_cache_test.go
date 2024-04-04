@@ -179,7 +179,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
 // after cleanup, there will be 1 key in the cache and 1 deleted expired key.
 func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	cleanupInterval := 1 * time.Second
-	ttl := 10 * time.Millisecond
+	ttl := 25 * time.Millisecond
 
 	// label:count
 	expected := map[string]int{
