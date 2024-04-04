@@ -88,6 +88,7 @@ type Routes interface {
 	Handle(pattern string, handler HandlerFunc)
 	Route(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	Mount(pattern string, subRouter Routes)
+	Group(prefix string) Routes
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
 	GetRegisteredRoutes() []RegisteredRoute
@@ -162,6 +163,18 @@ func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddl
 		}
 		r.Use(zmiddlewares.JWTUsageMiddleware(r.config.JWTUsageMetricsConfig.RemoteCache, r.config.JWTUsageMetricsConfig.TokenDetailsTTL, r.config.JWTUsageMetricsConfig.UsageMetricTTL))
 	}
+}
+
+func (r *zrouter) Group(prefix string) Routes {
+	newRouter := &zrouter{
+		router: chi.NewRouter(),
+	}
+
+	r.router.Group(func(groupRouter chi.Router) {
+		groupRouter.Mount(prefix, newRouter.router)
+	})
+
+	return newRouter
 }
 
 func (r *zrouter) Run(addr ...string) error {
