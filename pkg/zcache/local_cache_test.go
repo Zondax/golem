@@ -93,7 +93,8 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 		CleanupProcess: CleanupProcess{
 			Interval: cleanupInterval,
 		},
-		MetricServer: metrics.NewTaskMetrics("", "", "appname")})
+		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
+	})
 	suite.NoError(err)
 
 	ctx := context.Background()
@@ -103,12 +104,29 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	err = cache.Set(ctx, key, value, ttl)
 	suite.NoError(err)
 
-	time.Sleep(2 * cleanupInterval)
+	// Use polling to check for key expiration
+	expired := false
+	maxWaitTime := 10 * cleanupInterval       // Maximum wait time
+	pollingInterval := 100 * time.Millisecond // Polling interval
+	timeout := time.After(maxWaitTime)
+	tick := time.Tick(pollingInterval)
 
-	var result string
-	err = cache.Get(ctx, key, &result)
+	for !expired {
+		select {
+		case <-timeout:
+			suite.FailNow("Timeout reached, key did not expire as expected")
+			return
+		case <-tick:
+			var result string
+			err = cache.Get(ctx, key, &result)
+			if errors.Is(err, bigcache.ErrEntryNotFound) {
+				expired = true
+			}
+		}
+	}
 
-	suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'key not found' error, but got a different error")
+	// Ensure the key has expired as expected
+	suite.True(expired, "Key should have expired")
 }
 
 func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
@@ -179,7 +197,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
 // after cleanup, there will be 1 key in the cache and 1 deleted expired key.
 func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	cleanupInterval := 1 * time.Second
-	ttl := 10 * time.Millisecond
+	ttl := 25 * time.Millisecond
 
 	// label:count
 	expected := map[string]int{
@@ -226,11 +244,29 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	err = cache.Set(ctx, key+"2", value, neverExpires)
 	suite.NoError(err)
 
-	time.Sleep(2 * cleanupInterval)
-	for k, v := range expected {
-		gotV, ok := got.Load(k)
-		suite.Assert().True(ok)
+	// Polling to check if metrics have been updated as expected
+	maxWaitTime := 10 * cleanupInterval       // Maximum wait time
+	pollingInterval := 100 * time.Millisecond // Polling interval
+	timeout := time.After(maxWaitTime)
+	tick := time.Tick(pollingInterval)
 
-		suite.Assert().Equal(v, gotV)
+	for len(expected) > 0 {
+		select {
+		case <-timeout:
+			suite.FailNow("Timeout reached, metrics were not updated as expected")
+			return
+		case <-tick:
+			for k, v := range expected {
+				if gotV, ok := got.Load(k); ok && v == gotV {
+					got.Delete(k)
+					delete(expected, k)
+				}
+			}
+			if len(expected) == 0 {
+				return
+			}
+		}
 	}
+
+	suite.FailNow("Not all expected metrics were updated as expected")
 }

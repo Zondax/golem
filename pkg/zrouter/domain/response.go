@@ -9,6 +9,7 @@ import (
 const (
 	ContentTypeHeader          = "Content-Type"
 	ContentTypeApplicationJSON = "application/json; charset=utf-8"
+	ContentTypePlainText       = "text/plain; charset=utf-8"
 	ContentTypeJSON            = "json"
 )
 

@@ -79,12 +79,15 @@ type ZRouter interface {
 }
 
 type Routes interface {
+	NewSubRouter() ZRouter
 	GET(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	POST(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	PUT(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	PATCH(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
 	DELETE(path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
+	Handle(pattern string, handler HandlerFunc)
 	Route(method, path string, handler HandlerFunc, middlewares ...zmiddlewares.Middleware) Routes
+	Mount(pattern string, subRouter Routes)
 	Group(prefix string) Routes
 	Use(middlewares ...zmiddlewares.Middleware) Routes
 	NoRoute(handler HandlerFunc)
@@ -92,6 +95,7 @@ type Routes interface {
 	SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions)
 	GetHandler() http.Handler
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	ServeFiles(routePattern string, httpHandler http.Handler)
 }
 
 type zrouter struct {
@@ -130,6 +134,16 @@ func New(metricsServer metrics.TaskMetrics, config *Config) ZRouter {
 	}
 
 	return zr
+}
+
+func (r *zrouter) NewSubRouter() ZRouter {
+	newRouter := &zrouter{
+		router:        chi.NewRouter(),
+		metricsServer: r.metricsServer,
+		config:        r.config,
+	}
+
+	return newRouter
 }
 
 func (r *zrouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
@@ -262,6 +276,23 @@ func (r *zrouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 	return r
 }
 
+func (r *zrouter) Mount(pattern string, subRouter Routes) {
+	sr, ok := subRouter.(*zrouter)
+	if !ok {
+		panic("subRouter is not of expected type *zrouter")
+	}
+
+	r.router.Mount(pattern, sr.router)
+}
+
+func (r *zrouter) Handle(pattern string, handler HandlerFunc) {
+	if handler == nil {
+		panic("handler is mandatory")
+	}
+
+	r.router.Handle(pattern, getChiHandler(handler))
+}
+
 func (r *zrouter) GetRegisteredRoutes() []RegisteredRoute {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -277,6 +308,10 @@ func (r *zrouter) GetHandler() http.Handler {
 
 func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.router.ServeHTTP(w, req)
+}
+
+func (r *zrouter) ServeFiles(routePattern string, httpHandler http.Handler) {
+	r.router.Handle(routePattern, httpHandler)
 }
 
 func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, updateInterval time.Duration, topN int) {
