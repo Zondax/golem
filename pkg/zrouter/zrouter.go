@@ -143,6 +143,14 @@ func (r *zrouter) NewSubRouter() ZRouter {
 		config:        r.config,
 	}
 
+	for _, middleware := range r.middlewares {
+		newRouter.router.Use(middleware)
+	}
+
+	for _, middleware := range r.defaultMiddlewares {
+		newRouter.router.Use(middleware)
+	}
+
 	return newRouter
 }
 
