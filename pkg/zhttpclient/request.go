@@ -33,6 +33,11 @@ type zRequest struct {
 	url     string
 }
 
+// IsError returns true if the statusCode is >= 400
+func (r *Response) IsError() bool {
+	return r.Code > 399
+}
+
 func newZRequest(client *zHTTPClient) ZRequest {
 	// only used to enforce retry policies at the request level
 	c := New(*client.config).(*zHTTPClient)
