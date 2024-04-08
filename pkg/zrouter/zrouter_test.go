@@ -121,3 +121,27 @@ func TestNewSubRouterWithMiddleware(t *testing.T) {
 	assert.Equal(t, testValue, w.Header().Get(headerDefaultMiddleware))
 	assert.Equal(t, testValue, w.Header().Get(headerCustomMiddleware))
 }
+
+func TestFormatAddress(t *testing.T) {
+	var tests = []struct {
+		name     string
+		input    []string
+		expected string
+	}{
+		{"No input", []string{}, defaultAddress},
+		{"Just port", []string{"3030"}, ":3030"},
+		{"Colon and port", []string{":3030"}, ":3030"},
+		{"IP and port", []string{"127.0.0.1:3030"}, "127.0.0.1:3030"},
+		{"Hostname and port", []string{"localhost:3030"}, "localhost:3030"},
+		{"IPv6 with port", []string{"[::1]:3030"}, "[::1]:3030"},
+		{"IPv6 without port", []string{"::1"}, "::1"},
+		{"Full address with colon", []string{"http://localhost:3030"}, "http://localhost:3030"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatAddress(tt.input...)
+			assert.Equal(t, tt.expected, result, "Formatted address should match expected value")
+		})
+	}
+}
