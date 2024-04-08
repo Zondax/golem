@@ -143,6 +143,14 @@ func (r *zrouter) NewSubRouter() ZRouter {
 		config:        r.config,
 	}
 
+	for _, middleware := range r.middlewares {
+		newRouter.router.Use(middleware)
+	}
+
+	for _, middleware := range r.defaultMiddlewares {
+		newRouter.router.Use(middleware)
+	}
+
 	return newRouter
 }
 
@@ -178,11 +186,7 @@ func (r *zrouter) Group(prefix string) Routes {
 }
 
 func (r *zrouter) Run(addr ...string) error {
-	address := defaultAddress
-	if len(addr) > 0 {
-		address = addr[0]
-	}
-
+	address := formatAddress(addr...)
 	r.config.Logger.Infof("Start server at %v", address)
 
 	if r.config.JWTUsageMetricsConfig.Enable {
@@ -312,6 +316,18 @@ func (r *zrouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (r *zrouter) ServeFiles(routePattern string, httpHandler http.Handler) {
 	r.router.Handle(routePattern, httpHandler)
+}
+
+func formatAddress(addr ...string) string {
+	if len(addr) > 0 {
+		address := addr[0]
+		// Ensure the address starts with a colon if only a port number is provided
+		if !strings.Contains(address, ":") {
+			address = ":" + address
+		}
+		return address
+	}
+	return defaultAddress
 }
 
 func LogTopJWTPathMetrics(ctx context.Context, zCache zcache.RemoteCache, updateInterval time.Duration, topN int) {
