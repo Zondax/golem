@@ -1,4 +1,3 @@
-
 # ZProfiller
 
 ## Overview
@@ -17,7 +16,7 @@
 
 To use `zprofiller` in your project, ensure you have Go installed and your workspace is set up, then add `zprofiller` to your dependencies:
 
-```bash
+```
 go get -u github.com/zondax/zprofiller
 ```
 
@@ -80,13 +79,15 @@ Use tools like `Go Tool Pprof` or `Graphviz` for deeper analysis:
 
 - **Go Tool Pprof**:
 
-  ```bash
+  ```
   go tool pprof -http=:8081 http://localhost:<port>/debug/pprof/profile
   ```
 
+  This command downloads the CPU profile data from your application and opens it in an interactive web interface on `http://localhost:8081`.
+
 - **Graphviz**:
 
-  ```bash
+  ```
   sudo apt-get install graphviz
   go tool pprof -http=:8081 --graph http://localhost:<port>/debug/pprof/profile
   ```
@@ -94,6 +95,16 @@ Use tools like `Go Tool Pprof` or `Graphviz` for deeper analysis:
 ### Online Tools and Extensions
 
 Consider using online tools or browser extensions like **pprof++** for Chrome for in-browser visualization of pprof data.
+
+## Performance Considerations
+
+When integrating profiling tools such as `pprof` into your application, it is essential to consider the potential impact on performance:
+
+- **Resource Usage**: Profiling operations can consume significant CPU and memory resources, particularly when capturing and analyzing high-frequency data such as CPU profiles.
+- **Production Use**: While `pprof` can be invaluable for diagnosing issues in production, it should be enabled selectively. Consider using environment variables or configuration files to control access to profiling endpoints.
+- **Sampling Rate**: Adjust the sampling rate of profiles according to the performance impact and the level of detail required. Lower rates can reduce overhead but may miss critical details.
+- **Security**: Exposing profiling information can introduce security risks. Ensure that profiling endpoints are protected with authentication mechanisms and are only accessible by authorized personnel.
+- **Impact Measurement**: Continuously monitor the impact of enabling profiling on your system’s response times and resource usage. Disable profiling when not needed to avoid unnecessary overhead.
 
 ## Security Considerations
 
