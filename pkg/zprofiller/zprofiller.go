@@ -1,9 +1,13 @@
 package zprofiller
 
 import (
+	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/zondax/golem/pkg/logger"
+	"github.com/zondax/golem/pkg/metrics"
 	"net/http"
-	_ "net/http/pprof"
+	"net/http/pprof"
+	pprofRuntime "runtime/pprof"
 )
 
 const (
@@ -15,6 +19,7 @@ type Config struct {
 }
 
 type zprofiller struct {
+	router *chi.Mux
 	config *Config
 }
 
@@ -22,12 +27,24 @@ type ZProfiller interface {
 	Run(addr ...string) error
 }
 
-func New(config *Config) ZProfiller {
+func New(_ metrics.TaskMetrics, config *Config) ZProfiller {
 	if config == nil {
 		config = &Config{}
 	}
 
+	router := chi.NewRouter()
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	router.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	for _, profile := range pprofRuntime.Profiles() {
+		router.Handle(fmt.Sprintf("/debug/pprof/%s", profile.Name()), pprof.Handler(profile.Name()))
+	}
+
 	zr := &zprofiller{
+		router: router,
 		config: config,
 	}
 
@@ -42,5 +59,10 @@ func (r *zprofiller) Run(addr ...string) error {
 
 	r.config.Logger.Infof("Start profiller server at %v", address)
 
-	return http.ListenAndServe(defaultAddress, nil)
+	server := &http.Server{
+		Addr:    address,
+		Handler: r.router,
+	}
+
+	return server.ListenAndServe()
 }
