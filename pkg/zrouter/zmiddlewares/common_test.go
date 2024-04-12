@@ -10,22 +10,38 @@ import (
 	"testing"
 )
 
-func TestGetRoutePattern(t *testing.T) {
+func TestGetRoutePatternIncludingSubrouters(t *testing.T) {
 	r := chi.NewRouter()
+	subRouter := chi.NewRouter()
 
-	routePattern := "/test/{param}"
-	r.Get(routePattern, func(w http.ResponseWriter, r *http.Request) {
+	// Configure a test route on the subrouter
+	subRoutePattern := "/sub/{subParam}"
+	subRouter.Get(subRoutePattern, func(w http.ResponseWriter, r *http.Request) {
 		routePattern := GetRoutePattern(r)
-
-		assert.Equal(t, routePattern, "/test/{param}", "The returned route pattern should match the one configured in the router.")
+		assert.Equal(t, "/test/sub/{subParam}", routePattern, "The returned route pattern should match the subrouter pattern.")
 	})
 
-	req := httptest.NewRequest("GET", "/test/123", nil)
-	w := httptest.NewRecorder()
+	// Mount the subrouter onto a specific path of the main router
+	r.Mount("/test", subRouter)
 
-	r.ServeHTTP(w, req)
+	// Test request for the subrouter route
+	reqSub := httptest.NewRequest("GET", "/test/sub/456", nil)
+	wSub := httptest.NewRecorder()
+	r.ServeHTTP(wSub, reqSub)
+	assert.Equal(t, http.StatusOK, wSub.Code, "The expected status code for subrouter should be 200 OK.")
 
-	assert.Equal(t, http.StatusOK, w.Code, "The expected status code should be 200 OK.")
+	// Configure a test route on the main router
+	mainRoutePattern := "/main/{mainParam}"
+	r.Get(mainRoutePattern, func(w http.ResponseWriter, r *http.Request) {
+		routePattern := GetRoutePattern(r)
+		assert.Equal(t, "/main/{mainParam}", routePattern, "The returned route pattern should match the main router pattern.")
+	})
+
+	// Test request for the main router route
+	reqMain := httptest.NewRequest("GET", "/main/123", nil)
+	wMain := httptest.NewRecorder()
+	r.ServeHTTP(wMain, reqMain)
+	assert.Equal(t, http.StatusOK, wMain.Code, "The expected status code for main router should be 200 OK.")
 }
 
 func TestGetRequestBody(t *testing.T) {

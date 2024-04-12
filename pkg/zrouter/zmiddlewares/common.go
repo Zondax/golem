@@ -21,7 +21,20 @@ func PathToRegexp(path string) *regexp.Regexp {
 }
 
 func GetRoutePattern(r *http.Request) string {
-	return chi.RouteContext(r.Context()).RoutePattern()
+	rctx := chi.RouteContext(r.Context())
+	if pattern := rctx.RoutePattern(); pattern != "" && !strings.HasSuffix(pattern, "*") {
+		return pattern
+	}
+
+	routePath := r.URL.Path
+	tctx := chi.NewRouteContext()
+	if !rctx.Routes.Match(tctx, r.Method, routePath) {
+		// No matching pattern, so just return the request path.
+		return routePath
+	}
+
+	// tctx has the updated pattern, since Match mutates it
+	return tctx.RoutePattern()
 }
 
 func getRequestBody(r *http.Request) ([]byte, error) {
