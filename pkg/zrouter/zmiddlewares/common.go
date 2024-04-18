@@ -44,6 +44,15 @@ func GetRoutePattern(r *http.Request) string {
 	return tctx.RoutePattern()
 }
 
+func GetSubRoutePattern(r *http.Request) string {
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return undefinedPath
+	}
+
+	return rctx.RoutePattern()
+}
+
 func getRequestBody(r *http.Request) ([]byte, error) {
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
