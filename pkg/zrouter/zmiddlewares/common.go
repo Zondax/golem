@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const (
+	notDefinedPath = "not_defined"
+)
+
 func PathToRegexp(path string) *regexp.Regexp {
 	escapedPath := regexp.QuoteMeta(path)
 	escapedPath = strings.ReplaceAll(escapedPath, "\\{", "{")
@@ -22,6 +26,10 @@ func PathToRegexp(path string) *regexp.Regexp {
 
 func GetRoutePattern(r *http.Request) string {
 	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return notDefinedPath
+	}
+
 	if pattern := rctx.RoutePattern(); pattern != "" && !strings.HasSuffix(pattern, "*") {
 		return pattern
 	}
@@ -29,8 +37,7 @@ func GetRoutePattern(r *http.Request) string {
 	routePath := r.URL.Path
 	tctx := chi.NewRouteContext()
 	if !rctx.Routes.Match(tctx, r.Method, routePath) {
-		// No matching pattern, so just return the request path.
-		return routePath
+		return notDefinedPath
 	}
 
 	// tctx has the updated pattern, since Match mutates it

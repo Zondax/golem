@@ -42,6 +42,13 @@ func TestGetRoutePatternIncludingSubrouters(t *testing.T) {
 	wMain := httptest.NewRecorder()
 	r.ServeHTTP(wMain, reqMain)
 	assert.Equal(t, http.StatusOK, wMain.Code, "The expected status code for main router should be 200 OK.")
+
+	// Test request for the subrouter route when the path is undefined
+	reqSub = httptest.NewRequest("GET", "/test/undefinedRoute", nil)
+	wSub = httptest.NewRecorder()
+	r.ServeHTTP(wSub, reqSub)
+	assert.Equal(t, http.StatusNotFound, wSub.Code, "The expected status code for an undefined route should be 404 Not Found.")
+	assert.Equal(t, notDefinedPath, GetRoutePattern(reqSub))
 }
 
 func TestGetRequestBody(t *testing.T) {
