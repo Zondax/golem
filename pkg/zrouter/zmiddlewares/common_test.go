@@ -48,7 +48,7 @@ func TestGetRoutePatternIncludingSubrouters(t *testing.T) {
 	wSub = httptest.NewRecorder()
 	r.ServeHTTP(wSub, reqSub)
 	assert.Equal(t, http.StatusNotFound, wSub.Code, "The expected status code for an undefined route should be 404 Not Found.")
-	assert.Equal(t, notDefinedPath, GetRoutePattern(reqSub))
+	assert.Equal(t, undefinedPath, GetRoutePattern(reqSub))
 }
 
 func TestGetRequestBody(t *testing.T) {
