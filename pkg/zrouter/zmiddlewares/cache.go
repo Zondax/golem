@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	cacheKeyPrefix       = "zrouter_cache"
-	cacheSetsMetric      = "cache_sets"
-	cacheHitsMetric      = "cache_hits"
-	cacheMissesMetric    = "cache_misses"
-	getRequestBodyMetric = "get_request_body"
+	cacheKeyPrefix            = "zrouter_cache"
+	cacheSetsMetric           = "cache_sets"
+	cacheHitsMetric           = "cache_hits"
+	cacheMissesMetric         = "cache_misses"
+	getRequestBodyErrorMetric = "get_request_body_error"
 )
 
 type CacheProcessedPath struct {
@@ -71,7 +71,7 @@ func constructCacheKey(fullURL string, r *http.Request, metricServer metrics.Tas
 	if shouldProcessRequestBody(r.Method) {
 		body, err := getRequestBody(r)
 		if err != nil {
-			if metricErr := metricServer.IncrementMetric(getRequestBodyMetric, GetRoutePattern(r)); metricErr != nil {
+			if metricErr := metricServer.IncrementMetric(getRequestBodyErrorMetric, GetSubRoutePattern(r), GetRoutePattern(r)); metricErr != nil {
 				logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing get_request_body metric: %v", metricErr)
 			}
 			return "", err
@@ -91,14 +91,14 @@ func tryServeFromCache(w http.ResponseWriter, r *http.Request, cache zcache.ZCac
 		w.Header().Set(domain.ContentTypeHeader, domain.ContentTypeApplicationJSON)
 		_, _ = w.Write(cachedResponse)
 
-		if err = metricServer.IncrementMetric(cacheHitsMetric, GetRoutePattern(r)); err != nil {
+		if err = metricServer.IncrementMetric(cacheHitsMetric, GetSubRoutePattern(r), GetRoutePattern(r)); err != nil {
 			logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_hits metric: %v", err)
 		}
 
 		return true
 	}
 
-	if err = metricServer.IncrementMetric(cacheMissesMetric, GetRoutePattern(r)); err != nil {
+	if err = metricServer.IncrementMetric(cacheMissesMetric, GetSubRoutePattern(r), GetRoutePattern(r)); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_misses metric: %v", err)
 	}
 
