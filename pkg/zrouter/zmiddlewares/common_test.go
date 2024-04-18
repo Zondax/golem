@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"bytes"
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -72,4 +73,28 @@ func TestGenerateBodyHash(t *testing.T) {
 
 	hash := generateBodyHash([]byte(testContent))
 	assert.Equal(t, expectedHash, hash)
+}
+
+func TestGetRoutePrefix(t *testing.T) {
+	tests := []struct {
+		route      string
+		wantPrefix string
+	}{
+		{"/transactions/erc20/{address}", "/transactions/*"},
+		{"transactions/adasd", "/transactions/*"},
+		{"/account/12345", "/account/*"},
+		{"/address/something/else", "/address/*"},
+		{"dynamic-config", "/dynamic-config/*"},
+		{"/search/this/item", "/search/*"},
+		{"/stats", "/stats/*"},
+		{"/tipset/0", "/tipset/*"},
+		{"/tools/convert", "/tools/*"},
+	}
+
+	for _, test := range tests {
+		got := getRoutePrefix(context.Background(), test.route)
+		if got != test.wantPrefix {
+			t.Errorf("getRoutePrefix(%q) = %q, want %q", test.route, got, test.wantPrefix)
+		}
+	}
 }

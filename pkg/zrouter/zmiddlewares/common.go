@@ -2,9 +2,11 @@ package zmiddlewares
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/go-chi/chi/v5"
+	"github.com/zondax/golem/pkg/logger"
 	"io"
 	"net/http"
 	"regexp"
@@ -50,7 +52,34 @@ func GetSubRoutePattern(r *http.Request) string {
 		return undefinedPath
 	}
 
-	return rctx.RoutePattern()
+	routePattern := rctx.RoutePattern()
+	if strings.Contains(rctx.RoutePattern(), "*") {
+		return routePattern
+	}
+
+	return getRoutePrefix(r.Context(), routePattern)
+}
+
+func getRoutePrefix(ctx context.Context, route string) string {
+	if !strings.HasPrefix(route, "/") {
+		route = "/" + route
+	}
+
+	segments := strings.Split(route, "/")
+
+	// The first segment is empty due to the leading "/", so we check the second segment
+	if len(segments) > 2 {
+		// The first real segment is at index 1, return it with "/*"
+		return "/" + segments[1] + "/*"
+	}
+
+	if len(segments) == 2 && segments[1] != "" {
+		// There's only one segment in the route, return it with "/*"
+		return "/" + segments[1] + "/*"
+	}
+
+	logger.GetLoggerFromContext(ctx).Errorf("Cannot detect the route prefix for %s", route)
+	return "/*"
 }
 
 func getRequestBody(r *http.Request) ([]byte, error) {
