@@ -116,7 +116,7 @@ func cacheResponseIfNeeded(rw *responseWriter, r *http.Request, cache zcache.ZCa
 		return
 	}
 
-	if err := metricServer.IncrementMetric(cacheSetsMetric, GetRoutePattern(r)); err != nil {
+	if err := metricServer.IncrementMetric(cacheSetsMetric, GetSubRoutePattern(r), GetRoutePattern(r)); err != nil {
 		logger.GetLoggerFromContext(r.Context()).Errorf("Error incrementing cache_sets metric: %v", err)
 	}
 }
