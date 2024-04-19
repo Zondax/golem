@@ -27,7 +27,9 @@ func TestCacheMiddleware(t *testing.T) {
 		"/cached-path": 5 * time.Minute,
 	}}
 
-	r.Use(CacheMiddleware(metrics.NewTaskMetrics("", "", "appName"), mockCache, cacheConfig))
+	ms := metrics.NewTaskMetrics("", "", "appName")
+	RegisterRequestMetrics(ms)
+	r.Use(CacheMiddleware(ms, mockCache, cacheConfig))
 
 	// Simulate a response that should be cached
 	r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {
