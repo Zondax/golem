@@ -1,6 +1,7 @@
 package zrouter
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 	"net/http"
 )
@@ -36,4 +37,9 @@ func (m *MockContext) Query(key string) string {
 func (m *MockContext) DefaultQuery(key, defaultValue string) string {
 	args := m.Called(key, defaultValue)
 	return args.String(0)
+}
+
+func (m *MockContext) Context() context.Context {
+	args := m.Called()
+	return args.Get(0).(context.Context)
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/zondax/golem/pkg/constants"
-	"go.uber.org/zap"
+	"github.com/zondax/golem/pkg/logger"
 	"os"
 )
 
@@ -69,8 +69,7 @@ func (c *CLI) init() {
 	c.GetRoot().AddCommand(versionCmd)
 
 	// TODO: We can make this optional? and more configurable if we see the need
-	// Initialize logger
-	_, _ = InitGlobalLogger(constants.DebugLevel)
+	logger.InitLogger(logger.Config{Level: constants.DebugLevel})
 	setupCloseHandler(nil)
 	// Set Configuration Defaults
 	setupDefaultConfiguration(func() {
@@ -96,11 +95,11 @@ func (c *CLI) Run() {
 		if err != nil {
 			return
 		}
-		_ = zap.S().Sync()
+		_ = logger.Sync()
 		os.Exit(1)
 	}
 }
 
 func (c *CLI) Close() {
-	_ = zap.S().Sync()
+	_ = logger.Sync()
 }

@@ -3,6 +3,7 @@ package zrouter
 import (
 	"github.com/stretchr/testify/mock"
 	"github.com/zondax/golem/pkg/zrouter/zmiddlewares"
+	"net/http"
 )
 
 type MockZRouter struct {
@@ -52,4 +53,38 @@ func (m *MockZRouter) Use(middlewares ...zmiddlewares.Middleware) Routes {
 func (m *MockZRouter) Group(prefix string) Routes {
 	args := m.Called(prefix)
 	return args.Get(0).(Routes)
+}
+
+func (m *MockZRouter) Handle(pattern string, handler HandlerFunc) {
+	m.Called(pattern, handler)
+}
+
+func (m *MockZRouter) Mount(pattern string, handler HandlerFunc) {
+	m.Called(pattern, handler)
+}
+
+func (m *MockZRouter) ServeFiles(routePattern string, httpHandler http.Handler) {
+	m.Called(routePattern, httpHandler)
+}
+
+func (m *MockZRouter) NoRoute(handler HandlerFunc) {
+	m.Called(handler)
+}
+
+func (m *MockZRouter) GetRegisteredRoutes() []RegisteredRoute {
+	args := m.Called()
+	return args.Get(0).([]RegisteredRoute)
+}
+
+func (m *MockZRouter) SetDefaultMiddlewares(loggingOptions zmiddlewares.LoggingMiddlewareOptions) {
+	m.Called(loggingOptions)
+}
+
+func (m *MockZRouter) GetHandler() http.Handler {
+	args := m.Called()
+	return args.Get(0).(http.Handler)
+}
+
+func (m *MockZRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	m.Called(w, req)
 }

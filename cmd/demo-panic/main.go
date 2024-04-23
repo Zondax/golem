@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/zondax/golem/pkg/cli"
 	"github.com/zondax/golem/pkg/constants"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/runner"
 )
@@ -10,12 +10,11 @@ import (
 func main() {
 	println("[Demo] Panic handler")
 
-	_, _ = cli.InitGlobalLogger(constants.DebugLevel)
-
+	logger.InitLogger(logger.Config{Level: constants.DebugLevel})
 	r := runner.NewRunner()
 
 	// This will panic
-	r.AddTask(metrics.NewTaskMetrics("BADURL", "8080"))
+	r.AddTask(metrics.NewTaskMetrics("BADURL", "8080", "demo"))
 
 	// Now start all the tasks
 	r.StartAndWait()

@@ -1,11 +1,12 @@
 package zdb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
 	"github.com/zondax/golem/pkg/zdb/zdbconnector"
-	"go.uber.org/zap"
 	"gorm.io/gorm/clause"
 	"time"
 
@@ -79,10 +80,10 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 			err = verifyErr
 		}
 
-		zap.S().Infof("Failed to establish database connection: %v. Attempt %d/%d. Retrying in %d seconds...", err, i+1, config.MaxAttempts, config.RetryInterval)
+		logger.GetLoggerFromContext(context.Background()).Infof("Failed to establish database connection: %v. Attempt %d/%d. Retrying in %d seconds...", err, i+1, config.MaxAttempts, config.RetryInterval)
 		time.Sleep(time.Duration(config.RetryInterval) * time.Second)
 	}
 
-	zap.S().Infof("Unable to establish database connection after %d attempts.", config.MaxAttempts)
+	logger.GetLoggerFromContext(context.Background()).Infof("Unable to establish database connection after %d attempts.", config.MaxAttempts)
 	return nil, err
 }
