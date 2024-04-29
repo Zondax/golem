@@ -632,8 +632,8 @@ github.com/ClickHouse/ch-go v0.61.5 h1:zwR8QbYI0tsMiEcze/uIMK+Tz1D3XZXLdNrlaOpeE
 github.com/ClickHouse/ch-go v0.61.5/go.mod h1:s1LJW/F/LcFs5HJnuogFMta50kKDO0lf9zzfrbl0RQg=
 github.com/ClickHouse/clickhouse-go v1.5.4/go.mod h1:EaI/sW7Azgz9UATzd5ZdZHRUhHgv5+JMS9NSr2smCJI=
 github.com/ClickHouse/clickhouse-go/v2 v2.15.0/go.mod h1:kXt1SRq0PIRa6aKZD7TnFnY9PQKmc2b13sHtOYcK6cQ=
-github.com/ClickHouse/clickhouse-go/v2 v2.23.1 h1:h+wOAjtycWeR8gNh0pKip+P4/Lyp9x9Ol5KyqaIJDeM=
-github.com/ClickHouse/clickhouse-go/v2 v2.23.1/go.mod h1:aNap51J1OM3yxQJRgM+AlP/MPkGBCL8A74uQThoQhR0=
+github.com/ClickHouse/clickhouse-go/v2 v2.23.2 h1:+DAKPMnxLS7pduQZsrJc8OhdLS2L9MfDEJ2TS+hpYDM=
+github.com/ClickHouse/clickhouse-go/v2 v2.23.2/go.mod h1:aNap51J1OM3yxQJRgM+AlP/MPkGBCL8A74uQThoQhR0=
 github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c/go.mod h1:X0CRv0ky0k6m906ixxpzmDRLvX58TFUKS2eePweuyxk=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
