@@ -1,8 +1,7 @@
 module github.com/zondax/golem
 
 go 1.21
-
-toolchain go1.22.0
+toolchain go1.22.4
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.25.0
@@ -11,7 +10,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-redsync/redsync/v4 v4.12.1
+	github.com/go-redsync/redsync/v4 v4.13.0
 	github.com/go-resty/resty/v2 v2.13.1
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.19.1
