@@ -6,7 +6,7 @@ toolchain go1.22.0
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.23.2
-	github.com/alicebob/miniredis/v2 v2.32.1
+	github.com/alicebob/miniredis/v2 v2.33.0
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
