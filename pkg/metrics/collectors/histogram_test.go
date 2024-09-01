@@ -21,7 +21,7 @@ func TestHistogramUpdate(t *testing.T) {
 
 	for _, m := range metricFamily {
 		if *m.Name == "test_histogram" {
-			assert.Equal(t, 1, int(*m.Metric[0].Histogram.SampleCount))
+			assert.Equal(t, 1, *m.Metric[0].Histogram.SampleCount)
 			assert.Equal(t, 5.0, *m.Metric[0].Histogram.SampleSum)
 		}
 	}
