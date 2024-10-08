@@ -44,3 +44,8 @@ func (b *BackOff) Linear() backoff.BackOff {
 	maxAttempts, _ := utils.IntToUInt64(b.maxAttempts)
 	return backoff.WithMaxRetries(backoff.NewConstantBackOff(b.initialDuration), maxAttempts)
 }
+
+// Do retries op if it returns an error according to the provided backoff
+func Do(op func() error, b backoff.BackOff) error {
+	return backoff.Retry(op, b)
+}
