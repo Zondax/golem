@@ -3,6 +3,7 @@ package zhttpclient
 import (
 	"context"
 	"crypto/tls"
+	"github.com/zondax/golem/pkg/utils"
 	"io"
 	"net"
 	"net/http"
@@ -76,7 +77,8 @@ func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient {
 	// default backoff function is provided by resty
 	if retryPolicy.backoffFn != nil {
 		z.client.SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
-			return retryPolicy.backoffFn(uint(r.Request.Attempt), r.RawResponse, nil), nil
+			attempt, _ := utils.IntToUInt(r.Request.Attempt)
+			return retryPolicy.backoffFn(attempt, r.RawResponse, nil), nil
 		})
 	}
 	return z
