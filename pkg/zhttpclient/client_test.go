@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/zondax/golem/pkg/utils"
 	"io"
 	"net"
 	"net/http"
@@ -369,7 +370,8 @@ func TestHTTPClient_Retry(t *testing.T) {
 					backoff.WithMultiplier(2),
 				)
 				tmp.RandomizationFactor = 0
-				b := backoff.WithMaxRetries(tmp, uint64(r.MaxAttempts))
+				maxAttempts, _ := utils.IntToUInt64(r.MaxAttempts)
+				b := backoff.WithMaxRetries(tmp, maxAttempts)
 
 				r.SetBackoff(func(_ uint, _ *http.Response, _ error) time.Duration {
 					return b.NextBackOff()

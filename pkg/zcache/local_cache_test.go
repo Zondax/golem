@@ -207,6 +207,8 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	got := sync.Map{}
 
 	tm := &metrics.MockTaskMetrics{}
+	tm.On("RegisterMetric", "local_cache_cleanup_last_run", mock.Anything, []string{}, mock.Anything).Once().
+		Return(nil)
 	tm.On("RegisterMetric", "local_cache_cleanup_errors", mock.Anything, []string{"error_type"}, mock.Anything).Once().
 		Return(nil)
 	tm.On("RegisterMetric", "local_cache_cleanup_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
@@ -214,6 +216,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
 	tm.On("RegisterMetric", "local_cache_cleanup_deleted_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
 		Return(nil)
 
+	tm.On("UpdateMetric", "local_cache_cleanup_last_run", mock.Anything, mock.Anything).Return(nil)
 	tm.On("UpdateMetric", "local_cache_cleanup_errors", mock.Anything, mock.Anything).Return(nil)
 	tm.On("UpdateMetric", "local_cache_cleanup_item_count", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		total := args.Get(1).(float64)
