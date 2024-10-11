@@ -10,7 +10,8 @@ linters:
     - gosec
     - goconst
     - gocritic
-    - megacheck
+    - staticcheck
+    - unused
     - gosimple
     - goconst
     - bodyclose
@@ -18,7 +19,7 @@ linters:
     - unparam
     - unused
     - durationcheck
-    - exportloopref
+    - copyloopvar
     - makezero
     - nilerr
     - reassign

@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/zondax/golem/pkg/logger"
 	"time"
+
+	"github.com/zondax/golem/pkg/logger"
 
 	"github.com/allegro/bigcache/v3"
 	"github.com/zondax/golem/pkg/metrics"
@@ -26,6 +27,7 @@ const (
 	cleanupItemCountMetricKey        = "local_cache_cleanup_item_count"
 	cleanupDeletedItemCountMetricKey = "local_cache_cleanup_deleted_item_count"
 	cleanupErrorMetricKey            = "local_cache_cleanup_errors"
+	cleanupLastRunMetricKey          = "local_cache_cleanup_last_run"
 )
 
 type CacheItem struct {
@@ -160,16 +162,18 @@ func (c *localCache) cleanupExpiredKeys() {
 	for iterator.SetNext() {
 		entry, err := iterator.Value()
 		if err != nil {
+			c.logger.Errorf("[cleanup] - Error iterating over cache entries: %v", err)
 			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, iterationErrorLabel); err != nil {
-				c.logger.Errorf("error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, iterationErrorLabel, err)
+				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, iterationErrorLabel, err)
 			}
 			continue
 		}
 
 		var cachedItem CacheItem
 		if err = json.Unmarshal(entry.Value(), &cachedItem); err != nil {
+			c.logger.Errorf("[cleanup] - Error unmarshalling cache item: %v", err)
 			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel); err != nil {
-				c.logger.Errorf("error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, unmarshalErrorLabel, err)
+				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, unmarshalErrorLabel, err)
 			}
 			continue
 		}
@@ -193,18 +197,23 @@ func (c *localCache) cleanupExpiredKeys() {
 
 	// update metrics
 	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
-		c.logger.Errorf("Failed to update cleanup item count metric, err: %s", err)
+		c.logger.Errorf("[cleanup] - Failed to update cleanup item count metric, err: %s", err)
 	}
 	if err := c.metricsServer.UpdateMetric(cleanupDeletedItemCountMetricKey, float64(totalDeleted), deletedItemCountLabel); err != nil {
-		c.logger.Errorf("Failed to update deletion cleanup deleted item count metric, err: %s", err)
+		c.logger.Errorf("[cleanup] - Failed to update deletion cleanup deleted item count metric, err: %s", err)
+	}
+
+	if err := c.metricsServer.UpdateMetric(cleanupLastRunMetricKey, float64(time.Now().Unix())); err != nil {
+		c.logger.Errorf("[cleanup] - Failed to update cleanup last run metric, err: %s", err)
 	}
 }
 
 func (c *localCache) deleteKeysInBatch(keys []string) (deleted int) {
 	for _, key := range keys {
 		if err := c.client.Delete(key); err != nil {
+			c.logger.Errorf("[cleanup] - Error deleting key %s: %v", key, err)
 			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel); err != nil {
-				c.logger.Errorf("error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, deletionErrorLabel, err)
+				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, deletionErrorLabel, err)
 			}
 			continue
 		}
@@ -215,14 +224,18 @@ func (c *localCache) deleteKeysInBatch(keys []string) (deleted int) {
 
 func (c *localCache) registerCleanupMetrics() {
 	if err := c.metricsServer.RegisterMetric(cleanupErrorMetricKey, "Counts different types of errors occurred during cache cleanup process", []string{errorTypeLabel}, &collectors.Counter{}); err != nil {
-		c.logger.Errorf("Failed to register cleanup metrics, err: %s", err)
+		c.logger.Errorf("[cleanup] - Failed to register cleanup metrics, err: %s", err)
 	}
 
 	if err := c.metricsServer.RegisterMetric(cleanupItemCountMetricKey, "Counts the valid items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
-		c.logger.Errorf("Failed to register cleanup metrics, err: %s", err)
+		c.logger.Errorf("[cleanup] - Failed to register cleanup metrics, err: %s", err)
 	}
 
 	if err := c.metricsServer.RegisterMetric(cleanupDeletedItemCountMetricKey, "Counts the expired (deleted) items in the cache during cache cleanup process", []string{itemCountLabel}, &collectors.Gauge{}); err != nil {
-		c.logger.Errorf("Failed to register cleanup metrics, err: %s", err)
+		c.logger.Errorf("[cleanup] - Failed to register cleanup metrics, err: %s", err)
+	}
+
+	if err := c.metricsServer.RegisterMetric(cleanupLastRunMetricKey, "Timestamp of the last cleanup process execution", []string{}, &collectors.Gauge{}); err != nil {
+		c.logger.Errorf("[cleanup] - Failed to register cleanup last run metric, err: %s", err)
 	}
 }
