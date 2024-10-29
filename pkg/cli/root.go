@@ -96,11 +96,11 @@ func (c *CLI) GetVersionString() string {
 func (c *CLI) Run() {
 	if err := c.rootCmd.Execute(); err != nil {
 		logger.Error(err.Error())
-		logger.Sync()
+		_ = logger.Sync()
 		os.Exit(1)
 	}
 }
 
 func (c *CLI) Close() {
-	logger.Sync()
+	_ = logger.Sync()
 }

@@ -21,7 +21,7 @@ func setupCloseHandler(handler CleanUpHandler) {
 			handler()
 		}
 
-		logger.Sync() // Sync logger
+		_ = logger.Sync() // Sync logger
 		// TODO: friendly closing callback
 		os.Exit(0)
 	}()
