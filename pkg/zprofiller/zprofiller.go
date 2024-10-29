@@ -13,7 +13,7 @@ import (
 
 const (
 	defaultAddress = ":8888"
-	defaultTimeOut = 240000
+	defaultTimeOut = 300
 )
 
 type Config struct {
