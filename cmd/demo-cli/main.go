@@ -13,7 +13,7 @@ func main() {
 		EnvPrefix:   "golem",
 		GitVersion:  version.GitVersion,
 		GitRevision: version.GitRevision,
-		LogLevel:    "debug"
+		LogLevel:    "debug",
 	}
 
 	// Define application level features
