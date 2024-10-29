@@ -1,10 +1,10 @@
 package logger
 
 import (
+	"strings"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"strings"
-	"sync"
 )
 
 const (
@@ -14,10 +14,10 @@ const (
 
 var (
 	defaultConfig = Config{
-		Level: "info",
+		Level:    "info",
+		Encoding: "json",
 	}
-	baseLogger *zap.Logger
-	lock       sync.RWMutex
+	defaultOptions = []zap.Option{zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel)}
 )
 
 type Config struct {
@@ -34,49 +34,35 @@ type Logger struct {
 	logger *zap.Logger
 }
 
-var stringToLevel = map[string]zapcore.Level{
-	"debug": zapcore.DebugLevel,
-	"info":  zapcore.InfoLevel,
-	"warn":  zapcore.WarnLevel,
-	"error": zapcore.ErrorLevel,
-	"fatal": zapcore.FatalLevel,
-	"panic": zapcore.PanicLevel,
+func init() {
+	InitLogger(defaultConfig)
 }
 
 func InitLogger(config Config) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	baseLogger = configureAndBuildLogger(config)
+	baseLogger := configureAndBuildLogger(config)
 	zap.ReplaceGlobals(baseLogger)
 }
 
 func NewLogger(opts ...interface{}) *Logger {
-	lock.Lock()
-	defer lock.Unlock()
-
 	var config *Config
-	var fields []Field
+	var zapFields []zap.Field
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case Config:
 			config = &opt
 		case Field:
-			fields = append(fields, opt)
+			zapFields = append(zapFields, zap.Any(opt.Key, opt.Value))
 		}
 	}
 
-	logger := configureAndBuildLogger(defaultConfig)
-	if baseLogger != nil {
-		logger = baseLogger.WithOptions(zap.AddCallerSkip(1))
-	}
+	logger := L().WithOptions(defaultOptions...)
 
 	if config != nil {
 		logger = configureAndBuildLogger(*config)
 	}
 
-	logger = logger.With(toZapFields(fields)...)
+	logger = logger.With(zapFields...)
 	return &Logger{logger: logger}
 }
 
@@ -91,35 +77,16 @@ func configureAndBuildLogger(config Config) *zap.Logger {
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	cfg.EncoderConfig = encoderConfig
 
-	level := zapcore.InfoLevel
-	if l, ok := stringToLevel[strings.ToLower(config.Level)]; ok {
-		level = l
+	level, err := zapcore.ParseLevel(strings.ToLower(config.Level))
+	if err != nil {
+		level = zapcore.InfoLevel
 	}
 	cfg.Level = zap.NewAtomicLevelAt(level)
 
-	logger, err := cfg.Build(zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger, err := cfg.Build(defaultOptions...)
 	if err != nil {
 		panic(initializingLogError + err.Error())
 	}
 
 	return logger
-}
-
-func Sync() error {
-	lock.Lock()
-	defer lock.Unlock()
-
-	return baseLogger.Sync()
-}
-
-func DefaultConfig() Config {
-	return defaultConfig
-}
-
-func toZapFields(fields []Field) []zap.Field {
-	var zapFields []zap.Field
-	for _, field := range fields {
-		zapFields = append(zapFields, zap.Any(field.Key, field.Value))
-	}
-	return zapFields
 }
