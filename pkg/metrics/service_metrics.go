@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"context"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/net"
 	"github.com/zondax/golem/pkg/logger"
@@ -46,34 +45,34 @@ func UpdateSystemMetrics(metricsServer TaskMetrics, updateInterval time.Duration
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 		if err := metricsServer.UpdateMetric(memoryUsageBytes, float64(m.Alloc)); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", memoryUsageBytes, err)
+			logger.Errorf("error updating %v: %v", memoryUsageBytes, err)
 		}
 
 		cpuPercents, _ := cpu.Percent(time.Second, false)
 		if err := metricsServer.UpdateMetric(cpuUsagePercent, cpuPercents[0]); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", cpuUsagePercent, err)
+			logger.Errorf("error updating %v: %v", cpuUsagePercent, err)
 		}
 
 		netIO, _ := net.IOCounters(false)
 		if err := metricsServer.UpdateMetric(bytesSent, float64(netIO[0].BytesSent)); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", bytesSent, err)
+			logger.Errorf("error updating %v: %v", bytesSent, err)
 		}
 		if err := metricsServer.UpdateMetric(bytesReceived, float64(netIO[0].BytesRecv)); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", bytesReceived, err)
+			logger.Errorf("error updating %v: %v", bytesReceived, err)
 		}
 
 		conns, _ := net.Connections("all")
 		if err := metricsServer.UpdateMetric(activeConnections, float64(len(conns))); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", activeConnections, err)
+			logger.Errorf("error updating %v: %v", activeConnections, err)
 		}
 
 		if err := metricsServer.UpdateMetric(goroutinesCount, float64(runtime.NumGoroutine())); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", goroutinesCount, err)
+			logger.Errorf("error updating %v: %v", goroutinesCount, err)
 		}
 
 		threads := pprof.Lookup("threadcreate").Count()
 		if err := metricsServer.UpdateMetric(threadsCount, float64(threads)); err != nil {
-			logger.GetLoggerFromContext(context.Background()).Errorf("error updating %v: %v", threadsCount, err)
+			logger.Errorf("error updating %v: %v", threadsCount, err)
 		}
 
 		time.Sleep(updateInterval)
