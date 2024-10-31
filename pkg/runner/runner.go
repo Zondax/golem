@@ -62,7 +62,6 @@ func (tr *TaskRunner) sendError(te TaskError) {
 	case tr.errCh <- te:
 		break
 	default:
-		// FIXME: log error at least? Nobody is registered to receive errors
 		logger.Errorf("No receiver ready! error not sent! %s\n", te.Err.Error())
 	}
 }
