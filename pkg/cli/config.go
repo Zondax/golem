@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"github.com/zondax/golem/pkg/logger"
 	"strings"
@@ -15,7 +14,7 @@ func SetupConfiguration(c *cobra.Command) {
 	c.PersistentFlags().StringVarP(&configFileFlag, "config", "c", "", "The path to the config file to use.")
 	err := viper.BindPFlag("config", c.PersistentFlags().Lookup("config"))
 	if err != nil {
-		logger.GetLoggerFromContext(context.Background()).Fatalf("unable to bind config flag: %+v", err)
+		logger.Fatalf("unable to bind config flag: %+v", err)
 	}
 
 	viper.SetConfigName("config") // config file name without extension
@@ -50,12 +49,12 @@ func LoadConfig[T Config]() (*T, error) {
 	configFileOverride := viper.GetString("config")
 	if configFileOverride != "" {
 		viper.SetConfigFile(configFileOverride)
-		logger.GetLoggerFromContext(context.Background()).Infof("Using config file: %s", viper.ConfigFileUsed())
+		logger.Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		logger.GetLoggerFromContext(context.Background()).Fatalf("%+v", err)
+		logger.Fatalf("%+v", err)
 	}
 
 	// adds all default+configFile values in viper to struct

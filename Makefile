@@ -47,6 +47,12 @@ check-modtidy:
 	go mod tidy
 	git diff --exit-code -- go.mod go.sum
 
+fmt:
+	gofmt -l -s -w .
+
+vet:
+	go vet ./...
+
 lint:
 	golangci-lint --version
 	golangci-lint run

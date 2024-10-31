@@ -2,11 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/zondax/golem/pkg/constants"
 	"github.com/zondax/golem/pkg/logger"
-	"os"
 )
 
 type AppSettings struct {
@@ -16,6 +16,7 @@ type AppSettings struct {
 	EnvPrefix   string // environment variable MYAPP_.....
 	GitVersion  string
 	GitRevision string
+	LogLevel    string // Global log level for the app
 }
 
 type CLI struct {
@@ -50,9 +51,9 @@ func (c *CLI) init() {
 		Run: func(cmd *cobra.Command, args []string) {
 			err := c.checkConfig()
 			if err != nil {
-				fmt.Printf("%s\n", c.checkConfig().Error())
+				logger.Errorf("%s\n", c.checkConfig().Error())
 			} else {
-				fmt.Printf("Configuration OK\n")
+				logger.Infof("Configuration OK\n")
 			}
 		},
 	}
@@ -61,15 +62,18 @@ func (c *CLI) init() {
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("%s\n", c.GetVersionString())
+			logger.Infof("%s\n", c.GetVersionString())
 		},
 	}
 
 	c.GetRoot().AddCommand(checkCmd)
 	c.GetRoot().AddCommand(versionCmd)
 
-	// TODO: We can make this optional? and more configurable if we see the need
-	logger.InitLogger(logger.Config{Level: constants.DebugLevel})
+	// If app log level is defined it is configued, logger.defaultConfig by default
+	if len(c.app.LogLevel) > 0 {
+		logger.InitLogger(logger.Config{Level: c.app.LogLevel})
+	}
+
 	setupCloseHandler(nil)
 	// Set Configuration Defaults
 	setupDefaultConfiguration(func() {
@@ -91,10 +95,7 @@ func (c *CLI) GetVersionString() string {
 
 func (c *CLI) Run() {
 	if err := c.rootCmd.Execute(); err != nil {
-		_, err := fmt.Fprintln(os.Stderr, err)
-		if err != nil {
-			return
-		}
+		logger.Error(err.Error())
 		_ = logger.Sync()
 		os.Exit(1)
 	}

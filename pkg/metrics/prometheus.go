@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,7 +63,7 @@ func (t *taskMetrics) AppName() string {
 func (t *taskMetrics) Start() error {
 	router := chi.NewRouter()
 
-	logger.GetLoggerFromContext(context.Background()).Infof("Metrics (prometheus) starting: %v", t.port)
+	logger.Infof("Metrics (prometheus) starting: %v", t.port)
 
 	// Prometheus path
 	router.Get(t.path, promhttp.Handler().(http.HandlerFunc))
@@ -77,12 +76,13 @@ func (t *taskMetrics) Start() error {
 
 	err := server.ListenAndServe()
 	if err != nil {
-		logger.GetLoggerFromContext(context.Background()).Errorf("Prometheus server error: %v", err)
-	} else {
-		logger.GetLoggerFromContext(context.Background()).Errorf("Prometheus server serving at port %s", t.port)
+		logger.Errorf("Prometheus server error: %v", err)
+		return err
 	}
 
-	return err
+	logger.Infof("Prometheus server serving at port %s", t.port)
+
+	return nil
 }
 
 func (t *taskMetrics) Stop() error {

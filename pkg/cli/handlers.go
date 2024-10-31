@@ -1,11 +1,11 @@
 package cli
 
 import (
-	"context"
-	"github.com/zondax/golem/pkg/logger"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/zondax/golem/pkg/logger"
 )
 
 var defaultConfigHandler DefaultConfigHandler
@@ -15,7 +15,7 @@ func setupCloseHandler(handler CleanUpHandler) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		logger.GetLoggerFromContext(context.Background()).Warn("\r- Ctrl+C pressed in Terminal")
+		logger.Warn("\r- Ctrl+C pressed in Terminal")
 
 		if handler != nil {
 			handler()

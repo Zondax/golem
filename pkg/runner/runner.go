@@ -3,11 +3,13 @@ package runner
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/zondax/golem/pkg/logger"
+	"golang.org/x/sync/errgroup"
 )
 
 type Task interface {
@@ -60,8 +62,7 @@ func (tr *TaskRunner) sendError(te TaskError) {
 	case tr.errCh <- te:
 		break
 	default:
-		// FIXME: log error at least? Nobody is registered to receive errors
-		fmt.Printf("No receiver ready! error not sent! %s\n", te.Err.Error())
+		logger.Errorf("No receiver ready! error not sent! %s\n", te.Err.Error())
 	}
 }
 
@@ -105,7 +106,7 @@ func (tr *TaskRunner) StartAndWait() {
 	tr.Start()
 	err := tr.Wait()
 	if err != nil {
-		fmt.Println("Error waiting for tasks to finish: ", err)
+		logger.Errorf("Waiting for tasks to finish: ", err)
 	}
 }
 
