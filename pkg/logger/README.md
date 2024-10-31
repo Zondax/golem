@@ -15,7 +15,7 @@ A structured logging package built on top of [uber-go/zap](https://github.com/ub
 ## Installation
 
 ```go
-go get -u go.uber.org/zap
+go get -u github.com/zondax/golem/pkg/logger
 ```
 
 ## Quick Start
@@ -160,15 +160,3 @@ logger.Errorf("Failed to connect to %s: %v", host, err)
 ## Thread Safety
 
 The logger is completely thread-safe and can be used concurrently from multiple goroutines.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
