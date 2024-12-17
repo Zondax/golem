@@ -20,6 +20,8 @@ const (
 
 type ZDatabase interface {
 	Find(out interface{}, where ...interface{}) ZDatabase
+	First(dest interface{}, where ...interface{}) ZDatabase
+	FirstOrCreate(dest interface{}, where ...interface{}) ZDatabase
 	Scan(dest interface{}) ZDatabase
 	Rows() (*sql.Rows, error)
 	ScanRows(rows *sql.Rows, result interface{}) error
@@ -35,6 +37,8 @@ type ZDatabase interface {
 	Count(count *int64) ZDatabase
 	Group(name string) ZDatabase
 	Create(value interface{}) ZDatabase
+	Updates(value interface{}) ZDatabase
+	Update(column string, value interface{}) ZDatabase
 	Delete(value interface{}, where ...interface{}) ZDatabase
 	Raw(sql string, values ...interface{}) ZDatabase
 	Exec(sql string, values ...interface{}) ZDatabase
