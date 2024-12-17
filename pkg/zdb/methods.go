@@ -22,6 +22,14 @@ func (z *zDatabase) Find(out interface{}, where ...interface{}) ZDatabase {
 	return wrap(z.db.Find(out, where...))
 }
 
+func (z *zDatabase) First(dest interface{}, where ...interface{}) ZDatabase {
+	return wrap(z.db.First(dest, where...))
+}
+
+func (z *zDatabase) FirstOrCreate(dest interface{}, where ...interface{}) ZDatabase {
+	return wrap(z.db.FirstOrCreate(dest, where...))
+}
+
 func (z *zDatabase) Scan(dest interface{}) ZDatabase {
 	return wrap(z.db.Scan(dest))
 }
@@ -40,6 +48,14 @@ func (z *zDatabase) ScanRows(rows *sql.Rows, result interface{}) error {
 
 func (z *zDatabase) Create(value interface{}) ZDatabase {
 	return wrap(z.db.Create(value))
+}
+
+func (z *zDatabase) Updates(value interface{}) ZDatabase {
+	return wrap(z.db.Updates(value))
+}
+
+func (z *zDatabase) Update(column string, value interface{}) ZDatabase {
+	return wrap(z.db.Update(column, value))
 }
 
 func (z *zDatabase) Delete(value interface{}, where ...interface{}) ZDatabase {

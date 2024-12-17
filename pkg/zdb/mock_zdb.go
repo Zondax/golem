@@ -22,6 +22,16 @@ func (m *MockZDatabase) Find(dest interface{}, conds ...interface{}) ZDatabase {
 	return args.Get(0).(ZDatabase)
 }
 
+func (m *MockZDatabase) First(dest interface{}, conds ...interface{}) ZDatabase {
+	args := m.Called(append([]interface{}{dest}, conds...)...)
+	return args.Get(0).(ZDatabase)
+}
+
+func (m *MockZDatabase) FirstOrCreate(dest interface{}, conds ...interface{}) ZDatabase {
+	args := m.Called(append([]interface{}{dest}, conds...)...)
+	return args.Get(0).(ZDatabase)
+}
+
 func (m *MockZDatabase) Scan(dest interface{}) ZDatabase {
 	m.Called(dest)
 	return m
@@ -39,6 +49,16 @@ func (m *MockZDatabase) ScanRows(rows *sql.Rows, result interface{}) error {
 
 func (m *MockZDatabase) Create(value interface{}) ZDatabase {
 	m.Called(value)
+	return m
+}
+
+func (m *MockZDatabase) Updates(value interface{}) ZDatabase {
+	m.Called(value)
+	return m
+}
+
+func (m *MockZDatabase) Update(column string, value interface{}) ZDatabase {
+	m.Called(column, value)
 	return m
 }
 
