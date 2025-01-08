@@ -75,7 +75,7 @@ func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
 	if c.HardMaxCacheSizeInMB <= 0 {
 		c.HardMaxCacheSizeInMB = hardMaxCacheSizeDefault
 	}
-	config.HardMaxCacheSize = c.HardMaxCacheSizeInMB * 1024 * 1024
+	config.HardMaxCacheSize = c.HardMaxCacheSizeInMB
 
 	return config
 }
