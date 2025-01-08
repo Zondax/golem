@@ -1,12 +1,15 @@
 package zcache
 
 import (
+	"time"
+
 	"github.com/allegro/bigcache/v3"
 	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
-	"time"
 )
+
+const hardMaxCacheSizeDefault = 512
 
 type StatsMetrics struct {
 	Enable         bool
@@ -40,11 +43,12 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	Prefix         string
-	Logger         *logger.Logger
-	MetricServer   metrics.TaskMetrics
-	StatsMetrics   StatsMetrics
-	CleanupProcess CleanupProcess
+	Prefix               string
+	Logger               *logger.Logger
+	MetricServer         metrics.TaskMetrics
+	StatsMetrics         StatsMetrics
+	CleanupProcess       CleanupProcess
+	HardMaxCacheSizeInMB int
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -66,8 +70,14 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
-	evictionTime := time.Duration(100*365*24) * time.Hour // 100 years
-	return bigcache.DefaultConfig(evictionTime)
+	config := bigcache.DefaultConfig(time.Duration(100*365*24) * time.Hour)
+
+	if c.HardMaxCacheSizeInMB <= 0 {
+		c.HardMaxCacheSizeInMB = hardMaxCacheSizeDefault
+	}
+	config.HardMaxCacheSize = c.HardMaxCacheSizeInMB * 1024 * 1024
+
+	return config
 }
 
 type CombinedConfig struct {
