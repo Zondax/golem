@@ -65,10 +65,12 @@ It's important to note that MetricServer is a mandatory configuration field in L
 func main() {
     config := zcache.LocalConfig{
         // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
-        CleanupProcess:  CleanupProcess{
+        CleanupProcess: CleanupProcess{
             Interval: 30 * time.Minute,
         },
-        MetricServer:    metricServer,
+        // HardMaxCacheSizeInMB is optional; if omitted, a default value of 512MB will be used
+        HardMaxCacheSizeInMB: 1024, // Set maximum cache size to 1GB
+        MetricServer: metricServer, 
     }
     
     cache, err := zcache.NewLocalCache(&config)
@@ -182,3 +184,29 @@ func TestSomeFunctionWithMutex(t *testing.T) {
 }
 ```
 
+## Best Practices
+
+### Memory Management
+When using the local cache (BigCache), it's important to understand how memory is managed:
+
+1. **Memory Growth**: BigCache allocates memory in chunks and doesn't immediately release memory when items are deleted or overwritten
+2. **Memory Limit**: The `HardMaxCacheSizeInMB` parameter (default: 512MB) is crucial to prevent unbounded memory growth
+3. **Actual Memory Usage**: The total memory consumption will be slightly higher than `HardMaxCacheSizeInMB` due to:
+   - Shard overhead (approximately 2×(64+32)×n bits per entry)
+   - Internal map structures
+   - Go runtime overhead
+
+
+### Memory Monitoring
+Monitor cache memory usage through the provided metrics:
+- `local_cache_cleanup_item_count`
+- `local_cache_cleanup_deleted_item_count`
+- `local_cache_cleanup_errors`
+- `local_cache_cleanup_last_run`
+
+### Notes
+- BigCache has a known memory leak issue (see [issue #369](https://github.com/allegro/bigcache/issues/369)). To mitigate this:
+  1. Always set `HardMaxCacheSizeInMB` (default: 512MB)
+  2. Monitor memory usage through provided metrics
+  3. Consider using shorter cleanup intervals in high-traffic scenarios
+  4. For critical production environments, consider using the Combined Cache with Redis as primary storage
