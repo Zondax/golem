@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-redsync/redsync/v4 v4.13.0
-	github.com/go-resty/resty/v2 v2.16.2
+	github.com/go-resty/resty/v2 v2.16.3
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/shirou/gopsutil v3.21.11+incompatible
@@ -86,7 +86,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6 // indirect
-	golang.org/x/net v0.30.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
