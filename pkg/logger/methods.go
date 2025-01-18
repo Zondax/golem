@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+
 	"go.uber.org/zap"
 )
 
@@ -77,7 +78,9 @@ func (l *Logger) IsDebugEnabled() bool {
 func GetLoggerFromContext(ctx context.Context) *Logger {
 	logger, ok := ctx.Value(loggerKey).(*Logger)
 	if !ok {
-		return NewLogger()
+		newLogger := NewLogger()
+		newLogger.Warnf("Logger had to be created without configuration because the context was missing")
+		return newLogger
 	}
 	return logger
 }
