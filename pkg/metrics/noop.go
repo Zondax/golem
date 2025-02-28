@@ -6,7 +6,7 @@ var _ TaskMetrics = NoopMetrics{}
 type NoopMetrics struct{}
 
 // NewNoopMetrics creates and returns a new instance that implements the TaskMetrics interface without generating any metrics or telemetry.
-func NewNoopMetrics() *NoopMetrics {
+func NewNoopMetrics() TaskMetrics {
 	return &NoopMetrics{}
 }
 
