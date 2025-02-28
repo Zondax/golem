@@ -66,6 +66,17 @@ func NewLogger(opts ...interface{}) *Logger {
 	return &Logger{logger: logger}
 }
 
+func NewNopLogger() *Logger {
+	return &Logger{logger: zap.NewNop()}
+}
+
+func NewDevelopmentLogger(fields ...Field) *Logger {
+	config := defaultConfig
+	config.Encoding = ConsoleEncode
+
+	return NewLogger(config, fields)
+}
+
 func configureAndBuildLogger(config Config) *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	if strings.EqualFold(config.Encoding, ConsoleEncode) {
