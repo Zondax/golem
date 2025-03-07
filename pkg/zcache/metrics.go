@@ -1,11 +1,12 @@
 package zcache
 
 import (
+	"time"
+
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
@@ -70,11 +71,9 @@ func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache
 			stats := cache.GetStats()
 
 			if stats.Local != nil {
-				_ = metricsServer.UpdateMetric(localCacheHitsMetricName, float64(stats.Local.Hits))
-				_ = metricsServer.UpdateMetric(localCacheMissesMetricName, float64(stats.Local.Misses))
-				_ = metricsServer.UpdateMetric(localCacheDelHitsMetricName, float64(stats.Local.DelHits))
-				_ = metricsServer.UpdateMetric(localCacheDelMissesMetricName, float64(stats.Local.DelMisses))
-				_ = metricsServer.UpdateMetric(localCacheCollisionsMetricName, float64(stats.Local.Collisions))
+				_ = metricsServer.UpdateMetric(localCacheHitsMetricName, float64(stats.Local.Hits()))
+				_ = metricsServer.UpdateMetric(localCacheMissesMetricName, float64(stats.Local.Misses()))
+				//_ = metricsServer.UpdateMetric(localCacheCollisionsMetricName, float64(stats.Local.Collisions()))
 			}
 
 			if stats.Remote != nil {

@@ -2,10 +2,11 @@ package zcache
 
 import (
 	"context"
-	"github.com/allegro/bigcache/v3"
+	"time"
+
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
-	"time"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 )
 
 type ZCacheStats struct {
-	Local  *bigcache.Stats
+	Local  *ristretto.Metrics
 	Remote *RedisStats
 }
 
@@ -32,8 +33,13 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		panic("metric server is mandatory")
 	}
 
-	bigCacheConfig := config.ToBigCacheConfig()
-	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	// Set up the Ristretto cache
+	cacheConfig := &ristretto.Config{
+		MaxCost:     1 << 30, // Example size, adjust as needed
+		NumCounters: 1000000, // Adjust as needed
+		BufferItems: 64,
+	}
+	client, err := ristretto.NewCache(cacheConfig)
 	if err != nil {
 		return nil, err
 	}

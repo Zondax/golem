@@ -6,9 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/zondax/golem/pkg/logger"
-
-	"github.com/allegro/bigcache/v3"
 	"github.com/zondax/golem/pkg/metrics"
 	"github.com/zondax/golem/pkg/metrics/collectors"
 )
@@ -59,11 +58,14 @@ type LocalCache interface {
 }
 
 type localCache struct {
-	client         *bigcache.BigCache
+	client         *ristretto.Cache
 	prefix         string
 	logger         *logger.Logger
 	metricsServer  metrics.TaskMetrics
 	cleanupProcess CleanupProcess
+	deleteHits     uint64
+	deleteMisses   uint64
+	keysList       []string
 }
 
 func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -83,11 +85,12 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 	}
 
 	c.logger.Debugf("set key on local cache with TTL, key: [%s], value: [%v], ttl: [%v]", realKey, value, ttl)
-	if err = c.client.Set(realKey, itemBytes); err != nil {
-		c.logger.Errorf("error setting new key on local cache, fullKey: [%s], err: [%s]", realKey, err)
+	if !c.client.SetWithTTL(realKey, itemBytes, 1, ttl) {
+		c.logger.Errorf("error setting new key on local cache, fullKey: [%s]", realKey)
+		return errors.New("failed to set key with TTL")
 	}
 
-	return err
+	return nil
 }
 
 func (c *localCache) Get(_ context.Context, key string, data interface{}) error {
@@ -95,26 +98,21 @@ func (c *localCache) Get(_ context.Context, key string, data interface{}) error 
 
 	c.logger.Debugf("get key on local cache, fullKey: [%s]", realKey)
 
-	val, err := c.client.Get(realKey)
-	if err != nil {
-		if c.IsNotFoundError(err) {
-			c.logger.Debugf("key not found on local cache, fullKey: [%s]", realKey)
-		} else {
-			c.logger.Errorf("error getting key on local cache, fullKey: [%s], err: [%s]", realKey, err)
-		}
-
-		return err
+	val, found := c.client.Get(realKey)
+	if !found {
+		c.logger.Debugf("key not found on local cache, fullKey: [%s]", realKey)
+		return errors.New("cache miss")
 	}
 
 	var cachedItem CacheItem
-	if err := json.Unmarshal(val, &cachedItem); err != nil {
+	if err := json.Unmarshal(val.([]byte), &cachedItem); err != nil {
 		c.logger.Errorf("error unmarshalling cache item, key: [%s], err: [%s]", realKey, err)
 		return err
 	}
 
 	if cachedItem.IsExpired() {
 		c.logger.Debugf("key expired on local cache, key: [%s]", realKey)
-		_ = c.client.Delete(realKey)
+		c.client.Del(realKey)
 		return errors.New("cache item expired")
 	}
 
@@ -126,18 +124,19 @@ func (c *localCache) Delete(_ context.Context, key string) error {
 	realKey := getKeyWithPrefix(c.prefix, key)
 	c.logger.Debugf("delete key on local cache, fullKey: [%s]", realKey)
 
-	return c.client.Delete(realKey)
+	c.client.Del(realKey)
+	return nil
 }
 
 func (c *localCache) GetStats() ZCacheStats {
-	stats := c.client.Stats()
+	stats := c.client.Metrics
 	c.logger.Debugf("local cache stats: [%v]", stats)
 
-	return ZCacheStats{Local: &stats}
+	return ZCacheStats{Local: stats}
 }
 
 func (c *localCache) IsNotFoundError(err error) bool {
-	return errors.Is(err, bigcache.ErrEntryNotFound)
+	return err != nil && err.Error() == "cache miss"
 }
 
 func (c *localCache) setupAndMonitorMetrics(updateInterval time.Duration) {
@@ -154,25 +153,26 @@ func (c *localCache) startCleanupProcess() {
 }
 
 func (c *localCache) cleanupExpiredKeys() {
-	iterator := c.client.Iterator()
 	var keysToDelete []string
 	var totalDeleted int
 	var totalResident int
+	// Ristretto handles eviction automatically, but you can clean expired keys manually if required
+	//Ristretto doesn't have an Iterator() method,Instead of using iterator.Entry(), using c.client.Get(key) to retrieve each value from the cache.
 
-	for iterator.SetNext() {
-		entry, err := iterator.Value()
-		if err != nil {
-			c.logger.Errorf("[cleanup] - Error iterating over cache entries: %v", err)
-			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, iterationErrorLabel); err != nil {
-				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, iterationErrorLabel, err)
-			}
+	for _, key := range c.keysList {
+		entry, found := c.client.Get(key)
+		if !found {
 			continue
 		}
-
+		data, ok := entry.([]byte)
+		if !ok {
+			c.logger.Errorf("[cleanup] - Invalid cache entry type for key: %s", key)
+			continue
+		}
 		var cachedItem CacheItem
-		if err = json.Unmarshal(entry.Value(), &cachedItem); err != nil {
+		if err := json.Unmarshal(data, &cachedItem); err != nil {
 			c.logger.Errorf("[cleanup] - Error unmarshalling cache item: %v", err)
-			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel); err != nil {
+			if err := c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel); err != nil {
 				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, unmarshalErrorLabel, err)
 			}
 			continue
@@ -181,7 +181,7 @@ func (c *localCache) cleanupExpiredKeys() {
 		totalResident++
 
 		if cachedItem.IsExpired() {
-			keysToDelete = append(keysToDelete, entry.Key())
+			keysToDelete = append(keysToDelete, key)
 		}
 
 		if len(keysToDelete) >= c.cleanupProcess.BatchSize {
@@ -195,7 +195,6 @@ func (c *localCache) cleanupExpiredKeys() {
 		totalDeleted += c.deleteKeysInBatch(keysToDelete)
 	}
 
-	// update metrics
 	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
 		c.logger.Errorf("[cleanup] - Failed to update cleanup item count metric, err: %s", err)
 	}
@@ -209,16 +208,22 @@ func (c *localCache) cleanupExpiredKeys() {
 }
 
 func (c *localCache) deleteKeysInBatch(keys []string) (deleted int) {
+	// Ristretto's Del method simply deletes the key and doesn't return a value.
 	for _, key := range keys {
-		if err := c.client.Delete(key); err != nil {
-			c.logger.Errorf("[cleanup] - Error deleting key %s: %v", key, err)
-			if err = c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, deletionErrorLabel); err != nil {
-				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, deletionErrorLabel, err)
-			}
-			continue
+		_, found := c.client.Get(key)
+		if found {
+			c.client.Del(key)
+			c.deleteHits++
+		} else {
+			c.deleteMisses++
 		}
+
 		deleted++
 	}
+
+	_ = c.metricsServer.UpdateMetric(localCacheDelHitsMetricName, float64(c.deleteHits))
+	_ = c.metricsServer.UpdateMetric(localCacheDelMissesMetricName, float64(c.deleteMisses))
+
 	return
 }
 
