@@ -58,7 +58,7 @@ lint:
 	golangci-lint run
 
 test:
-	go test -v -race ./...
+	go test -v -race -count=1 ./...
 
 earthly:
 	earthly +all
