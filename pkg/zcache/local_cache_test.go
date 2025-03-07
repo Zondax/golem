@@ -67,7 +67,46 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 	suite.Error(err)
 }
 
-// Ristretto handles the expiration process internally, so we don’t need to track expiration manually
+func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     100,
+		BufferItems: 64,
+	})
+	suite.NoError(err)
+
+	cache.SetWithTTL("key", testValue, 1, 1*time.Second)
+	cache.Wait()
+	value, found := cache.Get("key")
+	suite.True(found, "CacheItem should be available immediately after creation")
+	suite.Equal(testValue, value, "CacheItem value should match")
+
+	time.Sleep(2 * time.Second)
+
+	_, found = cache.Get("key")
+	suite.False(found, "CacheItem should be expired after its TTL")
+}
+func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     100,
+		BufferItems: 64,
+	})
+	suite.NoError(err)
+	cache.SetWithTTL("key", testValue, 1, 0)
+
+	cache.Wait()
+
+	value, found := cache.Get("key")
+	suite.True(found, "CacheItem should be available immediately after creation")
+	suite.Equal(testValue, value, "CacheItem value should match")
+
+	time.Sleep(2 * time.Second)
+
+	value, found = cache.Get("key")
+	suite.True(found, "CacheItem should not expire with TTL of 0")
+	suite.Equal(testValue, value, "CacheItem value should still match")
+}
 
 func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	cleanupInterval := 1 * time.Second
