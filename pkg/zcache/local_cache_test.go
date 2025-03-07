@@ -2,14 +2,13 @@ package zcache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/allegro/bigcache/v3"
+	"github.com/dgraph-io/ristretto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/zondax/golem/pkg/metrics"
@@ -69,19 +68,44 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
-	item := NewCacheItem([]byte(testValue), 1*time.Second)
-	suite.False(item.IsExpired(), "CacheItem should not be expired right after creation")
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     100,
+		BufferItems: 64,
+	})
+	suite.NoError(err)
+
+	cache.SetWithTTL("key", testValue, 1, 1*time.Second)
+	cache.Wait()
+	value, found := cache.Get("key")
+	suite.True(found, "CacheItem should be available immediately after creation")
+	suite.Equal(testValue, value, "CacheItem value should match")
+
 	time.Sleep(2 * time.Second)
 
-	suite.True(item.IsExpired(), "CacheItem should be expired after its TTL")
+	_, found = cache.Get("key")
+	suite.False(found, "CacheItem should be expired after its TTL")
 }
-
 func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
-	item := NewCacheItem([]byte(testValue), -1)
-	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire")
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     100,
+		BufferItems: 64,
+	})
+	suite.NoError(err)
+	cache.SetWithTTL("key", testValue, 1, 0)
+
+	cache.Wait()
+
+	value, found := cache.Get("key")
+	suite.True(found, "CacheItem should be available immediately after creation")
+	suite.Equal(testValue, value, "CacheItem value should match")
+
 	time.Sleep(2 * time.Second)
 
-	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire, even after some time")
+	value, found = cache.Get("key")
+	suite.True(found, "CacheItem should not expire with TTL of 0")
+	suite.Equal(testValue, value, "CacheItem value should still match")
 }
 
 func (suite *LocalCacheTestSuite) TestCleanupProcess() {
@@ -119,7 +143,12 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 		case <-tick:
 			var result string
 			err = cache.Get(ctx, key, &result)
-			if errors.Is(err, bigcache.ErrEntryNotFound) {
+			if err != nil {
+				suite.FailNow("Unexpected error during cache get: %v", err)
+				return
+			}
+			// If result is an empty string, this indicates a cache miss
+			if result == "" {
 				expired = true
 			}
 		}
@@ -134,34 +163,29 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	testBatchSize := 5
 	itemExpiration := 200 * time.Millisecond
 
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix: "testBatch",
-		CleanupProcess: CleanupProcess{
-			Interval:  cleanupInterval,
-			BatchSize: testBatchSize,
-		},
-		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     100,
+		BufferItems: 64,
 	})
 	suite.NoError(err)
 
-	ctx := context.Background()
-
+	// Set items in the cache
 	for i := 0; i < testBatchSize*2; i++ {
 		key := fmt.Sprintf("key%d", i)
 		value := fmt.Sprintf("value%d", i)
-		err = cache.Set(ctx, key, value, itemExpiration)
-		suite.NoError(err)
+		ok := cache.Set(key, value, itemExpiration.Milliseconds())
+		suite.True(ok, "Failed to set key %s in cache", key)
 	}
 
+	// Wait for expiration + cleanup interval + additional time
 	time.Sleep(itemExpiration + cleanupInterval + 2*time.Second)
 
+	// Check that the keys have expired
 	for i := 0; i < testBatchSize*2; i++ {
 		key := fmt.Sprintf("key%d", i)
-		var result string
-		err = cache.Get(ctx, key, &result)
-
-		suite.NotNil(err, "Expected an error for key: %s, but got nil", key)
-		suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'ErrEntryNotFound' for key: %s, but got a different error or no error: %s", key, err.Error())
+		_, found := cache.Get(key)
+		suite.False(found, "Expected key %s to be expired, but it was found", key)
 	}
 }
 
