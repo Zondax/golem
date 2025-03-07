@@ -7,7 +7,6 @@ toolchain go1.23.0
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/alicebob/miniredis/v2 v2.34.0
-	github.com/dgraph-io/ristretto/v2 v2.1.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-redis/redis/v8 v8.11.5
