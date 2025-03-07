@@ -170,14 +170,12 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	})
 	suite.NoError(err)
 
-	context.Background()
-
 	// Set items in the cache
 	for i := 0; i < testBatchSize*2; i++ {
 		key := fmt.Sprintf("key%d", i)
 		value := fmt.Sprintf("value%d", i)
-		ok := cache.Set(key, value, int64(itemExpiration.Milliseconds())) // Set TTL in milliseconds
-		suite.True(ok, "Failed to set key %s in cache", key)              // Ensure Set returned true
+		ok := cache.Set(key, value, itemExpiration.Milliseconds())
+		suite.True(ok, "Failed to set key %s in cache", key)
 	}
 
 	// Wait for expiration + cleanup interval + additional time

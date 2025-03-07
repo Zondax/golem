@@ -157,7 +157,7 @@ func (c *localCache) cleanupExpiredKeys() {
 	var totalDeleted int
 	var totalResident int
 	// Ristretto handles eviction automatically, but you can clean expired keys manually if required
-	//Ristretto doesn't have an Iterator() method,Instead of using iterator.Entry(), using c.client.Get(key) to retrieve each value from the cache.
+	// Ristretto doesn't have an Iterator() method,Instead of using iterator.Entry(), using c.client.Get(key) to retrieve each value from the cache.
 
 	for _, key := range c.keysList {
 		entry, found := c.client.Get(key)

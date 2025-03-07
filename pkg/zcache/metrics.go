@@ -73,7 +73,7 @@ func setupAndMonitorCacheMetrics(metricsServer metrics.TaskMetrics, cache ZCache
 			if stats.Local != nil {
 				_ = metricsServer.UpdateMetric(localCacheHitsMetricName, float64(stats.Local.Hits()))
 				_ = metricsServer.UpdateMetric(localCacheMissesMetricName, float64(stats.Local.Misses()))
-				//_ = metricsServer.UpdateMetric(localCacheCollisionsMetricName, float64(stats.Local.Collisions()))
+				// _ = metricsServer.UpdateMetric(localCacheCollisionsMetricName, float64(stats.Local.Collisions()))
 			}
 
 			if stats.Remote != nil {
