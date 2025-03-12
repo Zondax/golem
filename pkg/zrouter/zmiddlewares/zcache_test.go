@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,117 +20,126 @@ import (
 	"github.com/zondax/golem/pkg/zcache"
 )
 
+func setupTest() (context.Context, metrics.TaskMetrics) {
+	// Initialize logger
+	logger.InitLogger(logger.Config{
+		Level: "debug",
+	})
+	ctx := context.Background()
+
+	// Initialize metrics
+	ms := metrics.NewTaskMetrics("test", "test", "test_app")
+	return ctx, ms
+}
+
 func TestCacheMiddleware(t *testing.T) {
+	ctx, ms := setupTest()
+
 	expectedCacheKey := "zrouter_cache.GET:/api/cached-path"
 	r := chi.NewRouter()
-
 	mockCache := new(zcache.MockZCache)
-	logger.InitLogger(logger.Config{})
-	cacheConfig := domain.CacheConfig{Paths: map[string]time.Duration{
-		"/cached-path": 5 * time.Minute,
-	}}
 
-	ms := metrics.NewTaskMetrics("", "", "appName")
+	cacheConfig := domain.CacheConfig{
+		Paths: map[string]time.Duration{
+			"/api/cached-path": 5 * time.Minute,
+		},
+	}
+
 	errs := RegisterRequestMetrics(ms)
 	assert.Empty(t, errs)
+
 	r.Use(CacheMiddleware(ms, mockCache, cacheConfig))
-	r.Mount("/api", chi.NewRouter().Group(func(r chi.Router) {
-		r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("Test!"))
-		})
-	}))
-	// Simulate a response that should be cached
-	r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("Test!"))
-	})
 
 	cachedResponseBody := []byte("Test!")
 
-	// Setup the mock for the first request (cache miss)
-	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Once()
-	mockCache.On("Set", mock.Anything, expectedCacheKey, cachedResponseBody, 5*time.Minute).Return(nil).Once()
-
-	// Setup the mock for the second request (cache hit)
-	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Run(func(args mock.Arguments) {
-		arg := args.Get(2).(*[]byte) // Get the argument where the cached response will be stored
-		*arg = cachedResponseBody    // Simulate the cached response
+	// Setup route handler
+	r.Get("/api/cached-path", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(cachedResponseBody)
 	})
 
-	// Perform the first request: the response should be generated and cached
+	// Setup mock expectations
+	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Once()
+	mockCache.On("Set", mock.Anything, expectedCacheKey, cachedResponseBody, 5*time.Minute).Return(nil).Once()
+	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Run(func(args mock.Arguments) {
+		arg := args.Get(2).(*[]byte)
+		*arg = cachedResponseBody
+	}).Once()
+
+	// First request (cache miss)
 	req := httptest.NewRequest("GET", "/api/cached-path", nil)
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "Test!", rec.Body.String())
+	assert.Equal(t, string(cachedResponseBody), rec.Body.String())
 
-	// Verify that the cache mock was invoked correctly
-	mockCache.AssertExpectations(t)
-
-	// Perform the second request: the response should be served from the cache
+	// Second request (cache hit)
 	rec2 := httptest.NewRecorder()
 	r.ServeHTTP(rec2, req)
 
 	assert.Equal(t, http.StatusOK, rec2.Code)
-	assert.Equal(t, "Test!", rec2.Body.String())
+	assert.Equal(t, string(cachedResponseBody), rec2.Body.String())
 
-	// Verify that the cache mock was invoked correctly for the second request
 	mockCache.AssertExpectations(t)
 }
 
 func TestCacheMiddlewareWithRequestBody(t *testing.T) {
+	ctx, ms := setupTest()
+
 	r := chi.NewRouter()
 	mockCache := new(zcache.MockZCache)
-	mockMetrics := metrics.NewTaskMetrics("", "", "appname")
-	errs := RegisterRequestMetrics(mockMetrics)
-	assert.Empty(t, errs)
-	logger.InitLogger(logger.Config{})
+
 	cacheConfig := domain.CacheConfig{
 		Paths: map[string]time.Duration{
-			"/post-path": 5 * time.Minute,
+			"/api/post-path": 5 * time.Minute,
 		},
 	}
 
-	r.Use(CacheMiddleware(mockMetrics, mockCache, cacheConfig))
-	r.Mount("/api", chi.NewRouter().Group(func(r chi.Router) {
-		r.Post("/post-path", func(w http.ResponseWriter, r *http.Request) {
-			bodyBytes, err := io.ReadAll(r.Body)
-			if err != nil {
-				t.Fatalf("Failed to read request body: %v", err)
-			}
-			response := "Received: " + string(bodyBytes)
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(response))
-		})
-	}))
+	r.Use(CacheMiddleware(ms, mockCache, cacheConfig))
+
+	// Setup route handler
+	r.Post("/api/post-path", func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed to read request body: %v", err)
+		}
+		response := "Received: " + string(bodyBytes)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	})
 
 	requestBody := []byte("Request Body Content")
 	hashedBody := generateBodyHash(requestBody)
-	expectedCacheKey := fmt.Sprintf("zrouter_cache.POST:/post-path.body:%s", hashedBody)
+	expectedCacheKey := fmt.Sprintf("zrouter_cache.POST:/api/post-path.body:%s", hashedBody)
+	expectedResponse := []byte("Received: Request Body Content")
 
+	// Setup mock expectations
 	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Once()
-	mockCache.On("Set", mock.Anything, expectedCacheKey, mock.Anything, 5*time.Minute).Return(nil).Once()
-
+	mockCache.On("Set", mock.Anything, expectedCacheKey, expectedResponse, 5*time.Minute).Return(nil).Once()
 	mockCache.On("Get", mock.Anything, expectedCacheKey, mock.AnythingOfType("*[]uint8")).Return(nil).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*[]byte)
-		*arg = []byte("Received: Request Body Content")
+		*arg = expectedResponse
 	}).Once()
 
-	req := httptest.NewRequest("POST", "/post-path", bytes.NewBuffer(requestBody))
-
+	// First request (cache miss)
+	req := httptest.NewRequest("POST", "/api/post-path", bytes.NewBuffer(requestBody))
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "Received: Request Body Content", rec.Body.String())
-	req.Body = io.NopCloser(bytes.NewBuffer(requestBody))
+	assert.Equal(t, string(expectedResponse), rec.Body.String())
 
+	// Second request (cache hit)
+	req = httptest.NewRequest("POST", "/api/post-path", bytes.NewBuffer(requestBody))
+	req = req.WithContext(ctx)
 	rec2 := httptest.NewRecorder()
 	r.ServeHTTP(rec2, req)
 
 	assert.Equal(t, http.StatusOK, rec2.Code)
-	assert.Equal(t, "Received: Request Body Content", rec2.Body.String())
+	assert.Equal(t, string(expectedResponse), rec2.Body.String())
+
 	mockCache.AssertExpectations(t)
 }
