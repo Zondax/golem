@@ -2,13 +2,13 @@ package zmiddlewares
 
 import (
 	"bytes"
-	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetRoutePatternIncludingSubrouters(t *testing.T) {
@@ -92,7 +92,7 @@ func TestGetRoutePrefix(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		got := getRoutePrefix(context.Background(), test.route)
+		got := getRoutePrefix(test.route)
 		if got != test.wantPrefix {
 			t.Errorf("getRoutePrefix(%q) = %q, want %q", test.route, got, test.wantPrefix)
 		}
