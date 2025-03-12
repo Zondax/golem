@@ -5,12 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/go-chi/chi/v5"
-	"github.com/zondax/golem/pkg/logger"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -49,10 +49,13 @@ func GetRoutePattern(r *http.Request) string {
 func GetSubRoutePattern(r *http.Request) string {
 	rctx := chi.RouteContext(r.Context())
 	if rctx == nil {
-		return undefinedPath
+		return "/"
 	}
 
 	routePattern := rctx.RoutePattern()
+	if routePattern == "" {
+		return "/"
+	}
 	if strings.Contains(rctx.RoutePattern(), "*") {
 		return routePattern
 	}
@@ -61,11 +64,17 @@ func GetSubRoutePattern(r *http.Request) string {
 }
 
 func getRoutePrefix(ctx context.Context, route string) string {
+	if route == "" || route == "/" {
+		return "/"
+	}
 	if !strings.HasPrefix(route, "/") {
 		route = "/" + route
 	}
 
 	segments := strings.Split(route, "/")
+	if len(segments) <= 1 {
+		return "/"
+	}
 
 	// The first segment is empty due to the leading "/", so we check the second segment
 	if len(segments) > 2 {
@@ -77,8 +86,6 @@ func getRoutePrefix(ctx context.Context, route string) string {
 		// There's only one segment in the route, return it with "/*"
 		return "/" + segments[1] + "/*"
 	}
-
-	logger.GetLoggerFromContext(ctx).Errorf("Cannot detect the route prefix for %s", route)
 	return "/*"
 }
 
