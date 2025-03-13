@@ -1,6 +1,9 @@
 module github.com/zondax/golem
 
-go 1.22.0
+go 1.23.0
+
+toolchain go1.23.6
+
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.33.0
 	github.com/alicebob/miniredis/v2 v2.34.0
