@@ -2,6 +2,7 @@ package zmiddlewares
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -59,10 +60,10 @@ func GetSubRoutePattern(r *http.Request) string {
 		return routePattern
 	}
 
-	return getRoutePrefix(routePattern)
+	return getRoutePrefix(r.Context(), routePattern)
 }
 
-func getRoutePrefix(route string) string {
+func getRoutePrefix(ctx context.Context, route string) string {
 	if route == "" || route == "/" {
 		return "/"
 	}
