@@ -3,15 +3,14 @@ package zmiddlewares
 import (
 	"bytes"
 	"fmt"
+	"github.com/zondax/golem/pkg/logger"
+	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/zrouter/domain"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/zondax/golem/pkg/logger"
-	"github.com/zondax/golem/pkg/metrics"
-	"github.com/zondax/golem/pkg/zrouter/domain"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -20,9 +19,8 @@ import (
 )
 
 func TestCacheMiddleware(t *testing.T) {
-	expectedCacheKey := "zrouter_cache.GET:/api/cached-path"
+	expectedCacheKey := "zrouter_cache.GET:/cached-path"
 	r := chi.NewRouter()
-
 	mockCache := new(zcache.MockZCache)
 	logger.InitLogger(logger.Config{})
 	cacheConfig := domain.CacheConfig{Paths: map[string]time.Duration{
@@ -30,15 +28,9 @@ func TestCacheMiddleware(t *testing.T) {
 	}}
 
 	ms := metrics.NewTaskMetrics("", "", "appName")
-	errs := RegisterRequestMetrics(ms)
-	assert.Empty(t, errs)
+	RegisterRequestMetrics(ms)
 	r.Use(CacheMiddleware(ms, mockCache, cacheConfig))
-	r.Mount("/api", chi.NewRouter().Group(func(r chi.Router) {
-		r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("Test!"))
-		})
-	}))
+
 	// Simulate a response that should be cached
 	r.Get("/cached-path", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -58,7 +50,7 @@ func TestCacheMiddleware(t *testing.T) {
 	})
 
 	// Perform the first request: the response should be generated and cached
-	req := httptest.NewRequest("GET", "/api/cached-path", nil)
+	req := httptest.NewRequest("GET", "/cached-path", nil)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -83,8 +75,6 @@ func TestCacheMiddlewareWithRequestBody(t *testing.T) {
 	r := chi.NewRouter()
 	mockCache := new(zcache.MockZCache)
 	mockMetrics := metrics.NewTaskMetrics("", "", "appname")
-	errs := RegisterRequestMetrics(mockMetrics)
-	assert.Empty(t, errs)
 	logger.InitLogger(logger.Config{})
 	cacheConfig := domain.CacheConfig{
 		Paths: map[string]time.Duration{
@@ -93,17 +83,16 @@ func TestCacheMiddlewareWithRequestBody(t *testing.T) {
 	}
 
 	r.Use(CacheMiddleware(mockMetrics, mockCache, cacheConfig))
-	r.Mount("/api", chi.NewRouter().Group(func(r chi.Router) {
-		r.Post("/post-path", func(w http.ResponseWriter, r *http.Request) {
-			bodyBytes, err := io.ReadAll(r.Body)
-			if err != nil {
-				t.Fatalf("Failed to read request body: %v", err)
-			}
-			response := "Received: " + string(bodyBytes)
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(response))
-		})
-	}))
+
+	r.Post("/post-path", func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed to read request body: %v", err)
+		}
+		response := "Received: " + string(bodyBytes)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	})
 
 	requestBody := []byte("Request Body Content")
 	hashedBody := generateBodyHash(requestBody)
