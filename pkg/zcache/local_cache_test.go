@@ -48,7 +48,7 @@ func (suite *LocalCacheTestSuite) SetupTest() {
 func (suite *LocalCacheTestSuite) TestDelete() {
 	ctx := context.Background()
 	key := "testKey"
-	value := "testValue"
+	value := testValue // Use constant here
 
 	// Ensure cache is initialized before testing
 	suite.NoError(suite.cache.Set(ctx, key, value, 0))
@@ -90,7 +90,7 @@ func TestCacheSetAndGet(t *testing.T) {
 		logger: logr,
 	}
 	key := "testKey"
-	value := "testValue"
+	value := testValue // Use constant here
 
 	t.Log("Setting key-value pair in cache")
 	err = lc.Set(context.Background(), key, value, 60*time.Second)
@@ -113,32 +113,6 @@ func TestCacheSetAndGet(t *testing.T) {
 
 	t.Log("Test completed successfully")
 }
-
-// func (suite *LocalCacheTestSuite) TestDelete() {
-// 	ctx := context.Background()
-// 	key := "testKey"
-// 	value := testValue
-
-// 	// Ensure cache is initialized before testing
-// 	if suite.cache == nil {
-// 		suite.T().Fatal("Cache is not initialized")
-// 	}
-
-// 	// Set a key-value pair in the cache
-// 	suite.NoError(suite.cache.Set(ctx, key, value, 0))
-
-// 	// Delete the cache item
-// 	err := suite.cache.Delete(ctx, key)
-// 	suite.NoError(err)
-
-// 	// Attempt to get the value after deletion
-// 	var result string
-// 	err = suite.cache.Get(ctx, key, &result)
-
-// 	// Check for cache miss error
-// 	suite.Error(err, "Expected error when getting deleted key")
-// 	suite.Empty(result, "Expected empty result as key is deleted")
-// }
 
 func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
 	cache, err := ristretto.NewCache(&ristretto.Config{
@@ -182,6 +156,7 @@ func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
 	suite.True(found, "CacheItem should not expire with TTL of 0")
 	suite.Equal(testValue, value, "CacheItem value should still match")
 }
+
 func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	cleanupInterval := 100 * time.Millisecond
 	ttl := 300 * time.Millisecond // Use a reasonable TTL
@@ -196,8 +171,8 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 	suite.NoError(err)
 
 	ctx := context.Background()
-	key := "expireKey"
-	value := "testValue"
+	key := expireKey   // Use constant here
+	value := testValue // Use constant here
 
 	// Set the cache key with TTL
 	err = cache.Set(ctx, key, value, ttl)
@@ -225,6 +200,7 @@ func (suite *LocalCacheTestSuite) TestCleanupProcess() {
 			"Expected either 'cache miss' or 'cache item expired'")
 	}
 }
+
 func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
 	cleanupInterval := 100 * time.Millisecond
 	testBatchSize := 5
@@ -282,7 +258,6 @@ func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
 	// Wait for cleanup interval (though the item should not expire)
 	time.Sleep(2 * cleanupInterval)
 
-	// Try to retrieve the non-expiring item
 	var result string
 	err = cache.Get(ctx, key, &result)
 
