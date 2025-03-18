@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -55,6 +56,7 @@ func (item CacheItem) IsExpired() bool {
 
 type LocalCache interface {
 	ZCache
+	startCleanupProcess()
 }
 
 type localCache struct {
@@ -77,6 +79,7 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 		return err
 	}
 
+	// Create a cache item with the correct TTL
 	cacheItem := NewCacheItem(b, ttl)
 	itemBytes, err := json.Marshal(cacheItem)
 	if err != nil {
@@ -85,14 +88,27 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 	}
 
 	c.logger.Debugf("set key on local cache with TTL, key: [%s], value: [%v], ttl: [%v]", realKey, value, ttl)
-	if !c.client.SetWithTTL(realKey, itemBytes, 1, ttl) {
+
+	// Convert time.Duration to seconds for Ristretto
+	var ttlSeconds time.Duration
+	if ttl == neverExpires {
+		ttlSeconds = 0 // 0 means never expire in Ristretto
+	} else {
+		ttlSeconds = ttl // Use the provided TTL
+	}
+
+	if !c.client.SetWithTTL(realKey, itemBytes, 1, ttlSeconds) {
 		c.logger.Errorf("error setting new key on local cache, fullKey: [%s]", realKey)
 		return errors.New("failed to set key with TTL")
 	}
 
+	// Ensure the item is added to the cache
+	c.client.Wait()
+
 	return nil
 }
 
+// Get retrieves a value from the cache
 func (c *localCache) Get(_ context.Context, key string, data interface{}) error {
 	realKey := getKeyWithPrefix(c.prefix, key)
 
@@ -120,11 +136,13 @@ func (c *localCache) Get(_ context.Context, key string, data interface{}) error 
 	return json.Unmarshal(cachedItem.Value, data)
 }
 
-func (c *localCache) Delete(_ context.Context, key string) error {
+// Delete removes a value from the cache
+func (c *localCache) Delete(ctx context.Context, key string) error {
+	if c.client == nil {
+		return fmt.Errorf("cache client is not initialized")
+	}
 	realKey := getKeyWithPrefix(c.prefix, key)
-	c.logger.Debugf("delete key on local cache, fullKey: [%s]", realKey)
-
-	c.client.Del(realKey)
+	c.client.Del(realKey) // Del might be accessing a nil client
 	return nil
 }
 
@@ -144,10 +162,19 @@ func (c *localCache) setupAndMonitorMetrics(updateInterval time.Duration) {
 }
 
 func (c *localCache) startCleanupProcess() {
+	if c.cleanupProcess.Interval == 0 {
+		c.logger.Warn("Cleanup process interval is 0, skipping cleanup.")
+		return
+	}
+
 	ticker := time.NewTicker(c.cleanupProcess.Interval)
 	go func() {
 		for range ticker.C {
-			c.cleanupExpiredKeys()
+			if c.client != nil {
+				c.cleanupExpiredKeys()
+			} else {
+				c.logger.Warn("Cache client is nil, cleanup aborted.")
+			}
 		}
 	}()
 }
@@ -156,20 +183,23 @@ func (c *localCache) cleanupExpiredKeys() {
 	var keysToDelete []string
 	var totalDeleted int
 	var totalResident int
-	// Ristretto handles eviction automatically, but you can clean expired keys manually if required
-	// Ristretto doesn't have an Iterator() method,Instead of using iterator.Entry(), using c.client.Get(key) to retrieve each value from the cache.
 
+	// Iterate over each key in the keysList
 	for _, key := range c.keysList {
 		entry, found := c.client.Get(key)
 		if !found {
 			continue
 		}
+
+		// Retrieve the cached item as []byte
 		data, ok := entry.([]byte)
 		if !ok {
 			c.logger.Errorf("[cleanup] - Invalid cache entry type for key: %s", key)
 			continue
 		}
+
 		var cachedItem CacheItem
+		// Unmarshal the data into a CacheItem
 		if err := json.Unmarshal(data, &cachedItem); err != nil {
 			c.logger.Errorf("[cleanup] - Error unmarshalling cache item: %v", err)
 			if err := c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel); err != nil {
@@ -180,21 +210,31 @@ func (c *localCache) cleanupExpiredKeys() {
 
 		totalResident++
 
+		// Skip items with TTL == -1 (neverExpires) during cleanup
+		if cachedItem.ExpiresAt == neverExpires {
+			c.logger.Debugf("[cleanup] - Skipping permanent item (TTL=-1) with key: %s", key)
+			continue
+		}
+
+		// If the item is expired, add it to the list of keys to delete
 		if cachedItem.IsExpired() {
 			keysToDelete = append(keysToDelete, key)
 		}
 
+		// If we reach the batch size, delete keys in batch and wait for throttle time
 		if len(keysToDelete) >= c.cleanupProcess.BatchSize {
 			totalDeleted += c.deleteKeysInBatch(keysToDelete)
-			keysToDelete = keysToDelete[:0]
-			time.Sleep(c.cleanupProcess.ThrottleTime)
+			keysToDelete = keysToDelete[:0]           // Reset the list of keys to delete
+			time.Sleep(c.cleanupProcess.ThrottleTime) // Throttle the cleanup process
 		}
 	}
 
+	// Delete any remaining keys after the loop completes
 	if len(keysToDelete) > 0 {
 		totalDeleted += c.deleteKeysInBatch(keysToDelete)
 	}
 
+	// Update metrics for resident and deleted items
 	if err := c.metricsServer.UpdateMetric(cleanupItemCountMetricKey, float64(totalResident-totalDeleted), residentItemCountLabel); err != nil {
 		c.logger.Errorf("[cleanup] - Failed to update cleanup item count metric, err: %s", err)
 	}
@@ -202,6 +242,7 @@ func (c *localCache) cleanupExpiredKeys() {
 		c.logger.Errorf("[cleanup] - Failed to update deletion cleanup deleted item count metric, err: %s", err)
 	}
 
+	// Update the cleanup last run time metric
 	if err := c.metricsServer.UpdateMetric(cleanupLastRunMetricKey, float64(time.Now().Unix())); err != nil {
 		c.logger.Errorf("[cleanup] - Failed to update cleanup last run metric, err: %s", err)
 	}
