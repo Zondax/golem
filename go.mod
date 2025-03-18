@@ -2,6 +2,9 @@ module github.com/zondax/golem
 
 go 1.23.0
 
+
+toolchain go1.23.6
+
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.33.0
 	github.com/alicebob/miniredis/v2 v2.34.0
@@ -17,7 +20,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 	golang.org/x/time v0.10.0
 	gorm.io/driver/clickhouse v0.6.1
 	gorm.io/driver/postgres v1.5.11
