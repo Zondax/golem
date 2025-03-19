@@ -15,6 +15,7 @@ import (
 
 const (
 	neverExpires = -1
+	cacheCost    = 1
 
 	errorTypeLabel         = "error_type"
 	itemCountLabel         = "item_count"
@@ -97,7 +98,7 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 		ttlSeconds = ttl // Use the provided TTL
 	}
 
-	if !c.client.SetWithTTL(realKey, itemBytes, 1, ttlSeconds) {
+	if !c.client.SetWithTTL(realKey, itemBytes, cacheCost, ttlSeconds) {
 		c.logger.Errorf("error setting new key on local cache, fullKey: [%s]", realKey)
 		return errors.New("failed to set key with TTL")
 	}
