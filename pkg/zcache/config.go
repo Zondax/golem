@@ -43,7 +43,10 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
+	MaxCost          int64
 	Prefix           string
+	NumCounters      int
+	BufferItems      int
 	Logger           *logger.Logger
 	MetricServer     metrics.TaskMetrics
 	StatsMetrics     StatsMetrics
@@ -70,15 +73,18 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToRistrettoConfig() *ristretto.Config {
+	// If CacheSizeInBytes is not provided, set to a default value
 	if c.CacheSizeInBytes <= 0 {
-		c.CacheSizeInBytes = hardMaxCacheSizeDefault
+		c.CacheSizeInBytes = hardMaxCacheSizeDefault // Define this constant as per your requirements
 	}
 
-	return &ristretto.Config{
-		NumCounters: c.CacheSizeInBytes / 64, // Number of counters (approx 10x the capacity)
-		MaxCost:     c.CacheSizeInBytes,      // Max cost in bytes
-		BufferItems: 64,                      // Number of keys per Get buffer
+	// Default Ristretto config similar to BigCache
+	cacheConfig := &ristretto.Config{
+		NumCounters: c.CacheSizeInBytes / 64, // Approximate number of counters (64 bytes per counter)
+		MaxCost:     c.CacheSizeInBytes,      // Max cost in bytes (cache size limit)
+		BufferItems: 64,                      // Number of items per Get buffer
 	}
+	return cacheConfig
 }
 
 type CombinedConfig struct {
