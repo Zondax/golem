@@ -105,7 +105,7 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 
 	// Ensure the item is added to the cache
 	c.client.Wait()
-	//c.keysList = append(c.keysList, realKey)
+	// c.keysList = append(c.keysList, realKey)
 
 	return nil
 }
