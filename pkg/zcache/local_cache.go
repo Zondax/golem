@@ -105,6 +105,7 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 
 	// Ensure the item is added to the cache
 	c.client.Wait()
+	c.keysList = append(c.keysList, realKey)
 
 	return nil
 }
@@ -143,6 +144,7 @@ func (c *localCache) Delete(ctx context.Context, key string) error {
 		return fmt.Errorf("cache client is not initialized")
 	}
 	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("delete key on local cache, fullKey: [%s]", realKey)
 	c.client.Del(realKey) // Del might be accessing a nil client
 	return nil
 }
