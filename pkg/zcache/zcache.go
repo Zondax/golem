@@ -2,10 +2,12 @@ package zcache
 
 import (
 	"context"
-	"github.com/allegro/bigcache/v3"
+	"fmt"
+	"time"
+
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
-	"time"
 )
 
 const (
@@ -15,7 +17,7 @@ const (
 )
 
 type ZCacheStats struct {
-	Local  *bigcache.Stats
+	Local  *ristretto.Metrics
 	Remote *RedisStats
 }
 
@@ -28,33 +30,38 @@ type ZCache interface {
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
+	// Ensure MetricServer is provided
 	if config.MetricServer == nil {
-		panic("metric server is mandatory")
+		return nil, fmt.Errorf("metric server is mandatory")
 	}
 
-	bigCacheConfig := config.ToBigCacheConfig()
-	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	// Use ToRistrettoConfig to create the Ristretto config
+	ristrettoConfig := config.ToRistrettoConfig()
+
+	// Set up the Ristretto cache using the config from ToRistrettoConfig
+	client, err := ristretto.NewCache(ristrettoConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize Ristretto cache: %w", err)
 	}
 
+	// Use the provided logger or fallback to a default one
 	loggerInst := config.Logger
 	if loggerInst == nil {
 		loggerInst = logger.NewLogger()
 	}
 
+	// Set default cleanup process parameters if not provided
 	if config.CleanupProcess.Interval <= 0 {
 		config.CleanupProcess.Interval = defaultCleanupInterval
 	}
-
 	if config.CleanupProcess.BatchSize <= 0 {
 		config.CleanupProcess.BatchSize = defaultBatchSize
 	}
-
 	if config.CleanupProcess.ThrottleTime <= 0 {
 		config.CleanupProcess.ThrottleTime = defaultThrottleTime
 	}
 
+	// Create the local cache instance
 	lc := &localCache{
 		client:         client,
 		prefix:         config.Prefix,
@@ -63,14 +70,12 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		metricsServer:  config.MetricServer,
 	}
 
+	// Register cleanup metrics and start the cleanup process
 	lc.registerCleanupMetrics()
 	lc.startCleanupProcess()
 
+	// Setup and monitor cache metrics if enabled
 	if config.StatsMetrics.Enable {
-		if config.MetricServer == nil {
-			panic("metric server is mandatory")
-		}
-
 		lc.setupAndMonitorMetrics(config.StatsMetrics.UpdateInterval)
 	}
 
