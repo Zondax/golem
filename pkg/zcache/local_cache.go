@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -68,7 +69,7 @@ type localCache struct {
 	cleanupProcess CleanupProcess
 	deleteHits     uint64
 	deleteMisses   uint64
-	keysList       []string
+	keyListMap     sync.Map
 }
 
 func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -105,7 +106,7 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 
 	// Ensure the item is added to the cache
 	c.client.Wait()
-	// c.keysList = append(c.keysList, realKey)
+	c.keyListMap.Store(realKey, struct{}{})
 
 	return nil
 }
@@ -188,17 +189,18 @@ func (c *localCache) cleanupExpiredKeys() {
 	var totalResident int
 
 	// Iterate over each key in the keysList
-	for _, key := range c.keysList {
+	c.keyListMap.Range(func(key, _ interface{}) bool {
 		entry, found := c.client.Get(key)
 		if !found {
-			continue
+			c.keyListMap.Delete(key)
+			return true
 		}
 
 		// Retrieve the cached item as []byte
 		data, ok := entry.([]byte)
 		if !ok {
 			c.logger.Errorf("[cleanup] - Invalid cache entry type for key: %s", key)
-			continue
+			return true
 		}
 
 		var cachedItem CacheItem
@@ -208,7 +210,7 @@ func (c *localCache) cleanupExpiredKeys() {
 			if err := c.metricsServer.UpdateMetric(cleanupErrorMetricKey, 1, unmarshalErrorLabel); err != nil {
 				c.logger.Errorf("[cleanup] - error updating %s metric with label %s: [%s]", cleanupErrorMetricKey, unmarshalErrorLabel, err)
 			}
-			continue
+			return true
 		}
 
 		totalResident++
@@ -216,12 +218,12 @@ func (c *localCache) cleanupExpiredKeys() {
 		// Skip items with TTL == -1 (neverExpires) during cleanup
 		if cachedItem.ExpiresAt == neverExpires {
 			c.logger.Debugf("[cleanup] - Skipping permanent item (TTL=-1) with key: %s", key)
-			continue
+			return true
 		}
 
 		// If the item is expired, add it to the list of keys to delete
 		if cachedItem.IsExpired() {
-			keysToDelete = append(keysToDelete, key)
+			keysToDelete = append(keysToDelete, key.(string))
 		}
 
 		// If we reach the batch size, delete keys in batch and wait for throttle time
@@ -230,7 +232,9 @@ func (c *localCache) cleanupExpiredKeys() {
 			keysToDelete = keysToDelete[:0]           // Reset the list of keys to delete
 			time.Sleep(c.cleanupProcess.ThrottleTime) // Throttle the cleanup process
 		}
-	}
+
+		return true
+	})
 
 	// Delete any remaining keys after the loop completes
 	if len(keysToDelete) > 0 {

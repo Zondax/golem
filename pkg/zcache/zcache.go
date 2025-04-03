@@ -3,6 +3,7 @@ package zcache
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -68,6 +69,7 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		logger:         loggerInst,
 		cleanupProcess: config.CleanupProcess,
 		metricsServer:  config.MetricServer,
+		keyListMap:     sync.Map{},
 	}
 
 	// Register cleanup metrics and start the cleanup process
