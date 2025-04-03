@@ -92,14 +92,14 @@ func (c *localCache) Set(_ context.Context, key string, value interface{}, ttl t
 	c.logger.Debugf("set key on local cache with TTL, key: [%s], value: [%v], ttl: [%v]", realKey, value, ttl)
 
 	// Convert time.Duration to seconds for Ristretto
-	var ttlSeconds time.Duration
+	var ttlSeconds int64
 	if ttl == neverExpires {
 		ttlSeconds = 0 // 0 means never expire in Ristretto
 	} else {
-		ttlSeconds = ttl // Use the provided TTL
+		ttlSeconds = int64(ttl) // Use the provided TTL
 	}
 
-	if !c.client.SetWithTTL(realKey, itemBytes, cacheCost, ttlSeconds) {
+	if !c.client.SetWithTTL(realKey, itemBytes, cacheCost, time.Duration(ttlSeconds)) {
 		c.logger.Errorf("error setting new key on local cache, fullKey: [%s]", realKey)
 		return errors.New("failed to set key with TTL")
 	}
