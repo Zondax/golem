@@ -3,7 +3,7 @@ package zcache
 import (
 	"time"
 
-	"github.com/allegro/bigcache/v3"
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
@@ -43,12 +43,15 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	Prefix               string
-	Logger               *logger.Logger
-	MetricServer         metrics.TaskMetrics
-	StatsMetrics         StatsMetrics
-	CleanupProcess       CleanupProcess
-	HardMaxCacheSizeInMB int
+	MaxCost          int64
+	Prefix           string
+	NumCounters      int
+	BufferItems      int
+	Logger           *logger.Logger
+	MetricServer     metrics.TaskMetrics
+	StatsMetrics     StatsMetrics
+	CleanupProcess   CleanupProcess
+	CacheSizeInBytes int64
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -69,15 +72,19 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 	}
 }
 
-func (c *LocalConfig) ToBigCacheConfig() bigcache.Config {
-	config := bigcache.DefaultConfig(time.Duration(100*365*24) * time.Hour)
-
-	if c.HardMaxCacheSizeInMB <= 0 {
-		c.HardMaxCacheSizeInMB = hardMaxCacheSizeDefault
+func (c *LocalConfig) ToRistrettoConfig() *ristretto.Config {
+	// If CacheSizeInBytes is not provided, set to a default value
+	if c.CacheSizeInBytes <= 0 {
+		c.CacheSizeInBytes = hardMaxCacheSizeDefault // Define this constant as per your requirements
 	}
-	config.HardMaxCacheSize = c.HardMaxCacheSizeInMB
 
-	return config
+	// Default Ristretto config similar to BigCache
+	cacheConfig := &ristretto.Config{
+		NumCounters: c.CacheSizeInBytes / 64, // Approximate number of counters (64 bytes per counter)
+		MaxCost:     c.CacheSizeInBytes,      // Max cost in bytes (cache size limit)
+		BufferItems: 64,                      // Number of items per Get buffer
+	}
+	return cacheConfig
 }
 
 type CombinedConfig struct {
