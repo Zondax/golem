@@ -30,49 +30,29 @@ type ZCache interface {
 }
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
-	// Ensure MetricServer is provided
 	if config.MetricServer == nil {
 		return nil, fmt.Errorf("metric server is mandatory")
 	}
 
-	// Use ToRistrettoConfig to create the Ristretto config
 	ristrettoConfig := config.ToRistrettoConfig()
 
-	// Set up the Ristretto cache using the config from ToRistrettoConfig
 	client, err := ristretto.NewCache(ristrettoConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Ristretto cache: %w", err)
 	}
 
-	// Use the provided logger or fallback to a default one
 	loggerInst := config.Logger
 	if loggerInst == nil {
 		loggerInst = logger.NewLogger()
 	}
 
-	// Set default cleanup process parameters if not provided
-	if config.CleanupProcess.Interval <= 0 {
-		config.CleanupProcess.Interval = defaultCleanupInterval
-	}
-	if config.CleanupProcess.BatchSize <= 0 {
-		config.CleanupProcess.BatchSize = defaultBatchSize
-	}
-	if config.CleanupProcess.ThrottleTime <= 0 {
-		config.CleanupProcess.ThrottleTime = defaultThrottleTime
-	}
-
-	// Create the local cache instance
+	// Create the local cache instance with simplified structure
 	lc := &localCache{
-		client:         client,
-		prefix:         config.Prefix,
-		logger:         loggerInst,
-		cleanupProcess: config.CleanupProcess,
-		metricsServer:  config.MetricServer,
+		client:        client,
+		prefix:        config.Prefix,
+		logger:        loggerInst,
+		metricsServer: config.MetricServer,
 	}
-
-	// Register cleanup metrics and start the cleanup process
-	lc.registerCleanupMetrics()
-	lc.startCleanupProcess()
 
 	// Setup and monitor cache metrics if enabled
 	if config.StatsMetrics.Enable {
