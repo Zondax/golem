@@ -48,10 +48,11 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 
 	// Create the local cache instance with simplified structure
 	lc := &localCache{
-		client:        client,
-		prefix:        config.Prefix,
-		logger:        loggerInst,
-		metricsServer: config.MetricServer,
+		client:         client,
+		prefix:         config.Prefix,
+		logger:         loggerInst,
+		cleanupProcess: config.CleanupProcess,
+		metricsServer:  config.MetricServer,
 	}
 
 	// Setup and monitor cache metrics if enabled
