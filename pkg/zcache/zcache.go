@@ -10,12 +10,6 @@ import (
 	"github.com/zondax/golem/pkg/logger"
 )
 
-const (
-	defaultCleanupInterval = 12 * time.Hour
-	defaultBatchSize       = 200
-	defaultThrottleTime    = time.Second
-)
-
 type ZCacheStats struct {
 	Local  *ristretto.Metrics
 	Remote *RedisStats
@@ -46,16 +40,13 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		loggerInst = logger.NewLogger()
 	}
 
-	// Create the local cache instance with simplified structure
 	lc := &localCache{
-		client:         client,
-		prefix:         config.Prefix,
-		logger:         loggerInst,
-		cleanupProcess: config.CleanupProcess,
-		metricsServer:  config.MetricServer,
+		client:        client,
+		prefix:        config.Prefix,
+		logger:        loggerInst,
+		metricsServer: config.MetricServer,
 	}
 
-	// Setup and monitor cache metrics if enabled
 	if config.StatsMetrics.Enable {
 		lc.setupAndMonitorMetrics(config.StatsMetrics.UpdateInterval)
 	}
