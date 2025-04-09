@@ -9,8 +9,6 @@ import (
 	"github.com/zondax/golem/pkg/metrics"
 )
 
-const hardMaxCacheSizeDefault = 512
-
 type StatsMetrics struct {
 	Enable         bool
 	UpdateInterval time.Duration
@@ -43,15 +41,15 @@ type RemoteConfig struct {
 }
 
 type LocalConfig struct {
-	MaxCost          int64
-	Prefix           string
-	NumCounters      int
-	BufferItems      int
-	Logger           *logger.Logger
-	MetricServer     metrics.TaskMetrics
-	StatsMetrics     StatsMetrics
-	CleanupProcess   CleanupProcess
-	CacheSizeInBytes int64
+	Prefix       string
+	Logger       *logger.Logger
+	MetricServer metrics.TaskMetrics
+	StatsMetrics StatsMetrics
+
+	// Add Ristretto cache configuration
+	NumCounters int64 `json:"num_counters"` // default: 1e7
+	MaxCost     int64 `json:"max_cost"`     // default: 1 << 30 (1GB)
+	BufferItems int64 `json:"buffer_items"` // default: 64
 }
 
 func (c *RemoteConfig) ToRedisConfig() *redis.Options {
@@ -73,18 +71,26 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 }
 
 func (c *LocalConfig) ToRistrettoConfig() *ristretto.Config {
-	// If CacheSizeInBytes is not provided, set to a default value
-	if c.CacheSizeInBytes <= 0 {
-		c.CacheSizeInBytes = hardMaxCacheSizeDefault // Define this constant as per your requirements
+	numCounters := c.NumCounters
+	if numCounters == 0 {
+		numCounters = 1e7 // default 10M keys
 	}
 
-	// Default Ristretto config similar to BigCache
-	cacheConfig := &ristretto.Config{
-		NumCounters: c.CacheSizeInBytes / 64, // Approximate number of counters (64 bytes per counter)
-		MaxCost:     c.CacheSizeInBytes,      // Max cost in bytes (cache size limit)
-		BufferItems: 64,                      // Number of items per Get buffer
+	maxCost := c.MaxCost
+	if maxCost == 0 {
+		maxCost = 1 << 30 // default 1GB
 	}
-	return cacheConfig
+
+	bufferItems := c.BufferItems
+	if bufferItems == 0 {
+		bufferItems = 64 // default buffer size
+	}
+
+	return &ristretto.Config{
+		NumCounters: numCounters,
+		MaxCost:     maxCost,
+		BufferItems: bufferItems,
+	}
 }
 
 type CombinedConfig struct {
