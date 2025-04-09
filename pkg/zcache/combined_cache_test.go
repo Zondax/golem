@@ -2,12 +2,13 @@ package zcache
 
 import (
 	"context"
-	"github.com/stretchr/testify/suite"
-	logger2 "github.com/zondax/golem/pkg/logger"
-	"github.com/zondax/golem/pkg/metrics"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
+	logger2 "github.com/zondax/golem/pkg/logger"
+	"github.com/zondax/golem/pkg/metrics"
 
 	"github.com/alicebob/miniredis/v2"
 )
@@ -38,7 +39,7 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 		&CombinedConfig{
 			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
-				Addr: "0.0.0.0",
+				Addr: mr.Addr(),
 			},
 			IsRemoteBestEffort: true,
 			GlobalMetricServer: suite.ms,

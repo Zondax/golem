@@ -2,22 +2,16 @@ package zcache
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/allegro/bigcache/v3"
-	"github.com/stretchr/testify/mock"
+	"github.com/dgraph-io/ristretto"
 	"github.com/stretchr/testify/suite"
-	"github.com/zondax/golem/pkg/metrics"
+	"github.com/zondax/golem/pkg/logger"
 )
 
 const (
 	testValue = "testValue"
-	expireKey = "expireKey"
 )
 
 func TestLocalCacheTestSuite(t *testing.T) {
@@ -29,29 +23,21 @@ type LocalCacheTestSuite struct {
 	cache LocalCache
 }
 
-func (suite *LocalCacheTestSuite) SetupSuite() {
-	prefix := os.Getenv("PREFIX")
-	var err error
-	config := LocalConfig{
-		Prefix:       prefix,
-		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
+func (suite *LocalCacheTestSuite) SetupTest() {
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     1 << 20,
+		BufferItems: 64,
+	})
+	if err != nil {
+		suite.T().Fatal("Failed to create cache:", err)
 	}
-	suite.cache, err = NewLocalCache(&config)
-	suite.Nil(err)
-}
 
-func (suite *LocalCacheTestSuite) TestSetAndGet() {
-	ctx := context.Background()
-	key := "testKey"
-	value := testValue
-
-	err := suite.cache.Set(ctx, key, value, 0)
-	suite.NoError(err)
-
-	var result string
-	err = suite.cache.Get(ctx, key, &result)
-	suite.NoError(err)
-	suite.Equal(value, result)
+	suite.cache = &localCache{
+		client: cache,
+		prefix: "test_",
+		logger: logger.NewLogger(),
+	}
 }
 
 func (suite *LocalCacheTestSuite) TestDelete() {
@@ -64,212 +50,79 @@ func (suite *LocalCacheTestSuite) TestDelete() {
 	err := suite.cache.Delete(ctx, key)
 	suite.NoError(err)
 
-	err = suite.cache.Get(ctx, key, new(string))
-	suite.Error(err)
+	var result string
+	err = suite.cache.Get(ctx, key, &result)
+	suite.Error(err, "Expected error when getting deleted key")
+	suite.Empty(result, "Expected empty result as key is deleted")
+}
+
+func TestCacheSetAndGet(t *testing.T) {
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,
+		MaxCost:     1 << 30,
+		BufferItems: 64,
+	})
+	if err != nil {
+		t.Fatalf("Failed to initialize cache: %v", err)
+	}
+
+	lc := &localCache{
+		client: cache,
+		logger: logger.NewLogger(),
+	}
+
+	key := "testKey"
+	value := testValue
+
+	err = lc.Set(context.Background(), key, value, 60*time.Second)
+	if err != nil {
+		t.Fatalf("Failed to set cache item: %v", err)
+	}
+
+	var result string
+	err = lc.Get(context.Background(), key, &result)
+	if err != nil {
+		t.Fatalf("Failed to get cache item: %v", err)
+	}
+
+	if result != value {
+		t.Errorf("Expected %s, got %s", value, result)
+	}
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemExpiration() {
-	item := NewCacheItem([]byte(testValue), 1*time.Second)
-	suite.False(item.IsExpired(), "CacheItem should not be expired right after creation")
+	ctx := context.Background()
+	key := "expireKey"
+	value := testValue
+
+	suite.NoError(suite.cache.Set(ctx, key, value, 1*time.Second))
+
+	var result string
+	err := suite.cache.Get(ctx, key, &result)
+	suite.NoError(err)
+	suite.Equal(value, result)
+
 	time.Sleep(2 * time.Second)
 
-	suite.True(item.IsExpired(), "CacheItem should be expired after its TTL")
+	err = suite.cache.Get(ctx, key, &result)
+	suite.Error(err, "Expected error for expired key")
 }
 
 func (suite *LocalCacheTestSuite) TestCacheItemNeverExpires() {
-	item := NewCacheItem([]byte(testValue), -1)
-	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire")
-	time.Sleep(2 * time.Second)
-
-	suite.False(item.IsExpired(), "CacheItem with negative TTL should never expire, even after some time")
-}
-
-func (suite *LocalCacheTestSuite) TestCleanupProcess() {
-	cleanupInterval := 1 * time.Second
-	ttl := 10 * time.Millisecond
-
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix: "test",
-		CleanupProcess: CleanupProcess{
-			Interval: cleanupInterval,
-		},
-		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
-	})
-	suite.NoError(err)
-
 	ctx := context.Background()
-	key := expireKey
+	key := "permanentKey"
 	value := testValue
 
-	err = cache.Set(ctx, key, value, ttl)
-	suite.NoError(err)
-
-	// Use polling to check for key expiration
-	expired := false
-	maxWaitTime := 10 * cleanupInterval       // Maximum wait time
-	pollingInterval := 100 * time.Millisecond // Polling interval
-	timeout := time.After(maxWaitTime)
-	tick := time.Tick(pollingInterval)
-
-	for !expired {
-		select {
-		case <-timeout:
-			suite.FailNow("Timeout reached, key did not expire as expected")
-			return
-		case <-tick:
-			var result string
-			err = cache.Get(ctx, key, &result)
-			if errors.Is(err, bigcache.ErrEntryNotFound) {
-				expired = true
-			}
-		}
-	}
-
-	// Ensure the key has expired as expected
-	suite.True(expired, "Key should have expired")
-}
-
-func (suite *LocalCacheTestSuite) TestCleanupProcessBatchLogic() {
-	cleanupInterval := 100 * time.Millisecond
-	testBatchSize := 5
-	itemExpiration := 200 * time.Millisecond
-
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix: "testBatch",
-		CleanupProcess: CleanupProcess{
-			Interval:  cleanupInterval,
-			BatchSize: testBatchSize,
-		},
-		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
-	})
-	suite.NoError(err)
-
-	ctx := context.Background()
-
-	for i := 0; i < testBatchSize*2; i++ {
-		key := fmt.Sprintf("key%d", i)
-		value := fmt.Sprintf("value%d", i)
-		err = cache.Set(ctx, key, value, itemExpiration)
-		suite.NoError(err)
-	}
-
-	time.Sleep(itemExpiration + cleanupInterval + 2*time.Second)
-
-	for i := 0; i < testBatchSize*2; i++ {
-		key := fmt.Sprintf("key%d", i)
-		var result string
-		err = cache.Get(ctx, key, &result)
-
-		suite.NotNil(err, "Expected an error for key: %s, but got nil", key)
-		suite.True(errors.Is(err, bigcache.ErrEntryNotFound), "Expected 'ErrEntryNotFound' for key: %s, but got a different error or no error: %s", key, err.Error())
-	}
-}
-
-func (suite *LocalCacheTestSuite) TestCleanupProcessItemDoesNotExpire() {
-	cleanupInterval := 1 * time.Second
-
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix: "test",
-		CleanupProcess: CleanupProcess{
-			Interval: cleanupInterval,
-		},
-		MetricServer: metrics.NewTaskMetrics("", "", "appname"),
-	})
-	suite.NoError(err)
-
-	ctx := context.Background()
-	key := "permanentKey"
-	value := "thisValueShouldPersist"
-
-	err = cache.Set(ctx, key, value, neverExpires)
-	suite.NoError(err)
-
-	time.Sleep(2 * cleanupInterval)
+	suite.NoError(suite.cache.Set(ctx, key, value, -1))
 
 	var result string
-	err = cache.Get(ctx, key, &result)
-
-	suite.NoError(err, "Did not expect an error when retrieving a non-expiring item")
-	suite.Equal(value, result, "The retrieved value should match the original value")
-}
-
-// insert 1 persistent key and 1 key with a ttl.
-// after cleanup, there will be 1 key in the cache and 1 deleted expired key.
-func (suite *LocalCacheTestSuite) TestCleanupProcessMetrics() {
-	cleanupInterval := 1 * time.Second
-	ttl := 25 * time.Millisecond
-
-	// label:count
-	expected := map[string]int{
-		"resident_item_count": 1,
-		"deleted_item_count":  1,
-	}
-	got := sync.Map{}
-
-	tm := &metrics.MockTaskMetrics{}
-	tm.On("RegisterMetric", "local_cache_cleanup_last_run", mock.Anything, []string{}, mock.Anything).Once().
-		Return(nil)
-	tm.On("RegisterMetric", "local_cache_cleanup_errors", mock.Anything, []string{"error_type"}, mock.Anything).Once().
-		Return(nil)
-	tm.On("RegisterMetric", "local_cache_cleanup_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
-		Return(nil)
-	tm.On("RegisterMetric", "local_cache_cleanup_deleted_item_count", mock.Anything, []string{"item_count"}, mock.Anything).Once().
-		Return(nil)
-
-	tm.On("UpdateMetric", "local_cache_cleanup_last_run", mock.Anything, mock.Anything).Return(nil)
-	tm.On("UpdateMetric", "local_cache_cleanup_errors", mock.Anything, mock.Anything).Return(nil)
-	tm.On("UpdateMetric", "local_cache_cleanup_item_count", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		total := args.Get(1).(float64)
-		label := args.Get(2).(string)
-		got.Store(label, int(total))
-	}).Return(nil)
-	tm.On("UpdateMetric", "local_cache_cleanup_deleted_item_count", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		total := args.Get(1).(float64)
-		label := args.Get(2).(string)
-		got.Store(label, int(total))
-	}).Return(nil)
-
-	cache, err := NewLocalCache(&LocalConfig{
-		Prefix: "test",
-		CleanupProcess: CleanupProcess{
-			Interval: cleanupInterval,
-		},
-		MetricServer: tm,
-	})
+	err := suite.cache.Get(ctx, key, &result)
 	suite.NoError(err)
+	suite.Equal(value, result)
 
-	ctx := context.Background()
-	key := "permanentKey"
-	value := "thisValueShouldPersist"
+	time.Sleep(2 * time.Second)
 
-	err = cache.Set(ctx, key, value, ttl)
+	err = suite.cache.Get(ctx, key, &result)
 	suite.NoError(err)
-	err = cache.Set(ctx, key+"2", value, neverExpires)
-	suite.NoError(err)
-
-	// Polling to check if metrics have been updated as expected
-	maxWaitTime := 10 * cleanupInterval       // Maximum wait time
-	pollingInterval := 100 * time.Millisecond // Polling interval
-	timeout := time.After(maxWaitTime)
-	tick := time.Tick(pollingInterval)
-
-	for len(expected) > 0 {
-		select {
-		case <-timeout:
-			suite.FailNow("Timeout reached, metrics were not updated as expected")
-			return
-		case <-tick:
-			for k, v := range expected {
-				if gotV, ok := got.Load(k); ok && v == gotV {
-					got.Delete(k)
-					delete(expected, k)
-				}
-			}
-			if len(expected) == 0 {
-				return
-			}
-		}
-	}
-
-	suite.FailNow("Not all expected metrics were updated as expected")
+	suite.Equal(value, result)
 }
