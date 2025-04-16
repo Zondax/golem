@@ -2,20 +2,16 @@ package zcache
 
 import (
 	"context"
-	"github.com/allegro/bigcache/v3"
+	"fmt"
+	"time"
+
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-redis/redis/v8"
 	"github.com/zondax/golem/pkg/logger"
-	"time"
-)
-
-const (
-	defaultCleanupInterval = 12 * time.Hour
-	defaultBatchSize       = 200
-	defaultThrottleTime    = time.Second
 )
 
 type ZCacheStats struct {
-	Local  *bigcache.Stats
+	Local  *ristretto.Metrics
 	Remote *RedisStats
 }
 
@@ -29,13 +25,14 @@ type ZCache interface {
 
 func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 	if config.MetricServer == nil {
-		panic("metric server is mandatory")
+		return nil, fmt.Errorf("metric server is mandatory")
 	}
 
-	bigCacheConfig := config.ToBigCacheConfig()
-	client, err := bigcache.New(context.Background(), bigCacheConfig)
+	ristrettoConfig := config.ToRistrettoConfig()
+
+	client, err := ristretto.NewCache(ristrettoConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize Ristretto cache: %w", err)
 	}
 
 	loggerInst := config.Logger
@@ -43,34 +40,14 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 		loggerInst = logger.NewLogger()
 	}
 
-	if config.CleanupProcess.Interval <= 0 {
-		config.CleanupProcess.Interval = defaultCleanupInterval
-	}
-
-	if config.CleanupProcess.BatchSize <= 0 {
-		config.CleanupProcess.BatchSize = defaultBatchSize
-	}
-
-	if config.CleanupProcess.ThrottleTime <= 0 {
-		config.CleanupProcess.ThrottleTime = defaultThrottleTime
-	}
-
 	lc := &localCache{
-		client:         client,
-		prefix:         config.Prefix,
-		logger:         loggerInst,
-		cleanupProcess: config.CleanupProcess,
-		metricsServer:  config.MetricServer,
+		client:        client,
+		prefix:        config.Prefix,
+		logger:        loggerInst,
+		metricsServer: config.MetricServer,
 	}
-
-	lc.registerCleanupMetrics()
-	lc.startCleanupProcess()
 
 	if config.StatsMetrics.Enable {
-		if config.MetricServer == nil {
-			panic("metric server is mandatory")
-		}
-
 		lc.setupAndMonitorMetrics(config.StatsMetrics.UpdateInterval)
 	}
 
