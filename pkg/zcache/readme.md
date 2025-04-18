@@ -66,7 +66,9 @@ func main() {
     config := zcache.LocalConfig{
         // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
         CleanupProcess: CleanupProcess{
-            Interval: 30 * time.Minute,
+            BatchSize: 100000,
+            Interval: 30 * time.Minute,  
+            ThrottleTime: time.Second,
         },
         // HardMaxCacheSizeInMB is optional; if omitted, a default value of 512MB will be used
         HardMaxCacheSizeInMB: 1024, // Set maximum cache size to 1GB
@@ -95,10 +97,16 @@ func main() {
 ```go
 func main() {
     localConfig := zcache.LocalConfig{
-        MetricServer:    metricServer, // Mandatory
+        CleanupProcess: zcache.CleanupProcess{
+            BatchSize: 100000,           // Size of cleanup batches
+            Interval: 5 * time.Minute,   // Cleanup frequency
+            ThrottleTime: time.Second,   // Time between batches
+        },
+        HardMaxCacheSizeInMB: 256,      // Local cache size limit
+        MetricServer: metricServer,      // Required for monitoring
     }
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
-	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
+    config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
     cache, err := zcache.NewCombinedCache(config)
     if err != nil {
         // Handle error
@@ -184,29 +192,56 @@ func TestSomeFunctionWithMutex(t *testing.T) {
 }
 ```
 
-## Best Practices
+## Best Practices - Ristretto Cache
 
 ### Memory Management
-When using the local cache (BigCache), it's important to understand how memory is managed:
+When using the local cache (Ristretto), memory is managed more efficiently:
 
-1. **Memory Growth**: BigCache allocates memory in chunks and doesn't immediately release memory when items are deleted or overwritten
-2. **Memory Limit**: The `HardMaxCacheSizeInMB` parameter (default: 512MB) is crucial to prevent unbounded memory growth
-3. **Actual Memory Usage**: The total memory consumption will be slightly higher than `HardMaxCacheSizeInMB` due to:
-   - Shard overhead (approximately 2×(64+32)×n bits per entry)
-   - Internal map structures
-   - Go runtime overhead
+1. **Memory Control**:
+   - Ristretto uses more precise memory tracking
+   - Items are evicted based on both size and access patterns
+   - Memory is released more aggressively when items are deleted
 
+2. **Configuration Parameters**:
+   - `HardMaxCacheSizeInMB`: Hard limit on cache size (default: 512MB)
+   - `BatchSize`: Controls cleanup batch size (default: 200)
+   - `ThrottleTime`: Prevents CPU spikes during cleanup (default: 1s)
+
+3. **Cleanup Process**:
+   ```go
+   CleanupProcess: zcache.CleanupProcess{
+       BatchSize: 100000,           // Larger batches for better efficiency
+       Interval: 5 * time.Minute,   // More frequent cleanup
+       ThrottleTime: time.Second,   // Prevent CPU spikes
+   }
+   ```
 
 ### Memory Monitoring
-Monitor cache memory usage through the provided metrics:
-- `local_cache_cleanup_item_count`
-- `local_cache_cleanup_deleted_item_count`
-- `local_cache_cleanup_errors`
-- `local_cache_cleanup_last_run`
+Monitor cache performance through Ristretto metrics:
+- `zcache_local_items_count`: Current number of items
+- `zcache_local_memory_usage_bytes`: Actual memory usage
+- `zcache_local_cleanup_duration`: Time taken for cleanup
+- `zcache_local_cleanup_items`: Items processed in cleanup
+- `zcache_local_hit_ratio`: Cache hit rate
+
+### Best Practices
+1. **Memory Configuration**:
+   - Always set `HardMaxCacheSizeInMB` based on available system memory
+   - Use smaller values for `ThrottleTime` in low-latency scenarios
+   - Adjust `BatchSize` based on item count and cleanup needs
+
+2. **Cleanup Strategy**:
+   - Use shorter cleanup intervals for frequently changing data
+   - Increase batch size for large datasets
+   - Monitor cleanup duration metrics
+
+3. **Production Recommendations**:
+   - Use Combined Cache with Redis for persistence
+   - Monitor hit ratios to optimize local cache size
+   - Set appropriate TTLs for data freshness
 
 ### Notes
-- BigCache has a known memory leak issue (see [issue #369](https://github.com/allegro/bigcache/issues/369)). To mitigate this:
-  1. Always set `HardMaxCacheSizeInMB` (default: 512MB)
-  2. Monitor memory usage through provided metrics
-  3. Consider using shorter cleanup intervals in high-traffic scenarios
-  4. For critical production environments, consider using the Combined Cache with Redis as primary storage
+- Ristretto provides better memory management than BigCache
+- No known memory leak issues
+- More predictable memory usage
+- Better performance under high load
