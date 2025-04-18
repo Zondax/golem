@@ -5,7 +5,7 @@
 
 version: 2
 updates:
-  # Enable version updates for npm
+  # Enable version updates for Go modules
   - package-ecosystem: 'gomod'
     # Look for `package.json` and `lock` files in the `root` directory
     directory: '/'
@@ -17,3 +17,16 @@ updates:
       prefix-development: 'chore'
       include: 'scope'
     target-branch: main
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"  # Looks for workflow files in .github/workflows
+    schedule:
+      interval: "daily"  # Changed from weekly to daily
+    labels:            # Optional: Add labels to PRs
+      - "github-actions"
+      - "dependencies"
+    commit-message:    # Optional: Customize commit messages
+      prefix: "ci"
+      include: "scope"
+    target-branch: main  # Added to match gomod config
