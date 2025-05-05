@@ -2,6 +2,8 @@ package zdb
 
 import (
 	"database/sql"
+	"reflect"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -31,6 +33,17 @@ func (z *zDatabase) FirstOrCreate(dest interface{}, where ...interface{}) ZDatab
 }
 
 func (z *zDatabase) Scan(dest interface{}) ZDatabase {
+	// Avoid scanning if destination is nil
+	if dest == nil {
+		return z
+	}
+
+	// Avoid scanning if destination is an empty slice
+	v := reflect.ValueOf(dest)
+	if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Slice && v.Elem().Len() == 0 {
+		return z
+	}
+
 	return wrap(z.db.Scan(dest))
 }
 

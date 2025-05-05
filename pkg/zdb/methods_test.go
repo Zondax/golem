@@ -2,8 +2,9 @@ package zdb
 
 import (
 	"database/sql"
-	"github.com/stretchr/testify/mock"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/suite"
 	"gorm.io/gorm/clause"
@@ -36,6 +37,24 @@ func (suite *ZDatabaseSuite) TestScan() {
 	newDb := suite.db.Scan(&TestStruct{})
 	suite.NotNil(newDb)
 	suite.db.(*MockZDatabase).AssertExpectations(suite.T())
+}
+
+func (suite *ZDatabaseSuite) TestScanNilDestination() {
+	realDb := &zDatabase{db: nil}
+
+	newDb := realDb.Scan(nil)
+	suite.NotNil(newDb)
+	suite.Equal(realDb, newDb)
+}
+
+func (suite *ZDatabaseSuite) TestScanEmptySlice() {
+	realDb := &zDatabase{db: nil}
+
+	var emptySlice []TestStruct
+
+	newDb := realDb.Scan(&emptySlice)
+	suite.NotNil(newDb)
+	suite.Equal(realDb, newDb)
 }
 
 func (suite *ZDatabaseSuite) TestRows() {
