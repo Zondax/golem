@@ -57,6 +57,20 @@ func (suite *ZDatabaseSuite) TestScanEmptySlice() {
 	suite.Equal(realDb, newDb)
 }
 
+func (suite *ZDatabaseSuite) TestScanEmptySliceWithCapacity() {
+	realDb := &zDatabase{db: nil}
+
+	sliceWithCapacity := make([]TestStruct, 0, 10)
+	suite.Equal(0, len(sliceWithCapacity))
+	suite.Equal(10, cap(sliceWithCapacity))
+
+	newDb := realDb.Scan(&sliceWithCapacity)
+	suite.NotNil(newDb)
+	suite.Equal(realDb, newDb)
+
+	suite.Equal(0, len(sliceWithCapacity))
+}
+
 func (suite *ZDatabaseSuite) TestRows() {
 	mockRows := new(sql.Rows)
 	suite.db.(*MockZDatabase).On("Rows").Return(mockRows, nil)
