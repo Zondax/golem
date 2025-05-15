@@ -56,22 +56,21 @@ func main() {
 ```
 
 
-## Usage Local cache - BigCache
+## Usage Local cache - Ristretto
 
-The LocalConfig for zcache not only allows you to specify a CleanupInterval that determines how often the expired keys cleanup process will run but also includes configurations for BatchSize and ThrottleTime to optimize the cleanup process. If CleanupInterval is not set, a default value of 12 hours will be used. Both BatchSize and ThrottleTime also have default values (200 and 1 second respectively) if not explicitly set.
+The LocalConfig for zcache provides configuration for the Ristretto cache. Ristretto is a high-performance memory-bound cache with built-in metrics and automatic memory management.
+
 It's important to note that MetricServer is a mandatory configuration field in LocalConfig to facilitate the monitoring of cache operations and errors.
 
 ```go
 func main() {
     config := zcache.LocalConfig{
-        // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
-        CleanupProcess: CleanupProcess{
-            BatchSize: 100000,
-            Interval: 30 * time.Minute,  
-            ThrottleTime: time.Second,
-        },
-        // HardMaxCacheSizeInMB is optional; if omitted, a default value of 512MB will be used
-        HardMaxCacheSizeInMB: 1024, // Set maximum cache size to 1GB
+        // Ristretto cache configuration
+        NumCounters: 1e7,         // Number of keys to track frequency (default: 10M)
+        MaxCost:     1 << 30,     // Maximum cost of cache (default: 1GB)
+        BufferItems: 64,          // Number of keys per Get buffer (default: 64)
+        
+        // Metrics are required
         MetricServer: metricServer, 
     }
     
@@ -97,13 +96,13 @@ func main() {
 ```go
 func main() {
     localConfig := zcache.LocalConfig{
-        CleanupProcess: zcache.CleanupProcess{
-            BatchSize: 100000,           // Size of cleanup batches
-            Interval: 5 * time.Minute,   // Cleanup frequency
-            ThrottleTime: time.Second,   // Time between batches
-        },
-        HardMaxCacheSizeInMB: 256,      // Local cache size limit
-        MetricServer: metricServer,      // Required for monitoring
+        // Ristretto cache configuration
+        NumCounters: 1e7,          // Number of keys to track (default: 10M)
+        MaxCost:     1 << 29,      // Max memory usage - 512MB
+        BufferItems: 64,           // Size of Get buffer
+        
+        // Metrics are required
+        MetricServer: metricServer,
     }
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
     config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
@@ -131,15 +130,15 @@ Configure zcache using the Config struct, which includes network settings, serve
 
 ```go
 type Config struct {
-    Addr               string        // Redis server address
-    Password           string        // Redis server password
-    DB                 int           // Redis database
-    DialTimeout        time.Duration // Timeout for connecting to Redis
-    ReadTimeout        time.Duration // Timeout for reading from Redis
-    WriteTimeout       time.Duration // Timeout for writing to Redis
-    PoolSize           int           // Number of connections in the pool
-    MinIdleConns       int           // Minimum number of idle connections
-    IdleTimeout        time.Duration // Timeout for idle connections
+    Addr             string        // Redis server address
+    Password         string        // Redis server password
+    DB               int           // Redis database
+    DialTimeout      time.Duration // Timeout for connecting to Redis
+    ReadTimeout      time.Duration // Timeout for reading from Redis
+    WriteTimeout     time.Duration // Timeout for writing to Redis
+    PoolSize         int           // Number of connections in the pool
+    MinIdleConns     int           // Minimum number of idle connections
+    IdleTimeout      time.Duration // Timeout for idle connections
 }
 ```
 ---
@@ -195,53 +194,60 @@ func TestSomeFunctionWithMutex(t *testing.T) {
 ## Best Practices - Ristretto Cache
 
 ### Memory Management
-When using the local cache (Ristretto), memory is managed more efficiently:
+When using the local cache (Ristretto), memory is managed efficiently:
 
 1. **Memory Control**:
-   - Ristretto uses more precise memory tracking
-   - Items are evicted based on both size and access patterns
-   - Memory is released more aggressively when items are deleted
+   - Ristretto uses precise memory tracking with a cost-based system
+   - Items are evicted based on cost, access frequency, and recency
+   - Built-in admission policy prevents low-value items from entering the cache
 
 2. **Configuration Parameters**:
-   - `HardMaxCacheSizeInMB`: Hard limit on cache size (default: 512MB)
-   - `BatchSize`: Controls cleanup batch size (default: 200)
-   - `ThrottleTime`: Prevents CPU spikes during cleanup (default: 1s)
+   - `NumCounters`: Number of keys to track (default: 1e7 or 10 million)
+   - `MaxCost`: Maximum memory cost of cache (default: 1 << 30 or 1GB)
+   - `BufferItems`: Size of the Get buffer for handling concurrent operations (default: 64)
 
-3. **Cleanup Process**:
-   ```go
-   CleanupProcess: zcache.CleanupProcess{
-       BatchSize: 100000,           // Larger batches for better efficiency
-       Interval: 5 * time.Minute,   // More frequent cleanup
-       ThrottleTime: time.Second,   // Prevent CPU spikes
-   }
-   ```
+3. **TTL Behavior**:
+   - TTL is handled internally by Ristretto
+   - Setting `ttl <= 0` in the API means the item never expires
+   - Ristretto automatically removes expired items
 
 ### Memory Monitoring
-Monitor cache performance through Ristretto metrics:
-- `zcache_local_items_count`: Current number of items
-- `zcache_local_memory_usage_bytes`: Actual memory usage
-- `zcache_local_cleanup_duration`: Time taken for cleanup
-- `zcache_local_cleanup_items`: Items processed in cleanup
-- `zcache_local_hit_ratio`: Cache hit rate
+Monitor cache performance through Ristretto metrics. The following metrics are available:
+
+- `localCacheHitsMetricName`: Number of cache hits
+- `localCacheMissesMetricName`: Number of cache misses
+- `localCacheDelHitsMetricName`: Number of successful deletions
+- `localCacheDelMissesMetricName`: Number of failed deletions
+- `localCacheCollisionsMetricName`: Number of key collisions
+
+For Redis metrics:
+- `remoteCachePoolHitsMetricName`: Free connection found in the pool
+- `remoteCachePoolMissesMetricName`: Free connection not found in the pool
+- `remoteCachePoolTimeoutsMetricName`: Wait timeout occurrences
+- `remoteCachePoolTotalConnsMetricName`: Total connections in the pool
+- `remoteCachePoolIdleConnsMetricName`: Idle connections in the pool
+- `remoteCachePoolStaleConnsMetricName`: Stale connections removed
 
 ### Best Practices
 1. **Memory Configuration**:
-   - Always set `HardMaxCacheSizeInMB` based on available system memory
-   - Use smaller values for `ThrottleTime` in low-latency scenarios
-   - Adjust `BatchSize` based on item count and cleanup needs
+   - Set appropriate `NumCounters` based on expected number of keys (~10x the items)
+   - Configure `MaxCost` based on available system memory
+   - Adjust `BufferItems` for high concurrency scenarios (default 64 is suitable for most cases)
 
-2. **Cleanup Strategy**:
-   - Use shorter cleanup intervals for frequently changing data
-   - Increase batch size for large datasets
-   - Monitor cleanup duration metrics
-
-3. **Production Recommendations**:
+2. **Production Recommendations**:
    - Use Combined Cache with Redis for persistence
-   - Monitor hit ratios to optimize local cache size
+   - Monitor hit ratios through the exposed metrics
    - Set appropriate TTLs for data freshness
+   - For critical production systems, implement fallback mechanisms
+
+3. **Cache Tuning**:
+   - For high-throughput systems, increase `BufferItems` 
+   - For memory-constrained environments, decrease `MaxCost` appropriately
+   - Keep `NumCounters` at approximately 10x your expected item count for optimal hit ratio
 
 ### Notes
-- Ristretto provides better memory management than BigCache
-- No known memory leak issues
-- More predictable memory usage
-- Better performance under high load
+- Ristretto provides better memory management than the previously used BigCache
+- No known memory leak issues or required manual cleanup processes
+- Predictable memory usage with automatic item eviction
+- Better performance under high load with concurrent operations
+- Cost-based eviction allows prioritizing important cache items 
