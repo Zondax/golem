@@ -56,20 +56,21 @@ func main() {
 ```
 
 
-## Usage Local cache - BigCache
+## Usage Local cache - Ristretto
 
-The LocalConfig for zcache not only allows you to specify a CleanupInterval that determines how often the expired keys cleanup process will run but also includes configurations for BatchSize and ThrottleTime to optimize the cleanup process. If CleanupInterval is not set, a default value of 12 hours will be used. Both BatchSize and ThrottleTime also have default values (200 and 1 second respectively) if not explicitly set.
+The LocalConfig for zcache provides configuration for the Ristretto cache. Ristretto is a high-performance memory-bound cache with built-in metrics and automatic memory management.
+
 It's important to note that MetricServer is a mandatory configuration field in LocalConfig to facilitate the monitoring of cache operations and errors.
 
 ```go
 func main() {
     config := zcache.LocalConfig{
-        // CleanupInterval is optional; if omitted, a default value of 12 hours will be used
-        CleanupProcess: CleanupProcess{
-            Interval: 30 * time.Minute,
-        },
-        // HardMaxCacheSizeInMB is optional; if omitted, a default value of 512MB will be used
-        HardMaxCacheSizeInMB: 1024, // Set maximum cache size to 1GB
+        // Ristretto cache configuration
+        NumCounters: 1e7,         // Number of keys to track frequency (default: 10M)
+        MaxCost:     1 << 30,     // Maximum cost of cache (default: 1GB)
+        BufferItems: 64,          // Number of keys per Get buffer (default: 64)
+        
+        // Metrics are required
         MetricServer: metricServer, 
     }
     
@@ -95,10 +96,16 @@ func main() {
 ```go
 func main() {
     localConfig := zcache.LocalConfig{
-        MetricServer:    metricServer, // Mandatory
+        // Ristretto cache configuration
+        NumCounters: 1e7,          // Number of keys to track (default: 10M)
+        MaxCost:     1 << 29,      // Max memory usage - 512MB
+        BufferItems: 64,           // Size of Get buffer
+        
+        // Metrics are required
+        MetricServer: metricServer,
     }
     remoteConfig := zcache.RemoteConfig{Addr: "localhost:6379"}
-	config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
+    config := zcache.CombinedConfig{Local: localConfig, Remote: remoteConfig, isRemoteBestEffort: false}
     cache, err := zcache.NewCombinedCache(config)
     if err != nil {
         // Handle error
@@ -123,15 +130,15 @@ Configure zcache using the Config struct, which includes network settings, serve
 
 ```go
 type Config struct {
-    Addr               string        // Redis server address
-    Password           string        // Redis server password
-    DB                 int           // Redis database
-    DialTimeout        time.Duration // Timeout for connecting to Redis
-    ReadTimeout        time.Duration // Timeout for reading from Redis
-    WriteTimeout       time.Duration // Timeout for writing to Redis
-    PoolSize           int           // Number of connections in the pool
-    MinIdleConns       int           // Minimum number of idle connections
-    IdleTimeout        time.Duration // Timeout for idle connections
+    Addr             string        // Redis server address
+    Password         string        // Redis server password
+    DB               int           // Redis database
+    DialTimeout      time.Duration // Timeout for connecting to Redis
+    ReadTimeout      time.Duration // Timeout for reading from Redis
+    WriteTimeout     time.Duration // Timeout for writing to Redis
+    PoolSize         int           // Number of connections in the pool
+    MinIdleConns     int           // Minimum number of idle connections
+    IdleTimeout      time.Duration // Timeout for idle connections
 }
 ```
 ---
@@ -184,29 +191,63 @@ func TestSomeFunctionWithMutex(t *testing.T) {
 }
 ```
 
-## Best Practices
+## Best Practices - Ristretto Cache
 
 ### Memory Management
-When using the local cache (BigCache), it's important to understand how memory is managed:
+When using the local cache (Ristretto), memory is managed efficiently:
 
-1. **Memory Growth**: BigCache allocates memory in chunks and doesn't immediately release memory when items are deleted or overwritten
-2. **Memory Limit**: The `HardMaxCacheSizeInMB` parameter (default: 512MB) is crucial to prevent unbounded memory growth
-3. **Actual Memory Usage**: The total memory consumption will be slightly higher than `HardMaxCacheSizeInMB` due to:
-   - Shard overhead (approximately 2×(64+32)×n bits per entry)
-   - Internal map structures
-   - Go runtime overhead
+1. **Memory Control**:
+   - Ristretto uses precise memory tracking with a cost-based system
+   - Items are evicted based on cost, access frequency, and recency
+   - Built-in admission policy prevents low-value items from entering the cache
 
+2. **Configuration Parameters**:
+   - `NumCounters`: Number of keys to track (default: 1e7 or 10 million)
+   - `MaxCost`: Maximum memory cost of cache (default: 1 << 30 or 1GB)
+   - `BufferItems`: Size of the Get buffer for handling concurrent operations (default: 64)
+
+3. **TTL Behavior**:
+   - TTL is handled internally by Ristretto
+   - Setting `ttl <= 0` in the API means the item never expires
+   - Ristretto automatically removes expired items
 
 ### Memory Monitoring
-Monitor cache memory usage through the provided metrics:
-- `local_cache_cleanup_item_count`
-- `local_cache_cleanup_deleted_item_count`
-- `local_cache_cleanup_errors`
-- `local_cache_cleanup_last_run`
+Monitor cache performance through Ristretto metrics. The following metrics are available:
+
+- `localCacheHitsMetricName`: Number of cache hits
+- `localCacheMissesMetricName`: Number of cache misses
+- `localCacheDelHitsMetricName`: Number of successful deletions
+- `localCacheDelMissesMetricName`: Number of failed deletions
+- `localCacheCollisionsMetricName`: Number of key collisions
+
+For Redis metrics:
+- `remoteCachePoolHitsMetricName`: Free connection found in the pool
+- `remoteCachePoolMissesMetricName`: Free connection not found in the pool
+- `remoteCachePoolTimeoutsMetricName`: Wait timeout occurrences
+- `remoteCachePoolTotalConnsMetricName`: Total connections in the pool
+- `remoteCachePoolIdleConnsMetricName`: Idle connections in the pool
+- `remoteCachePoolStaleConnsMetricName`: Stale connections removed
+
+### Best Practices
+1. **Memory Configuration**:
+   - Set appropriate `NumCounters` based on expected number of keys (~10x the items)
+   - Configure `MaxCost` based on available system memory
+   - Adjust `BufferItems` for high concurrency scenarios (default 64 is suitable for most cases)
+
+2. **Production Recommendations**:
+   - Use Combined Cache with Redis for persistence
+   - Monitor hit ratios through the exposed metrics
+   - Set appropriate TTLs for data freshness
+   - For critical production systems, implement fallback mechanisms
+
+3. **Cache Tuning**:
+   - For high-throughput systems, increase `BufferItems` 
+   - For memory-constrained environments, decrease `MaxCost` appropriately
+   - Keep `NumCounters` at approximately 10x your expected item count for optimal hit ratio
 
 ### Notes
-- BigCache has a known memory leak issue (see [issue #369](https://github.com/allegro/bigcache/issues/369)). To mitigate this:
-  1. Always set `HardMaxCacheSizeInMB` (default: 512MB)
-  2. Monitor memory usage through provided metrics
-  3. Consider using shorter cleanup intervals in high-traffic scenarios
-  4. For critical production environments, consider using the Combined Cache with Redis as primary storage
+- Ristretto provides better memory management than the previously used BigCache
+- No known memory leak issues or required manual cleanup processes
+- Predictable memory usage with automatic item eviction
+- Better performance under high load with concurrent operations
+- Cost-based eviction allows prioritizing important cache items 
