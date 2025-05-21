@@ -47,7 +47,7 @@ func TestResolveSecrets_Error(t *testing.T) {
 	RegisterProvider(mockProvider{prefix: "mock_", value: "", fail: true})
 
 	err := ResolveSecrets(context.Background())
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	// Should not replace the value if provider fails
 	assert.Equal(t, "mock_path", viper.GetString("mock_secret_key"))
 }
