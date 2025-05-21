@@ -53,7 +53,7 @@ func main() {
     // ...
 
     // Resolve secrets (replaces secret keys with their real values)
-    secrets.ResolveSecrets()
+    secrets.ResolveSecrets(ctx)
 
     // Use your config as usual
     // ...
@@ -69,7 +69,7 @@ func main() {
        GetSecret(ctx context.Context, secretPath string) (string, error)
    }
    ```
-2. Register your provider with `cli.WithSecretProviders(...)` (recommended) or `secrets.RegisterProvider(...)` before calling `ResolveSecrets()`.
+2. Register your provider with `cli.WithSecretProviders(...)` (recommended) or `secrets.RegisterProvider(...)` before calling `ResolveSecrets(ctx)`.
 
 ## GCP Provider
 See [`providers/gcp.go`](./providers/gcp.go) for the GCP Secret Manager implementation.

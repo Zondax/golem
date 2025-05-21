@@ -11,7 +11,7 @@
 //	func main() {
 //	    secrets.RegisterProvider(providers.GcpProvider{})
 //	    // ... load your Viper config ...
-//	    secrets.ResolveSecrets()
+//	    secrets.ResolveSecrets(context.Background())
 //	    // ... use your config as usual ...
 //	}
 package secrets
@@ -19,7 +19,6 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -44,26 +43,29 @@ func ResetProviders() {
 
 // ResolveSecrets scans all Viper keys, and for each key that matches a provider,
 // it fetches the secret and replaces the value in Viper.
-func ResolveSecrets() {
-	ctx := context.Background()
+func ResolveSecrets(ctx context.Context) error {
 	for _, key := range viper.AllKeys() {
-		resolveSecretForKey(ctx, key)
+		err := resolveSecretForKey(ctx, key)
+		if err != nil {
+			return fmt.Errorf("[secrets] Error resolving secret for key %s: %w", key, err)
+		}
 	}
+	return nil
 }
 
 // resolveSecretForKey checks all registered providers for a given key and replaces its value if a provider matches.
-func resolveSecretForKey(ctx context.Context, key string) {
+func resolveSecretForKey(ctx context.Context, key string) error {
 	for _, provider := range getAllProviders() {
 		if provider.IsSecretKey(ctx, key) {
 			secretPath := viper.GetString(key)
 			secretValue, err := provider.GetSecret(ctx, secretPath)
 			if err != nil {
-				log.Printf("[secrets] Error resolving secret for key %s: %v", key, err)
-				continue
+				return fmt.Errorf("[secrets] Error resolving secret for key %s: %w", key, err)
 			}
 			viper.Set(key, secretValue)
 		}
 	}
+	return nil
 }
 
 // getAllProviders returns all registered providers as a slice.

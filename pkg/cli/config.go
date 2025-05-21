@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -71,7 +72,9 @@ func LoadConfig[T Config](opts ...LoadConfigOption) (*T, error) {
 	}
 
 	options.RegisterSecretProviders()
-	secrets.ResolveSecrets()
+	if err := secrets.ResolveSecrets(context.Background()); err != nil {
+		logger.Fatalf("error resolving secrets: %+v", err)
+	}
 
 	// adds all default+configFile values in viper to struct
 	// values in config file overrides default values
