@@ -24,9 +24,14 @@ const GcpSecretPrefix = "gcp_"
 // Register this provider using secrets.RegisterProvider(providers.GcpProvider{}).
 type GcpProvider struct{}
 
-// IsSecretKey returns true if the key is a GCP secret reference (starts with GcpSecretPrefix)
+// IsSecretKey returns true if the key is a GCP secret reference (starts with GcpSecretPrefix).
+// It supports both top-level and nested keys (e.g., "gcp_secret" or "database.gcp_secret").
 func (GcpProvider) IsSecretKey(key string) bool {
-	return strings.HasPrefix(key, GcpSecretPrefix)
+	lastPart := key
+	if idx := strings.LastIndex(key, "."); idx != -1 {
+		lastPart = key[idx+1:]
+	}
+	return strings.HasPrefix(lastPart, GcpSecretPrefix)
 }
 
 // GetSecret fetches the actual secret value from GCP Secret Manager
