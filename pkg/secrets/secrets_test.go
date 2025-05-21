@@ -34,7 +34,8 @@ func TestRegisterAndResolveSecrets(t *testing.T) {
 	viper.Set("mock_secret_key", "mock_path")
 	RegisterProvider(mockProvider{prefix: "mock_", value: "resolved_secret", fail: false})
 
-	ResolveSecrets(context.Background())
+	err := ResolveSecrets(context.Background())
+	assert.NoError(t, err)
 	assert.Equal(t, "resolved_secret", viper.GetString("mock_secret_key"))
 }
 
@@ -45,7 +46,8 @@ func TestResolveSecrets_Error(t *testing.T) {
 	viper.Set("mock_secret_key", "mock_path")
 	RegisterProvider(mockProvider{prefix: "mock_", value: "", fail: true})
 
-	ResolveSecrets(context.Background())
+	err := ResolveSecrets(context.Background())
+	assert.NoError(t, err)
 	// Should not replace the value if provider fails
 	assert.Equal(t, "mock_path", viper.GetString("mock_secret_key"))
 }
