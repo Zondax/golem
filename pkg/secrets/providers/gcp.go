@@ -13,12 +13,20 @@ package providers
 import (
 	"context"
 	"strings"
+	"sync"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
-const GcpSecretPrefix = "gcp_"
+var (
+	defaultGcpClient *secretmanager.Client
+	gcpClientOnce    sync.Once
+)
+
+const (
+	GcpSecretPrefix = "gcp_"
+)
 
 // GcpProvider implements the SecretProvider interface for GCP Secret Manager.
 // Register this provider using secrets.RegisterProvider(providers.GcpProvider{}).
@@ -26,7 +34,7 @@ type GcpProvider struct{}
 
 // IsSecretKey returns true if the key is a GCP secret reference (starts with GcpSecretPrefix).
 // It supports both top-level and nested keys (e.g., "gcp_secret" or "database.gcp_secret").
-func (GcpProvider) IsSecretKey(key string) bool {
+func (GcpProvider) IsSecretKey(_ context.Context, key string) bool {
 	lastPart := key
 	if idx := strings.LastIndex(key, "."); idx != -1 {
 		lastPart = key[idx+1:]
@@ -49,16 +57,10 @@ func (GcpProvider) GetSecret(ctx context.Context, secretPath string) (string, er
 	return string(resp.Payload.Data), nil
 }
 
-var defaultGcpClient *secretmanager.Client
-
 func getDefaultGcpClient(ctx context.Context) (*secretmanager.Client, error) {
-	if defaultGcpClient != nil {
-		return defaultGcpClient, nil
-	}
-	client, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defaultGcpClient = client
-	return client, nil
+	var err error
+	gcpClientOnce.Do(func() {
+		defaultGcpClient, err = secretmanager.NewClient(ctx)
+	})
+	return defaultGcpClient, err
 }

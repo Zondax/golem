@@ -65,7 +65,7 @@ func main() {
 1. Implement the `SecretProvider` interface:
    ```go
    type SecretProvider interface {
-       IsSecretKey(key string) bool
+       IsSecretKey(ctx context.Context, key string) bool
        GetSecret(ctx context.Context, secretPath string) (string, error)
    }
    ```

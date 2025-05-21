@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -78,7 +79,7 @@ func TestGcpProvider_IsSecretKey(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := provider.IsSecretKey(tc.key)
+			result := provider.IsSecretKey(context.Background(), tc.key)
 			if result != tc.expected {
 				t.Errorf("IsSecretKey(%q) = %v, want %v", tc.key, result, tc.expected)
 			}
@@ -91,13 +92,13 @@ func TestGcpProvider_IsSecretKey_EdgeCases(t *testing.T) {
 	provider := GcpProvider{}
 
 	// Test with a series of dots
-	result := provider.IsSecretKey("...")
+	result := provider.IsSecretKey(context.Background(), "...")
 	if result {
 		t.Error("Expected '...' to not be detected as a secret key")
 	}
 
 	// Test with only dots and prefix
-	result = provider.IsSecretKey("..gcp_")
+	result = provider.IsSecretKey(context.Background(), "..gcp_")
 	if !result {
 		t.Error("Expected '..gcp_' to be detected as a secret key (last segment is 'gcp_')")
 	}

@@ -11,7 +11,7 @@ type mockProvider struct {
 	id string
 }
 
-func (m mockProvider) IsSecretKey(key string) bool                           { return false }
+func (m mockProvider) IsSecretKey(_ context.Context, _ string) bool          { return false }
 func (m mockProvider) GetSecret(_ context.Context, _ string) (string, error) { return "", nil }
 
 func TestWithSecretProviders_AddsProviders(t *testing.T) {

@@ -29,7 +29,7 @@ var providersMap sync.Map // map[string]SecretProvider
 
 // SecretProvider defines the interface for secret providers (GCP, AWS, etc.)
 type SecretProvider interface {
-	IsSecretKey(key string) bool
+	IsSecretKey(ctx context.Context, key string) bool
 	GetSecret(ctx context.Context, secretPath string) (string, error)
 }
 
@@ -54,7 +54,7 @@ func ResolveSecrets() {
 // resolveSecretForKey checks all registered providers for a given key and replaces its value if a provider matches.
 func resolveSecretForKey(ctx context.Context, key string) {
 	for _, provider := range getAllProviders() {
-		if provider.IsSecretKey(key) {
+		if provider.IsSecretKey(ctx, key) {
 			secretPath := viper.GetString(key)
 			secretValue, err := provider.GetSecret(ctx, secretPath)
 			if err != nil {

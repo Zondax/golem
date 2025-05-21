@@ -16,7 +16,7 @@ type mockProvider struct {
 	fail   bool
 }
 
-func (m mockProvider) IsSecretKey(key string) bool {
+func (m mockProvider) IsSecretKey(ctx context.Context, key string) bool {
 	return len(key) >= len(m.prefix) && key[:len(m.prefix)] == m.prefix
 }
 
