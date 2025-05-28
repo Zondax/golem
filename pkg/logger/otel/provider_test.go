@@ -270,3 +270,169 @@ func TestCreateLoggerProviderBothProtocols(t *testing.T) {
 		assert.NotSame(t, httpProvider, grpcProvider, "Providers should be different instances")
 	})
 }
+
+func TestProvider_buildResourceAttributes(t *testing.T) {
+	provider := NewProvider()
+
+	t.Run("builds attributes with all config fields", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "test-service",
+			ServiceVersion: "2.1.0",
+			Environment:    "production",
+			Hostname:       "app-server-01",
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.Equal(t, "test-service", attrMap["service.name"])
+		assert.Equal(t, "2.1.0", attrMap["service.version"])
+		assert.Equal(t, "production", attrMap["deployment.environment"])
+		assert.Equal(t, "app-server-01", attrMap["host.name"])
+		assert.Len(t, attrs, 4) // Should have exactly 4 attributes
+	})
+
+	t.Run("builds attributes with minimal config", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName: "minimal-service",
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.Equal(t, "minimal-service", attrMap["service.name"])
+		assert.Equal(t, "unknown", attrMap["service.version"]) // Default when not specified
+		assert.NotContains(t, attrMap, "deployment.environment")
+		assert.NotContains(t, attrMap, "host.name")
+		assert.Len(t, attrs, 2) // Should have service.name and service.version only
+	})
+
+	t.Run("builds attributes with empty service version", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "test-service",
+			ServiceVersion: "", // Empty version should default to "unknown"
+			Environment:    "development",
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.Equal(t, "test-service", attrMap["service.name"])
+		assert.Equal(t, "unknown", attrMap["service.version"])
+		assert.Equal(t, "development", attrMap["deployment.environment"])
+		assert.Len(t, attrs, 3)
+	})
+
+	t.Run("builds attributes with empty optional fields", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "test-service",
+			ServiceVersion: "1.0.0",
+			Environment:    "", // Empty environment should be omitted
+			Hostname:       "", // Empty hostname should be omitted
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.Equal(t, "test-service", attrMap["service.name"])
+		assert.Equal(t, "1.0.0", attrMap["service.version"])
+		assert.NotContains(t, attrMap, "deployment.environment")
+		assert.NotContains(t, attrMap, "host.name")
+		assert.Len(t, attrs, 2)
+	})
+
+	t.Run("builds attributes with special characters", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "service-with_special.chars-123",
+			ServiceVersion: "1.0.0-beta.1+build.123",
+			Environment:    "staging-eu-west-1",
+			Hostname:       "server-01.example.com",
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.Equal(t, "service-with_special.chars-123", attrMap["service.name"])
+		assert.Equal(t, "1.0.0-beta.1+build.123", attrMap["service.version"])
+		assert.Equal(t, "staging-eu-west-1", attrMap["deployment.environment"])
+		assert.Equal(t, "server-01.example.com", attrMap["host.name"])
+	})
+
+	t.Run("builds attributes with empty service name", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "", // Empty service name should be omitted
+			ServiceVersion: "1.0.0",
+			Environment:    "test",
+		}
+
+		attrs := provider.buildResourceAttributes(config)
+
+		// Convert to map for easier testing
+		attrMap := make(map[string]string)
+		for _, attr := range attrs {
+			attrMap[string(attr.Key)] = attr.Value.AsString()
+		}
+
+		assert.NotContains(t, attrMap, "service.name")
+		assert.Equal(t, "1.0.0", attrMap["service.version"])
+		assert.Equal(t, "test", attrMap["deployment.environment"])
+		assert.Len(t, attrs, 2)
+	})
+}
+
+func TestProvider_createResource(t *testing.T) {
+	provider := NewProvider()
+
+	t.Run("creates resource successfully", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "test-service",
+			ServiceVersion: "1.0.0",
+			Environment:    "production",
+			Hostname:       "app-01",
+		}
+
+		resource := provider.createResource(config)
+		require.NotNil(t, resource)
+
+		// Verify that resource has the expected attributes
+		attrs := resource.Attributes()
+		require.NotNil(t, attrs)
+	})
+
+	t.Run("creates resource with minimal config", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName: "minimal-service",
+		}
+
+		resource := provider.createResource(config)
+		require.NotNil(t, resource)
+
+		attrs := resource.Attributes()
+		require.NotNil(t, attrs)
+	})
+}

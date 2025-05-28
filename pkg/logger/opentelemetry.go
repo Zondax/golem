@@ -15,14 +15,15 @@ type OpenTelemetryProvider interface {
 
 // OpenTelemetryConfig holds OpenTelemetry logging configuration
 type OpenTelemetryConfig struct {
-	Enabled     bool              `json:"enabled" yaml:"enabled" mapstructure:"enabled"`
-	Endpoint    string            `json:"endpoint" yaml:"endpoint" mapstructure:"endpoint"`
-	ServiceName string            `json:"service_name" yaml:"service_name" mapstructure:"service_name"`
-	Environment string            `json:"environment,omitempty" yaml:"environment,omitempty" mapstructure:"environment,omitempty"`
-	Hostname    string            `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty" yaml:"headers,omitempty" mapstructure:"headers,omitempty"`
-	Insecure    bool              `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure,omitempty"`
-	Protocol    string            `json:"protocol,omitempty" yaml:"protocol,omitempty" mapstructure:"protocol,omitempty"` // "grpc" or "http"
+	Enabled        bool              `json:"enabled" yaml:"enabled" mapstructure:"enabled"`
+	Endpoint       string            `json:"endpoint" yaml:"endpoint" mapstructure:"endpoint"`
+	ServiceName    string            `json:"service_name" yaml:"service_name" mapstructure:"service_name"`
+	ServiceVersion string            `json:"service_version,omitempty" yaml:"service_version,omitempty" mapstructure:"service_version,omitempty"`
+	Environment    string            `json:"environment,omitempty" yaml:"environment,omitempty" mapstructure:"environment,omitempty"`
+	Hostname       string            `json:"hostname,omitempty" yaml:"hostname,omitempty" mapstructure:"hostname,omitempty"`
+	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty" mapstructure:"headers,omitempty"`
+	Insecure       bool              `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure,omitempty"`
+	Protocol       string            `json:"protocol,omitempty" yaml:"protocol,omitempty" mapstructure:"protocol,omitempty"` // "grpc" or "http"
 }
 
 // OpenTelemetryManager manages OpenTelemetry providers in a thread-safe way
