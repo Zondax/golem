@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/sdk/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -359,26 +358,11 @@ func BenchmarkProvider_CreateLogger(b *testing.B) {
 		_ = enhancedLogger
 
 		// Clean up for next iteration
-		provider.Shutdown(context.Background())
+		err = provider.Shutdown(context.Background())
+		if err != nil {
+			b.Fatalf("unexpected error during shutdown: %v", err)
+		}
 	}
-}
-
-// mockLogExporter is a mock implementation of log.Exporter for testing
-type mockLogExporter struct {
-	logs []log.Record
-}
-
-func (m *mockLogExporter) Export(ctx context.Context, records []log.Record) error {
-	m.logs = append(m.logs, records...)
-	return nil
-}
-
-func (m *mockLogExporter) Shutdown(ctx context.Context) error {
-	return nil
-}
-
-func (m *mockLogExporter) ForceFlush(ctx context.Context) error {
-	return nil
 }
 
 func TestProvider_CreateLogger_LevelFiltering(t *testing.T) {
@@ -452,14 +436,4 @@ func TestProvider_CreateLogger_LevelFiltering(t *testing.T) {
 			_ = provider.Shutdown(context.Background())
 		})
 	}
-}
-
-// testWriter is a simple writer for testing
-type testWriter struct {
-	logs []string
-}
-
-func (w *testWriter) Write(p []byte) (n int, err error) {
-	w.logs = append(w.logs, string(p))
-	return len(p), nil
 }

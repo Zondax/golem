@@ -729,7 +729,7 @@ func TestOpenTelemetryIntegration(t *testing.T) {
 		// Create a test server
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		}))
 		defer srv.Close()
 
@@ -755,7 +755,7 @@ func TestOpenTelemetryIntegration(t *testing.T) {
 		// Create a test server
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		}))
 		defer srv.Close()
 
@@ -778,7 +778,7 @@ func TestOpenTelemetryIntegration(t *testing.T) {
 		// Create a test server
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Method: " + r.Method))
+			_, _ = w.Write([]byte("Method: " + r.Method))
 		}))
 		defer srv.Close()
 
