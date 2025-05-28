@@ -14,6 +14,7 @@ The `zdatabase` package serves as an abstraction layer for database interactions
 - **Extensible**: Connector mechanism to add support for additional database types.
 - **Robustness**: In-built logging and error-handling features.
 - **Retry Mechanism**: Automatic retries for failed database connections.
+- **OpenTelemetry Integration**: Configurable observability with tracing and metrics for database operations.
 - **Mocks**:  Provides mock implementations for DBConnector and ZDatabase interfaces, making it straightforward to unit test the package components without setting up actual database connections
 
 ## Installation
@@ -34,6 +35,15 @@ import (
 func main() {
 config := &zdbconfig.Config{
 // Connection settings
+// OpenTelemetry configuration
+OpenTelemetry: zdbconfig.OpenTelemetryConfig{
+    Enabled: true,
+    IncludeQueryParameters: true,
+    QueryFormatter: zdbconfig.QueryFormatterLower,
+    DefaultAttributes: map[string]string{
+        "service": "my-service",
+    },
+},
 }
 
     db, err := zdatabase.NewInstance(zdbConnector.DBTypeClickhouse, config)
@@ -47,7 +57,7 @@ config := &zdbconfig.Config{
 
 ## Configuration
 
-The `zdatabase` package can be configured through the `zdbconfig` package. Refer to [Configuration Documentation](docs/configuration.md) for more details.
+The `zdatabase` package can be configured through the `zdbconfig` package. OpenTelemetry instrumentation supports query parameter inclusion, query formatting (upper/lower/none/default), custom attributes, and metrics collection. Refer to [Configuration Documentation](docs/configuration.md) for more details.
 
 ## Support
 

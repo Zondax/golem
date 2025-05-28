@@ -88,3 +88,9 @@ func GetLoggerFromContext(ctx context.Context) *Logger {
 func ContextWithLogger(ctx context.Context, logger *Logger) context.Context {
 	return context.WithValue(ctx, loggerKey, logger) //nolint
 }
+
+// GetZapLogger returns the underlying zap.Logger instance
+// This method is primarily intended for testing and advanced use cases
+func (l *Logger) GetZapLogger() *zap.Logger {
+	return l.logger
+}

@@ -21,8 +21,9 @@ var (
 )
 
 type Config struct {
-	Level    string `json:"level"`
-	Encoding string `json:"encoding"`
+	Level         string               `json:"level"`
+	Encoding      string               `json:"encoding"`
+	OpenTelemetry *OpenTelemetryConfig `json:"opentelemetry,omitempty"`
 }
 
 type Field struct {
@@ -32,10 +33,6 @@ type Field struct {
 
 type Logger struct {
 	logger *zap.Logger
-}
-
-func init() {
-	InitLogger(defaultConfig)
 }
 
 func InitLogger(config Config) {
@@ -78,6 +75,33 @@ func NewDevelopmentLogger(fields ...Field) *Logger {
 }
 
 func configureAndBuildLogger(config Config) *zap.Logger {
+	// Create standard logger first
+	standardLogger := createStandardLoggerInternal(config)
+
+	// Early return if OpenTelemetry is not configured or disabled
+	if config.OpenTelemetry == nil || !config.OpenTelemetry.Enabled {
+		return standardLogger
+	}
+
+	// Early return if no provider is registered
+	provider := getOpenTelemetryProvider()
+	if provider == nil {
+		return standardLogger
+	}
+
+	// Try to enhance with OpenTelemetry
+	enhancedLogger, err := provider.CreateLogger(config, standardLogger)
+	if err != nil {
+		// If OpenTelemetry fails, fall back to standard logger
+		standardLogger.Warn("Failed to initialize OpenTelemetry logger, falling back to standard logger", zap.Error(err))
+		return standardLogger
+	}
+
+	return enhancedLogger
+}
+
+// createStandardLoggerInternal contains the actual logic for creating a standard logger
+func createStandardLoggerInternal(config Config) *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	if strings.EqualFold(config.Encoding, ConsoleEncode) {
 		cfg = zap.NewDevelopmentConfig()

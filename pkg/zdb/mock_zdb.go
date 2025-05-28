@@ -1,7 +1,9 @@
 package zdb
 
 import (
+	"context"
 	"database/sql"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
 	"gorm.io/gorm"
@@ -165,6 +167,11 @@ func (m *MockZDatabase) Group(name string) ZDatabase {
 func (m *MockZDatabase) GetDBStats() (sql.DBStats, error) {
 	args := m.Called()
 	return args.Get(0).(sql.DBStats), args.Error(1)
+}
+
+func (m *MockZDatabase) WithContext(ctx context.Context) ZDatabase {
+	args := m.Called(ctx)
+	return args.Get(0).(ZDatabase)
 }
 
 // MockDBConnector

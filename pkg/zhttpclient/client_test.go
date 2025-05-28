@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/zondax/golem/pkg/utils"
 	"io"
 	"net"
 	"net/http"
@@ -15,10 +14,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zondax/golem/pkg/utils"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/zondax/golem/pkg/zhttpclient"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // testSrv is used as a test handler to set custom response body and code and to
@@ -494,4 +496,318 @@ func TestHTTPClient_DecodeResult(t *testing.T) {
 			assert.Equal(t, tt.wantErr, resp.Error)
 		})
 	}
+}
+
+func TestNew_WithoutOpenTelemetry(t *testing.T) {
+	t.Run("creates client without OpenTelemetry when not configured", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client can make requests (basic functionality test)
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("creates client without OpenTelemetry when explicitly disabled", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: false,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client can make requests (basic functionality test)
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+}
+
+func TestNew_WithOpenTelemetry(t *testing.T) {
+	t.Run("creates client with OpenTelemetry when enabled", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client can make requests (functionality should work the same)
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("creates client with custom operation name function", func(t *testing.T) {
+		customNameFunc := func(operation string, r *http.Request) string {
+			return "custom-" + operation
+		}
+
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled:           true,
+				OperationNameFunc: customNameFunc,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("creates client with custom filters", func(t *testing.T) {
+		customFilter := func(r *http.Request) bool {
+			// Only instrument GET requests
+			return r.Method == http.MethodGet
+		}
+
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+				Filters: customFilter,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("creates client with both custom naming and filters", func(t *testing.T) {
+		customNameFunc := func(operation string, r *http.Request) string {
+			return "filtered-" + operation
+		}
+
+		customFilter := func(r *http.Request) bool {
+			return r.Method == http.MethodGet || r.Method == http.MethodPost
+		}
+
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled:           true,
+				OperationNameFunc: customNameFunc,
+				Filters:           customFilter,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify client functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+}
+
+func TestOpenTelemetryConfig_Validation(t *testing.T) {
+	t.Run("nil OpenTelemetry config is handled gracefully", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout:       30 * time.Second,
+			OpenTelemetry: nil,
+		}
+
+		// Should not panic
+		client := zhttpclient.New(config)
+		assert.NotNil(t, client)
+	})
+
+	t.Run("empty OpenTelemetry config with enabled false", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: false,
+				// Other fields are nil/zero values
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify basic functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("OpenTelemetry config with only enabled true", func(t *testing.T) {
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+				// Other fields are nil - should use defaults
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify basic functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+}
+
+func TestConfig_BackwardCompatibility(t *testing.T) {
+	t.Run("existing code without OpenTelemetry config continues to work", func(t *testing.T) {
+		// This simulates existing code that doesn't know about the new OpenTelemetry field
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			// OpenTelemetry field is not set (nil)
+		}
+
+		// Should create client successfully without OpenTelemetry instrumentation
+		client := zhttpclient.New(config)
+		assert.NotNil(t, client)
+
+		// Verify basic functionality still works
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+
+	t.Run("existing code with BaseClient continues to work", func(t *testing.T) {
+		baseClient := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+
+		config := zhttpclient.Config{
+			Timeout:    30 * time.Second,
+			BaseClient: baseClient,
+			// OpenTelemetry field is not set (nil)
+		}
+
+		client := zhttpclient.New(config)
+		assert.NotNil(t, client)
+
+		// Verify basic functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+}
+
+func TestOpenTelemetryConfig_EdgeCases(t *testing.T) {
+	t.Run("OpenTelemetry enabled with custom BaseClient", func(t *testing.T) {
+		baseClient := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+
+		config := zhttpclient.Config{
+			Timeout:    30 * time.Second,
+			BaseClient: baseClient,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Verify basic functionality
+		request := client.NewRequest()
+		assert.NotNil(t, request)
+	})
+}
+
+// TestOpenTelemetryIntegration tests the actual functionality with real HTTP calls
+func TestOpenTelemetryIntegration(t *testing.T) {
+	t.Run("client with OpenTelemetry makes successful requests", func(t *testing.T) {
+		// Create a test server
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}))
+		defer srv.Close()
+
+		// Create client with OpenTelemetry enabled
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Make a request and verify it works
+		resp, err := client.NewRequest().SetURL(srv.URL).Get(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, "OK", string(resp.Body))
+	})
+
+	t.Run("client without OpenTelemetry makes successful requests", func(t *testing.T) {
+		// Create a test server
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}))
+		defer srv.Close()
+
+		// Create client without OpenTelemetry
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Make a request and verify it works
+		resp, err := client.NewRequest().SetURL(srv.URL).Get(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, "OK", string(resp.Body))
+	})
+
+	t.Run("client with custom filters works correctly", func(t *testing.T) {
+		// Create a test server
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Method: " + r.Method))
+		}))
+		defer srv.Close()
+
+		// Create client with custom filter (only GET requests)
+		customFilter := func(r *http.Request) bool {
+			return r.Method == http.MethodGet
+		}
+
+		config := zhttpclient.Config{
+			Timeout: 30 * time.Second,
+			OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+				Enabled: true,
+				Filters: customFilter,
+			},
+		}
+
+		client := zhttpclient.New(config)
+		require.NotNil(t, client)
+
+		// Test GET request (should be instrumented by filter)
+		getResp, err := client.NewRequest().SetURL(srv.URL).Get(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, getResp.Code)
+		assert.Equal(t, "Method: GET", string(getResp.Body))
+
+		// Test POST request (should also work, regardless of filter)
+		postResp, err := client.NewRequest().SetURL(srv.URL).Post(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, postResp.Code)
+		assert.Equal(t, "Method: POST", string(postResp.Body))
+	})
 }
