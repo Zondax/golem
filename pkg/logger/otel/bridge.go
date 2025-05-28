@@ -71,5 +71,5 @@ func (p *Provider) Shutdown(ctx context.Context) error {
 
 // createEnhancedLogger creates the final enhanced logger with proper options
 func (p *Provider) createEnhancedLogger(core zapcore.Core) *zap.Logger {
-	return zap.New(core, zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
+	return zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 }
