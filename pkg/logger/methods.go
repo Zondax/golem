@@ -9,6 +9,9 @@ import (
 const (
 	loggerKey    = "golem.logger"
 	RequestIDKey = "request_id"
+	// contextFieldKey is the field name used by otelzap bridge to detect context.Context
+	// and automatically extract trace information for log-trace correlation
+	contextFieldKey = "context"
 )
 
 func (l *Logger) Info(msg string) {
@@ -82,7 +85,23 @@ func GetLoggerFromContext(ctx context.Context) *Logger {
 		newLogger.Warnf("Logger had to be created without configuration because the context was missing")
 		return newLogger
 	}
-	return logger
+
+	// Automatically add trace context if available
+	return logger.withTraceContext(ctx)
+}
+
+// withTraceContext enhances the logger with trace context information from the provided context.
+// This method uses the otelzap bridge's automatic context detection by adding the context as a field.
+// The bridge will automatically extract trace_id and span_id when it detects a context.Context field.
+func (l *Logger) withTraceContext(ctx context.Context) *Logger {
+	if ctx == nil {
+		return l
+	}
+
+	// The otelzap bridge automatically detects context.Context fields and extracts trace information
+	// This is the recommended approach according to the otelzap documentation
+	enhancedLogger := l.logger.With(zap.Any(contextFieldKey, ctx))
+	return &Logger{logger: enhancedLogger}
 }
 
 func ContextWithLogger(ctx context.Context, logger *Logger) context.Context {
