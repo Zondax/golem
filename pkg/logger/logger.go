@@ -35,6 +35,10 @@ type Logger struct {
 	logger *zap.Logger
 }
 
+func init() {
+	InitLogger(defaultConfig)
+}
+
 func InitLogger(config Config) {
 	baseLogger := configureAndBuildLogger(config)
 	zap.ReplaceGlobals(baseLogger)
