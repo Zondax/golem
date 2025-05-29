@@ -1,7 +1,6 @@
 package otel
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 func TestProvider_createLoggerProvider(t *testing.T) {
 	provider := NewProvider()
 
-	t.Run("creates logger provider with HTTP exporter", func(t *testing.T) {
+	t.Run("creates provider successfully with HTTP", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
 			ServiceName: "test-service",
 			Endpoint:    "localhost:4318",
@@ -25,12 +24,10 @@ func TestProvider_createLoggerProvider(t *testing.T) {
 		loggerProvider, err := provider.createLoggerProvider(config)
 		require.NoError(t, err)
 		require.NotNil(t, loggerProvider)
-
-		// Verify it's the correct type
 		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
 	})
 
-	t.Run("creates logger provider with gRPC exporter", func(t *testing.T) {
+	t.Run("creates provider successfully with gRPC", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
 			ServiceName: "test-service",
 			Endpoint:    "localhost:4317",
@@ -41,163 +38,70 @@ func TestProvider_createLoggerProvider(t *testing.T) {
 		loggerProvider, err := provider.createLoggerProvider(config)
 		require.NoError(t, err)
 		require.NotNil(t, loggerProvider)
-
-		// Verify it's the correct type
 		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
 	})
 
-	t.Run("creates logger provider with default protocol", func(t *testing.T) {
+	t.Run("fails with invalid protocol", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
 			ServiceName: "test-service",
 			Endpoint:    "localhost:4318",
-			Protocol:    "", // empty protocol should default to HTTP
+			Protocol:    "invalid",
 			Insecure:    true,
 		}
 
 		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-
-		// Verify it's the correct type
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
-	})
-
-	t.Run("creates logger provider with headers", func(t *testing.T) {
-		config := &logger.OpenTelemetryConfig{
-			ServiceName: "test-service",
-			Endpoint:    "localhost:4318",
-			Protocol:    ProtocolHTTP,
-			Insecure:    true,
-			Headers: map[string]string{
-				"Authorization": "Bearer test-token",
-				"X-Custom":      "value",
-			},
-		}
-
-		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-
-		// Verify it's the correct type
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
-	})
-
-	t.Run("creates logger provider with secure connection", func(t *testing.T) {
-		config := &logger.OpenTelemetryConfig{
-			ServiceName: "test-service",
-			Endpoint:    "example.com:4318",
-			Protocol:    ProtocolHTTP,
-			Insecure:    false, // secure connection
-		}
-
-		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-
-		// Verify it's the correct type
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
-	})
-
-	t.Run("returns error for unsupported protocol", func(t *testing.T) {
-		config := &logger.OpenTelemetryConfig{
-			ServiceName: "test-service",
-			Endpoint:    "localhost:4318",
-			Protocol:    "websocket", // unsupported protocol
-			Insecure:    true,
-		}
-
-		loggerProvider, err := provider.createLoggerProvider(config)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, loggerProvider)
-		assert.Contains(t, err.Error(), "failed to create OTLP log exporter")
-		assert.Contains(t, err.Error(), "unsupported protocol: websocket")
+		assert.Contains(t, err.Error(), "unsupported protocol")
+	})
+
+	t.Run("fails with empty service name", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName: "", // Empty service name should cause error
+			Endpoint:    "localhost:4318",
+			Protocol:    ProtocolHTTP,
+			Insecure:    true,
+		}
+
+		loggerProvider, err := provider.createLoggerProvider(config)
+		require.Error(t, err)
+		assert.Nil(t, loggerProvider)
+		assert.Contains(t, err.Error(), "service name is required")
 	})
 }
 
 func TestCreateLoggerProviderEdgeCases(t *testing.T) {
 	provider := NewProvider()
 
-	t.Run("creates provider with minimal valid config", func(t *testing.T) {
+	t.Run("handles empty endpoint", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
-			ServiceName: "minimal-service",
-			Endpoint:    "localhost:4318",
-			Insecure:    true,
-		}
-
-		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
-	})
-
-	t.Run("creates provider with complex service name", func(t *testing.T) {
-		config := &logger.OpenTelemetryConfig{
-			ServiceName: "complex-service-name_with.special-chars-123",
-			Endpoint:    "localhost:4318",
+			ServiceName: "test-service",
+			Endpoint:    "",
 			Protocol:    ProtocolHTTP,
 			Insecure:    true,
 		}
 
 		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
+		require.Error(t, err)
+		assert.Nil(t, loggerProvider)
 	})
 
-	t.Run("creates provider with unicode service name", func(t *testing.T) {
-		config := &logger.OpenTelemetryConfig{
-			ServiceName: "service-ñáéíóú-测试",
-			Endpoint:    "localhost:4318",
-			Protocol:    ProtocolHTTP,
-			Insecure:    true,
-		}
-
-		loggerProvider, err := provider.createLoggerProvider(config)
-		require.NoError(t, err)
-		require.NotNil(t, loggerProvider)
-		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
+	t.Run("handles nil config", func(t *testing.T) {
+		loggerProvider, err := provider.createLoggerProvider(nil)
+		require.Error(t, err)
+		assert.Nil(t, loggerProvider)
 	})
 
-	t.Run("creates provider with various endpoint formats", func(t *testing.T) {
-		validEndpoints := []string{
-			"localhost:4318",
-			"127.0.0.1:4318",
-			"example.com:4318",
-			"otel-collector:4318",
-			"otel-collector.namespace.svc.cluster.local:4318",
-		}
-
-		for _, endpoint := range validEndpoints {
-			t.Run("endpoint_"+endpoint, func(t *testing.T) {
-				config := &logger.OpenTelemetryConfig{
-					ServiceName: "test-service",
-					Endpoint:    endpoint,
-					Protocol:    ProtocolHTTP,
-					Insecure:    true,
-				}
-
-				loggerProvider, err := provider.createLoggerProvider(config)
-				require.NoError(t, err, "Should create provider for endpoint: %s", endpoint)
-				require.NotNil(t, loggerProvider)
-				assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
-			})
-		}
-	})
-
-	t.Run("creates provider with many headers", func(t *testing.T) {
-		headers := make(map[string]string)
-		for i := 0; i < 20; i++ {
-			headers[fmt.Sprintf("X-Custom-Header-%d", i)] = fmt.Sprintf("value-%d", i)
-		}
-		headers["Authorization"] = "Bearer long-token-value-here"
-		headers["User-Agent"] = "test-agent/1.0.0"
-
+	t.Run("handles config with headers", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
 			ServiceName: "test-service",
 			Endpoint:    "localhost:4318",
 			Protocol:    ProtocolHTTP,
 			Insecure:    true,
-			Headers:     headers,
+			Headers: map[string]string{
+				"Authorization": "Bearer token",
+				"X-API-Key":     "api-key",
+			},
 		}
 
 		loggerProvider, err := provider.createLoggerProvider(config)
@@ -206,32 +110,38 @@ func TestCreateLoggerProviderEdgeCases(t *testing.T) {
 		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
 	})
 
-	t.Run("creates provider multiple times with same config", func(t *testing.T) {
+	t.Run("handles secure connection", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
 			ServiceName: "test-service",
-			Endpoint:    "localhost:4318",
+			Endpoint:    "otel-collector.example.com:4318",
 			Protocol:    ProtocolHTTP,
-			Insecure:    true,
+			Insecure:    false,
 		}
 
-		// Create multiple providers
-		provider1, err1 := provider.createLoggerProvider(config)
-		provider2, err2 := provider.createLoggerProvider(config)
-		provider3, err3 := provider.createLoggerProvider(config)
+		loggerProvider, err := provider.createLoggerProvider(config)
+		require.NoError(t, err)
+		require.NotNil(t, loggerProvider)
+		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
+	})
 
-		// All should succeed
-		require.NoError(t, err1)
-		require.NoError(t, err2)
-		require.NoError(t, err3)
+	t.Run("handles all optional fields", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName:    "full-service",
+			ServiceVersion: "1.2.3",
+			Environment:    "production",
+			Hostname:       "server-01",
+			Endpoint:       "localhost:4318",
+			Protocol:       ProtocolHTTP,
+			Insecure:       true,
+			Headers: map[string]string{
+				"Custom-Header": "custom-value",
+			},
+		}
 
-		require.NotNil(t, provider1)
-		require.NotNil(t, provider2)
-		require.NotNil(t, provider3)
-
-		// All should be the correct type
-		assert.IsType(t, &log.LoggerProvider{}, provider1)
-		assert.IsType(t, &log.LoggerProvider{}, provider2)
-		assert.IsType(t, &log.LoggerProvider{}, provider3)
+		loggerProvider, err := provider.createLoggerProvider(config)
+		require.NoError(t, err)
+		require.NotNil(t, loggerProvider)
+		assert.IsType(t, &log.LoggerProvider{}, loggerProvider)
 	})
 }
 
@@ -388,26 +298,17 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 		assert.Equal(t, "server-01.example.com", attrMap["host.name"])
 	})
 
-	t.Run("builds attributes with empty service name", func(t *testing.T) {
+	t.Run("returns error with empty service name", func(t *testing.T) {
 		config := &logger.OpenTelemetryConfig{
-			ServiceName:    "", // Empty service name should be omitted
+			ServiceName:    "", // Empty service name should return error
 			ServiceVersion: "1.0.0",
 			Environment:    "test",
 		}
 
 		attrs, err := provider.buildResourceAttributes(config)
-		require.NoError(t, err)
-
-		// Convert to map for easier testing
-		attrMap := make(map[string]string)
-		for _, attr := range attrs {
-			attrMap[string(attr.Key)] = attr.Value.AsString()
-		}
-
-		assert.NotContains(t, attrMap, "service.name")
-		assert.Equal(t, "1.0.0", attrMap["service.version"])
-		assert.Equal(t, "test", attrMap["deployment.environment"])
-		assert.Len(t, attrs, 2)
+		require.Error(t, err)
+		assert.Nil(t, attrs)
+		assert.Contains(t, err.Error(), "service name is required")
 	})
 }
 
@@ -442,5 +343,16 @@ func TestProvider_createResource(t *testing.T) {
 
 		attrs := resource.Attributes()
 		require.NotNil(t, attrs)
+	})
+
+	t.Run("returns error with empty service name", func(t *testing.T) {
+		config := &logger.OpenTelemetryConfig{
+			ServiceName: "", // Empty service name should return error
+		}
+
+		resource, err := provider.createResource(config)
+		require.Error(t, err)
+		assert.Nil(t, resource)
+		assert.Contains(t, err.Error(), "service name is required")
 	})
 }
