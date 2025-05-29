@@ -282,7 +282,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			Hostname:       "app-server-01",
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -302,7 +303,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			ServiceName: "minimal-service",
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -324,7 +326,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			Environment:    "development",
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -346,7 +349,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			Hostname:       "", // Empty hostname should be omitted
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -369,7 +373,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			Hostname:       "server-01.example.com",
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -390,7 +395,8 @@ func TestProvider_buildResourceAttributes(t *testing.T) {
 			Environment:    "test",
 		}
 
-		attrs := provider.buildResourceAttributes(config)
+		attrs, err := provider.buildResourceAttributes(config)
+		require.NoError(t, err)
 
 		// Convert to map for easier testing
 		attrMap := make(map[string]string)
@@ -416,7 +422,8 @@ func TestProvider_createResource(t *testing.T) {
 			Hostname:       "app-01",
 		}
 
-		resource := provider.createResource(config)
+		resource, err := provider.createResource(config)
+		require.NoError(t, err)
 		require.NotNil(t, resource)
 
 		// Verify that resource has the expected attributes
@@ -429,7 +436,8 @@ func TestProvider_createResource(t *testing.T) {
 			ServiceName: "minimal-service",
 		}
 
-		resource := provider.createResource(config)
+		resource, err := provider.createResource(config)
+		require.NoError(t, err)
 		require.NotNil(t, resource)
 
 		attrs := resource.Attributes()
