@@ -131,7 +131,7 @@ func TestLogger_withTraceContext(t *testing.T) {
 
 	tracer := otel.Tracer("test")
 
-	t.Run("returns same logger when no trace context", func(t *testing.T) {
+t.Run("returns enhanced logger even when no trace context", func(t *testing.T) {
 		baseLogger := &Logger{logger: zap.NewNop()}
 		ctx := context.Background()
 
