@@ -13,6 +13,11 @@ import (
 
 // createExporter creates the appropriate OTLP exporter based on protocol
 func (p *Provider) createExporter(config *logger.OpenTelemetryConfig) (log.Exporter, error) {
+	// Validate endpoint is not empty
+	if config.Endpoint == "" {
+		return nil, fmt.Errorf("endpoint is required")
+	}
+
 	protocol := p.getProtocol(config)
 
 	switch protocol {

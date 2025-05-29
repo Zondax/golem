@@ -1,11 +1,14 @@
 package metrics
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/zondax/golem/pkg/logger"
+	"fmt"
+	"net"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/zondax/golem/pkg/logger"
 )
 
 func TestName(t *testing.T) {
@@ -15,7 +18,15 @@ func TestName(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	logger.InitLogger(logger.Config{})
-	metrics := NewTaskMetrics("/metrics", "9091", "test")
+
+	// Get an available port dynamically
+	listener, err := net.Listen("tcp", ":0")
+	assert.Nil(t, err)
+	port := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
+	portStr := fmt.Sprintf("%d", port)
+	metrics := NewTaskMetrics("/metrics", portStr, "test")
 
 	go func() {
 		err := metrics.Start()
@@ -24,7 +35,7 @@ func TestStart(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	resp, err := http.Get("http://localhost:9091/metrics")
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/metrics", portStr))
 	assert.Nil(t, err)
 
 	defer resp.Body.Close()

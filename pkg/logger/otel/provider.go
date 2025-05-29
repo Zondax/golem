@@ -13,6 +13,11 @@ import (
 
 // createLoggerProvider creates the OpenTelemetry log provider with proper resource configuration
 func (p *Provider) createLoggerProvider(config *logger.OpenTelemetryConfig) (*log.LoggerProvider, error) {
+	// Validate config is not nil
+	if config == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
 	exporter, err := p.createExporter(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTLP log exporter: %w", err)
