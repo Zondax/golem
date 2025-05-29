@@ -20,10 +20,11 @@ func TestStart(t *testing.T) {
 	logger.InitLogger(logger.Config{})
 
 	// Get an available port dynamically
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "localhost:0")
 	assert.Nil(t, err)
 	port := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
+	err = listener.Close()
+	assert.Nil(t, err)
 
 	portStr := fmt.Sprintf("%d", port)
 	metrics := NewTaskMetrics("/metrics", portStr, "test")
