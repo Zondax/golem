@@ -312,8 +312,8 @@ logger:
     protocol: "http"
     insecure: false
     headers:
-      authorization: "Bearer ${OTEL_TOKEN}"
-      x-api-key: "${API_KEY}"
+      authorization: "Bearer your-token-here"
+      x-api-key: "your-api-key-here"
 ```
 
 ## Performance Considerations

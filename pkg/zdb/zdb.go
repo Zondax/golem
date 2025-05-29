@@ -82,8 +82,7 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 			if verifyErr == nil {
 				// Setup OpenTelemetry instrumentation with configuration
 				if err := setupOpenTelemetryInstrumentation(dbConn, &config.OpenTelemetry); err != nil {
-					logger.GetLoggerFromContext(context.Background()).Warnf("Failed to setup OpenTelemetry instrumentation: %v", err)
-					// Continue without instrumentation rather than failing
+					return nil, fmt.Errorf("failed to setup OpenTelemetry instrumentation: %w", err)
 				}
 
 				return &zDatabase{db: dbConn}, nil
