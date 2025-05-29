@@ -20,7 +20,7 @@ func (t *taskMetrics) performMetricAction(name string, action func(MetricHandler
 	labels = append(labels, t.appName)
 
 	t.mux.RLock()
-	metricDetail, ok := t.metrics[name]
+	metricDetail, ok := t.metrics[formatMetricName(name)]
 	t.mux.RUnlock()
 
 	if !ok {

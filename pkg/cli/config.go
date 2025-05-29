@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"github.com/zondax/golem/pkg/logger"
 	"strings"
+
+	"github.com/zondax/golem/pkg/logger"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zondax/golem/pkg/secrets"
 )
 
 func SetupConfiguration(c *cobra.Command) {
@@ -26,8 +29,8 @@ func SetupConfiguration(c *cobra.Command) {
 	}
 }
 
-func checkConfig[T Config]() error {
-	_, err := LoadConfig[T]()
+func checkConfig[T Config](opts ...LoadConfigOption) error {
+	_, err := LoadConfig[T](opts...)
 	if err != nil {
 		return fmt.Errorf("invalid config: %s", err.Error())
 	}
@@ -35,8 +38,15 @@ func checkConfig[T Config]() error {
 	return nil
 }
 
-func LoadConfig[T Config]() (*T, error) {
+// LoadConfig loads the config and resolves secrets using the specified options.
+// No secret providers are registered by default; you must specify them via options.
+// Example:
+//
+//	LoadConfig[MyConfigType](WithSecretProviders(providers.GcpProvider{}))
+//	LoadConfig[MyConfigType](WithSecretProviders(providers.GcpProvider{}, providers.AwsProvider{}))
+func LoadConfig[T Config](opts ...LoadConfigOption) (*T, error) {
 	var config T
+	var options loadConfigOptions
 
 	config.SetDefaults()
 
@@ -55,6 +65,15 @@ func LoadConfig[T Config]() (*T, error) {
 	err = viper.ReadInConfig()
 	if err != nil {
 		logger.Fatalf("%+v", err)
+	}
+
+	for _, opt := range opts {
+		opt.apply(&options)
+	}
+
+	options.RegisterSecretProviders()
+	if err := secrets.ResolveSecrets(context.Background()); err != nil {
+		logger.Fatalf("error resolving secrets: %+v", err)
 	}
 
 	// adds all default+configFile values in viper to struct

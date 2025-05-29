@@ -16,4 +16,4 @@ jobs:
   go-checks:
     uses: zondax/_workflows/.github/workflows/_checks-golang.yaml@main
     with:
-      package_path: packages/prio-api
+      package_path: .
