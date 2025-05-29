@@ -3,13 +3,15 @@ package zhttpclient
 import (
 	"context"
 	"crypto/tls"
-	"github.com/zondax/golem/pkg/utils"
 	"io"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/zondax/golem/pkg/utils"
+
 	"github.com/go-resty/resty/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type ZHTTPClient interface {
@@ -18,10 +20,24 @@ type ZHTTPClient interface {
 	Do(ctx context.Context, req *http.Request) (*Response, error)
 }
 
+// OpenTelemetryConfig configures OpenTelemetry instrumentation for HTTP client
+type OpenTelemetryConfig struct {
+	// Enabled controls whether OpenTelemetry instrumentation is applied
+	Enabled bool
+	// OperationNameFunc is an optional function to customize operation names
+	// If nil, default operation naming will be used
+	// Signature: func(operation string, r *http.Request) string
+	OperationNameFunc func(string, *http.Request) string
+	// Filters is an optional function to filter which requests to instrument
+	// If nil, all requests will be instrumented
+	Filters func(*http.Request) bool
+}
+
 type Config struct {
-	Timeout    time.Duration
-	TLSConfig  *tls.Config
-	BaseClient *http.Client
+	Timeout       time.Duration
+	TLSConfig     *tls.Config
+	BaseClient    *http.Client
+	OpenTelemetry *OpenTelemetryConfig
 }
 
 // zHTTPClient abstracts over the resty.Client and provides per-request retry configurations.
@@ -36,17 +52,52 @@ func New(config Config) ZHTTPClient {
 		config: &config,
 	}
 
+	var baseClient *http.Client
 	if config.BaseClient == nil {
-		z.client = resty.New()
+		baseClient = &http.Client{}
 	} else {
-		z.client = resty.NewWithClient(config.BaseClient)
+		baseClient = config.BaseClient
 	}
+
+	// Apply OpenTelemetry instrumentation if configured
+	baseClient.Transport = z.configureTransport(baseClient.Transport, config.OpenTelemetry)
+
+	z.client = resty.NewWithClient(baseClient)
 
 	if config.TLSConfig != nil {
 		z.client.SetTLSClientConfig(config.TLSConfig)
 	}
 	z.client.SetTimeout(config.Timeout)
 	return z
+}
+
+// configureTransport applies OpenTelemetry instrumentation to the transport if enabled
+func (z *zHTTPClient) configureTransport(transport http.RoundTripper, otelConfig *OpenTelemetryConfig) http.RoundTripper {
+	// Return original transport if OpenTelemetry is not configured or disabled
+	if otelConfig == nil || !otelConfig.Enabled {
+		return transport
+	}
+
+	// Configure OpenTelemetry options
+	opts := z.buildOpenTelemetryOptions(otelConfig)
+
+	// Apply OpenTelemetry transport with configured options
+	return otelhttp.NewTransport(transport, opts...)
+}
+
+// buildOpenTelemetryOptions constructs the OpenTelemetry options based on configuration
+func (z *zHTTPClient) buildOpenTelemetryOptions(config *OpenTelemetryConfig) []otelhttp.Option {
+	var opts []otelhttp.Option
+
+	if config.OperationNameFunc != nil {
+		opts = append(opts, otelhttp.WithSpanNameFormatter(config.OperationNameFunc))
+	}
+
+	if config.Filters != nil {
+		opts = append(opts, otelhttp.WithFilter(config.Filters))
+	}
+
+	return opts
 }
 
 func (z *zHTTPClient) NewRequest() ZRequest {

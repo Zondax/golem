@@ -1,7 +1,9 @@
 package zdb
 
 import (
+	"context"
 	"database/sql"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -155,4 +157,8 @@ func (z *zDatabase) GetDBStats() (sql.DBStats, error) {
 
 func (z *zDatabase) Error() error {
 	return z.db.Error
+}
+
+func (z *zDatabase) WithContext(ctx context.Context) ZDatabase {
+	return wrap(z.db.WithContext(ctx))
 }

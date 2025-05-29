@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zdb/zdbconfig"
 	"github.com/zondax/golem/pkg/zdb/zdbconnector"
 	"gorm.io/gorm/clause"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -45,6 +46,7 @@ type ZDatabase interface {
 	Table(name string, args ...interface{}) ZDatabase
 	Transaction(fc func(tx ZDatabase) error, opts ...*sql.TxOptions) (err error)
 	Clauses(conds ...clause.Expression) ZDatabase
+	WithContext(ctx context.Context) ZDatabase
 	Error() error
 	Scopes(funcs ...func(ZDatabase) ZDatabase) ZDatabase
 	RowsAffected() int64
@@ -78,6 +80,11 @@ func NewInstance(dbType string, config *zdbconfig.Config) (ZDatabase, error) {
 		if err == nil {
 			verifyErr := connector.VerifyConnection(dbConn)
 			if verifyErr == nil {
+				// Setup OpenTelemetry instrumentation with configuration
+				if err := setupOpenTelemetryInstrumentation(dbConn, &config.OpenTelemetry); err != nil {
+					return nil, fmt.Errorf("failed to setup OpenTelemetry instrumentation: %w", err)
+				}
+
 				return &zDatabase{db: dbConn}, nil
 			}
 

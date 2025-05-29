@@ -88,3 +88,67 @@ func main() {
 
 }
 ```
+
+# HTTP Client with Configurable OpenTelemetry
+
+This HTTP client provides configurable OpenTelemetry instrumentation for tracing HTTP requests.
+
+## Basic Usage
+
+### Without OpenTelemetry (Default)
+
+```go
+client := zhttpclient.New(zhttpclient.Config{
+    Timeout: 30 * time.Second,
+})
+
+resp, err := client.NewRequest().
+    SetURL("https://api.example.com/data").
+    Get(ctx)
+```
+
+### With OpenTelemetry Enabled
+
+```go
+client := zhttpclient.New(zhttpclient.Config{
+    Timeout: 30 * time.Second,
+    OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+        Enabled: true,
+    },
+})
+
+resp, err := client.NewRequest().
+    SetURL("https://api.example.com/data").
+    Get(ctx)
+```
+
+## Advanced OpenTelemetry Configuration
+
+### Custom Operation Names
+
+```go
+client := zhttpclient.New(zhttpclient.Config{
+    Timeout: 30 * time.Second,
+    OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+        Enabled: true,
+        OperationNameFunc: func(operation string, r *http.Request) string {
+            return fmt.Sprintf("api_call_%s_%s", r.Method, r.URL.Host)
+        },
+    },
+})
+```
+
+### Request Filtering
+
+```go
+client := zhttpclient.New(zhttpclient.Config{
+    Timeout: 30 * time.Second,
+    OpenTelemetry: &zhttpclient.OpenTelemetryConfig{
+        Enabled: true,
+        Filters: func(r *http.Request) bool {
+            // Only instrument external API calls
+            return !strings.Contains(r.URL.Host, "localhost")
+        },
+    },
+})
+```
