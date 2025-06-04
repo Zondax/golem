@@ -67,7 +67,7 @@ func main() {
     config := zcache.LocalConfig{
         // Ristretto cache configuration
         NumCounters: 1e7,         // Number of keys to track frequency (default: 10M)
-        MaxCost:     1 << 30,     // Maximum cost of cache (default: 1GB)
+        MaxCostMB:   1024,        // Maximum cost of cache in MB (default: 1024MB/1GB)
         BufferItems: 64,          // Number of keys per Get buffer (default: 64)
         
         // Metrics are required
@@ -98,7 +98,7 @@ func main() {
     localConfig := zcache.LocalConfig{
         // Ristretto cache configuration
         NumCounters: 1e7,          // Number of keys to track (default: 10M)
-        MaxCost:     1 << 29,      // Max memory usage - 512MB
+        MaxCostMB:   512,          // Max memory usage - 512MB
         BufferItems: 64,           // Size of Get buffer
         
         // Metrics are required
@@ -203,7 +203,7 @@ When using the local cache (Ristretto), memory is managed efficiently:
 
 2. **Configuration Parameters**:
    - `NumCounters`: Number of keys to track (default: 1e7 or 10 million)
-   - `MaxCost`: Maximum memory cost of cache (default: 1 << 30 or 1GB)
+   - `MaxCostMB`: Maximum memory in MB (default: 1024MB or 1GB)
    - `BufferItems`: Size of the Get buffer for handling concurrent operations (default: 64)
 
 3. **TTL Behavior**:
@@ -231,7 +231,7 @@ For Redis metrics:
 ### Best Practices
 1. **Memory Configuration**:
    - Set appropriate `NumCounters` based on expected number of keys (~10x the items)
-   - Configure `MaxCost` based on available system memory
+   - Configure `MaxCostMB` based on available system memory (in megabytes)
    - Adjust `BufferItems` for high concurrency scenarios (default 64 is suitable for most cases)
 
 2. **Production Recommendations**:
@@ -242,7 +242,7 @@ For Redis metrics:
 
 3. **Cache Tuning**:
    - For high-throughput systems, increase `BufferItems` 
-   - For memory-constrained environments, decrease `MaxCost` appropriately
+   - For memory-constrained environments, decrease `MaxCostMB` appropriately
    - Keep `NumCounters` at approximately 10x your expected item count for optimal hit ratio
 
 ### Notes
