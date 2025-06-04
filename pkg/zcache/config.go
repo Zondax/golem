@@ -9,15 +9,16 @@ import (
 	"github.com/zondax/golem/pkg/metrics"
 )
 
+const (
+	// Default Ristretto cache config
+	DefaultNumCounters = int64(1e7)  // 10M keys
+	DefaultMaxCostMB   = int64(1024) // 1GB
+	DefaultBufferItems = int64(64)
+)
+
 type StatsMetrics struct {
 	Enable         bool
 	UpdateInterval time.Duration
-}
-
-type CleanupProcess struct {
-	Interval     time.Duration
-	BatchSize    int
-	ThrottleTime time.Duration
 }
 
 type RemoteConfig struct {
@@ -48,7 +49,7 @@ type LocalConfig struct {
 
 	// Add Ristretto cache configuration
 	NumCounters int64 `json:"num_counters"` // default: 1e7
-	MaxCost     int64 `json:"max_cost"`     // default: 1 << 30 (1GB)
+	MaxCostMB   int64 `json:"max_cost_mb"`  // in MB, default: 1024 (1GB)
 	BufferItems int64 `json:"buffer_items"` // default: 64
 }
 
@@ -73,17 +74,19 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 func (c *LocalConfig) ToRistrettoConfig() *ristretto.Config {
 	numCounters := c.NumCounters
 	if numCounters == 0 {
-		numCounters = 1e7 // default 10M keys
+		numCounters = DefaultNumCounters
 	}
 
-	maxCost := c.MaxCost
-	if maxCost == 0 {
-		maxCost = 1 << 30 // default 1GB
+	maxCostMB := c.MaxCostMB
+	if maxCostMB == 0 {
+		maxCostMB = DefaultMaxCostMB
 	}
+	// Convert MB to bytes
+	maxCost := maxCostMB << 20
 
 	bufferItems := c.BufferItems
 	if bufferItems == 0 {
-		bufferItems = 64 // default buffer size
+		bufferItems = DefaultBufferItems
 	}
 
 	return &ristretto.Config{
