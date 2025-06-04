@@ -72,6 +72,21 @@ func (_m *MockZHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient 
 	return r0
 }
 
+
+func (m *MockZHTTPClient) GetHTTPClient() *http.Client {
+	ret := m.Called()
+
+	var r0 *http.Client
+	if rf, ok := ret.Get(0).(func() *http.Client); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Client)
+		}
+	}
+
+	return r0
+}
 type mockConstructorTestingTNewMockZHTTPClient interface {
 	mock.TestingT
 	Cleanup(func())
