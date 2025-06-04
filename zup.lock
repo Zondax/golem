@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-03-25T17:19:49.206Z",
+  "entries": {
+    "zondax/zup-make:v0.0.4": {
+      "imageName": "zondax/zup-make",
+      "tag": "v0.0.4",
+      "digest": "sha256:5cc46d2ad40b8bbda55bb1d464a2fe6027de789411cb098888b1f8893282a742"
+    }
+  }
+}
