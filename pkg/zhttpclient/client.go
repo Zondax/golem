@@ -18,6 +18,7 @@ type ZHTTPClient interface {
 	SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient
 	NewRequest() ZRequest
 	Do(ctx context.Context, req *http.Request) (*Response, error)
+	GetHTTPClient() *http.Client
 }
 
 // OpenTelemetryConfig configures OpenTelemetry instrumentation for HTTP client
@@ -151,4 +152,8 @@ func (z *zHTTPClient) Do(ctx context.Context, req *http.Request) (*Response, err
 		Code: resp.StatusCode,
 		Body: data,
 	}, nil
+}
+
+func (z *zHTTPClient) GetHTTPClient() *http.Client {
+	return z.client.GetClient()
 }
