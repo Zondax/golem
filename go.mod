@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	cloud.google.com/go/secretmanager v1.14.7
 	github.com/ClickHouse/clickhouse-go/v2 v2.35.0
-	github.com/alicebob/miniredis/v2 v2.34.0
+	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-redis/redis/v8 v8.11.5
@@ -67,7 +67,6 @@ require (
 
 require (
 	github.com/ClickHouse/ch-go v0.66.0 // indirect
-	github.com/alicebob/gopher-json v0.0.0-20230218143504-906a9b012302 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0
