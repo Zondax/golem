@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zondax/golem/pkg/utils"
-
 	"github.com/cenkalti/backoff/v4"
+	"github.com/zondax/golem/pkg/zconverters"
 	"github.com/zondax/golem/pkg/zhttpclient"
 
 	"github.com/stretchr/testify/assert"
@@ -372,7 +371,7 @@ func TestHTTPClient_Retry(t *testing.T) {
 					backoff.WithMultiplier(2),
 				)
 				tmp.RandomizationFactor = 0
-				maxAttempts, _ := utils.IntToUInt64(r.MaxAttempts)
+				maxAttempts, _ := zconverters.IntToUInt64(r.MaxAttempts)
 				b := backoff.WithMaxRetries(tmp, maxAttempts)
 
 				r.SetBackoff(func(_ uint, _ *http.Response, _ error) time.Duration {

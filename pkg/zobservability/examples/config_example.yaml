@@ -1,0 +1,68 @@
+# Example configuration for OpenTelemetry metrics with SigNoz
+
+# Configuration with Push Mode (recommended for production)
+# Metrics are automatically pushed every 30 seconds
+observability:
+  provider: "signoz"
+  enabled: true
+  environment: "production"
+  address: "ingest.eu.signoz.cloud:443"
+  service_name: "my-service"
+  release: "v1.2.3"
+  headers:
+    signoz-access-token: "your-signoz-access-token"
+  metrics:
+    enabled: true
+    provider: "opentelemetry"
+    opentelemetry:
+      endpoint: "ingest.eu.signoz.cloud:443"
+      insecure: false
+      service_name: "my-service"
+      service_version: "v1.2.3"
+      environment: "production"
+      hostname: "my-host"
+      export_mode: "push"          # Push metrics every 30 seconds
+      push_interval: "30s"         # Configurable push interval
+      batch_timeout: "5s"          # Batch timeout
+      export_timeout: "30s"        # Export timeout
+      headers:
+        signoz-access-token: "your-signoz-access-token"
+
+---
+
+# Configuration with Endpoint Mode (for batch processing)
+# Metrics are exported on demand or at shutdown
+observability:
+  provider: "signoz"
+  enabled: true
+  environment: "development"
+  address: "localhost:4317"
+  service_name: "batch-processor"
+  release: "v1.0.0"
+  metrics:
+    enabled: true
+    provider: "opentelemetry"
+    opentelemetry:
+      endpoint: "localhost:4317"
+      insecure: true
+      service_name: "batch-processor"
+      service_version: "v1.0.0"
+      environment: "development"
+      hostname: "localhost"
+      export_mode: "endpoint"      # Export on demand
+      batch_timeout: "5s"
+      export_timeout: "30s"
+
+---
+
+# Minimal configuration (uses defaults)
+observability:
+  provider: "signoz"
+  enabled: true
+  environment: "development"
+  address: "localhost:4317"
+  service_name: "simple-service"
+  metrics:
+    enabled: true
+    provider: "opentelemetry"
+    # OpenTelemetry config will use defaults with SigNoz settings 
