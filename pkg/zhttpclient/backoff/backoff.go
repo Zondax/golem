@@ -1,10 +1,10 @@
 package backoff
 
 import (
-	"github.com/zondax/golem/pkg/utils"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/zondax/golem/pkg/zconverters"
 )
 
 const (
@@ -36,12 +36,12 @@ func (b *BackOff) WithInitialDuration(initial time.Duration) *BackOff {
 
 func (b *BackOff) Exponential() backoff.BackOff {
 	tmp := backoff.NewExponentialBackOff(backoff.WithInitialInterval(b.initialDuration), backoff.WithMaxElapsedTime(b.maxDuration), backoff.WithMultiplier(exponentialMultiplier))
-	maxAttempts, _ := utils.IntToUInt64(b.maxAttempts)
+	maxAttempts, _ := zconverters.IntToUInt64(b.maxAttempts)
 	return backoff.WithMaxRetries(tmp, maxAttempts)
 }
 
 func (b *BackOff) Linear() backoff.BackOff {
-	maxAttempts, _ := utils.IntToUInt64(b.maxAttempts)
+	maxAttempts, _ := zconverters.IntToUInt64(b.maxAttempts)
 	return backoff.WithMaxRetries(backoff.NewConstantBackOff(b.initialDuration), maxAttempts)
 }
 
