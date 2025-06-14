@@ -11,8 +11,9 @@ import (
 // Returns a 36-character UUID in format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
 //
 // Example:
-//   id := utils.GenerateUUID()
-//   // Output: "550e8400-e29b-41d4-a716-446655440000"
+//
+//	id := utils.GenerateUUID()
+//	// Output: "550e8400-e29b-41d4-a716-446655440000"
 func GenerateUUID() string {
 	return uuid.New().String()
 }
@@ -21,8 +22,9 @@ func GenerateUUID() string {
 // Higher collision probability than full UUID - use carefully in production.
 //
 // Example:
-//   id := utils.GenerateUUIDShort()
-//   // Output: "550e8400"
+//
+//	id := utils.GenerateUUIDShort()
+//	// Output: "550e8400"
 func GenerateUUIDShort() string {
 	return uuid.New().String()[:8]
 }
@@ -37,7 +39,8 @@ func GenerateUUIDShort() string {
 // Returns error if fields is empty or contains empty strings.
 //
 // Example:
-//   id, err := utils.GenerateUUIDv5(uuid.NameSpaceDNS, []string{"user", "john.doe"})
+//
+//	id, err := utils.GenerateUUIDv5(uuid.NameSpaceDNS, []string{"user", "john.doe"})
 func GenerateUUIDv5(namespace uuid.UUID, fields []string) (string, error) {
 	if len(fields) == 0 {
 		return "", fmt.Errorf("at least one field is required for UUID generation")

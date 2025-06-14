@@ -117,7 +117,7 @@ func TestNewService(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	t.Run("WhenCalled_ShouldReturnValidDefaults", func(t *testing.T) {
 		config := DefaultConfig()
-		
+
 		assert.Equal(t, DefaultTimeout, config.Timeout)
 		assert.NotNil(t, config.HTTPClient)
 		assert.IsType(t, &http.Client{}, config.HTTPClient)

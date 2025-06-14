@@ -99,7 +99,7 @@ func TestDefaultString(t *testing.T) {
 func BenchmarkDefaultString_WithValue(b *testing.B) {
 	value := "actual_value"
 	defaultValue := "default_value"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		DefaultString(value, defaultValue)
@@ -109,7 +109,7 @@ func BenchmarkDefaultString_WithValue(b *testing.B) {
 func BenchmarkDefaultString_WithEmpty(b *testing.B) {
 	value := ""
 	defaultValue := "default_value"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		DefaultString(value, defaultValue)
@@ -119,7 +119,7 @@ func BenchmarkDefaultString_WithEmpty(b *testing.B) {
 func BenchmarkDefaultString_WithLongStrings(b *testing.B) {
 	value := ""
 	defaultValue := "this is a very long default string that might be used in real world scenarios with lots of text and content"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		DefaultString(value, defaultValue)

@@ -142,7 +142,8 @@ func TestInt64ToUint64(t *testing.T) {
 		largeValue := int64(1<<62 - 1) // Large positive value
 		result := Int64ToUint64(largeValue)
 
-		assert.Equal(t, uint64(largeValue), result)
+		expected := uint64(1<<62 - 1) // Use direct uint64 value instead of conversion
+		assert.Equal(t, expected, result)
 	})
 }
 
@@ -266,28 +267,28 @@ func TestIntegration(t *testing.T) {
 func BenchmarkIntToUInt64_Positive(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		IntToUInt64(42)
+		_, _ = IntToUInt64(42)
 	}
 }
 
 func BenchmarkIntToUInt64_Negative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		IntToUInt64(-42)
+		_, _ = IntToUInt64(-42)
 	}
 }
 
 func BenchmarkIntToUInt_Positive(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		IntToUInt(42)
+		_, _ = IntToUInt(42)
 	}
 }
 
 func BenchmarkIntToUInt_Negative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		IntToUInt(-42)
+		_, _ = IntToUInt(-42)
 	}
 }
 
