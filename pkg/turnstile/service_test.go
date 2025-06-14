@@ -370,6 +370,103 @@ func TestService_Verify(t *testing.T) {
 	})
 }
 
+func TestService_Verify_EdgeCases(t *testing.T) {
+	t.Run("WhenMalformedEndpointURL_ShouldReturnError", func(t *testing.T) {
+		// Arrange - Use a malformed URL that will cause http.NewRequestWithContext to fail
+		config := Config{
+			SecretKey: "test-secret",
+			Endpoint:  "://invalid-url", // Malformed URL
+		}
+		svc := NewService(config)
+
+		// Act
+		err := svc.Verify(context.Background(), "valid-token")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create request")
+	})
+
+	t.Run("WhenVeryLongToken_ShouldStillWork", func(t *testing.T) {
+		// Arrange - Test with a very long token to ensure multipart handling works
+		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			err := r.ParseMultipartForm(10 << 20)
+			require.NoError(t, err)
+
+			// Verify the long token was received correctly
+			token := r.FormValue(FieldResponse)
+			assert.Len(t, token, 10000) // Verify it's the expected length
+
+			writeJSONResponse(t, w, createSuccessResponse())
+		})
+
+		config := createTestConfig(server.URL)
+		svc := NewService(config)
+
+		// Create a very long token (10KB)
+		longToken := string(make([]byte, 10000))
+		for i := range longToken {
+			longToken = longToken[:i] + "a" + longToken[i+1:]
+		}
+
+		// Act
+		err := svc.Verify(context.Background(), longToken)
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("WhenSpecialCharactersInToken_ShouldHandleCorrectly", func(t *testing.T) {
+		// Arrange - Test with special characters that might cause multipart encoding issues
+		specialToken := "token-with-special-chars-!@#$%^&*()_+-=[]{}|;:,.<>?"
+
+		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			err := r.ParseMultipartForm(10 << 20)
+			require.NoError(t, err)
+
+			// Verify special characters were preserved
+			receivedToken := r.FormValue(FieldResponse)
+			assert.Equal(t, specialToken, receivedToken)
+
+			writeJSONResponse(t, w, createSuccessResponse())
+		})
+
+		config := createTestConfig(server.URL)
+		svc := NewService(config)
+
+		// Act
+		err := svc.Verify(context.Background(), specialToken)
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("WhenUnicodeCharactersInToken_ShouldHandleCorrectly", func(t *testing.T) {
+		// Arrange - Test with Unicode characters
+		unicodeToken := "token-with-unicode-🚀-测试-🔒"
+
+		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			err := r.ParseMultipartForm(10 << 20)
+			require.NoError(t, err)
+
+			// Verify Unicode characters were preserved
+			receivedToken := r.FormValue(FieldResponse)
+			assert.Equal(t, unicodeToken, receivedToken)
+
+			writeJSONResponse(t, w, createSuccessResponse())
+		})
+
+		config := createTestConfig(server.URL)
+		svc := NewService(config)
+
+		// Act
+		err := svc.Verify(context.Background(), unicodeToken)
+
+		// Assert
+		assert.NoError(t, err)
+	})
+}
+
 func TestService_Verify_WithCustomHTTPClient(t *testing.T) {
 	t.Run("WhenCustomHTTPClient_ShouldUseIt", func(t *testing.T) {
 		// Arrange

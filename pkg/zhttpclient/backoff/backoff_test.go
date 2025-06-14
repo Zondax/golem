@@ -149,23 +149,44 @@ func TestBackOff_FluentInterface(t *testing.T) {
 func TestBackOff_Exponential(t *testing.T) {
 	t.Run("ShouldReturnExponentialBackOff", func(t *testing.T) {
 		backOff := New().
-			WithMaxAttempts(3).
+			WithMaxAttempts(5).
 			WithMaxDuration(10 * time.Second).
 			WithInitialDuration(100 * time.Millisecond).
 			Exponential()
 
 		assert.NotNil(t, backOff)
 
-		// Test that it behaves like an exponential backoff
-		interval1 := backOff.NextBackOff()
-		interval2 := backOff.NextBackOff()
+		// Test that it behaves like an exponential backoff by collecting multiple intervals
+		var intervals []time.Duration
+		for i := 0; i < 4; i++ {
+			interval := backOff.NextBackOff()
+			if interval == backoff.Stop {
+				break
+			}
+			intervals = append(intervals, interval)
+		}
 
-		// Should return valid intervals (not backoff.Stop initially)
-		assert.NotEqual(t, backoff.Stop, interval1)
-		assert.NotEqual(t, backoff.Stop, interval2)
+		// Should have at least 2 intervals to test
+		assert.GreaterOrEqual(t, len(intervals), 2)
 
-		// Second interval should be larger (exponential growth)
-		assert.Greater(t, interval2, interval1)
+		// All intervals should be valid (not backoff.Stop)
+		for _, interval := range intervals {
+			assert.NotEqual(t, backoff.Stop, interval)
+			assert.Greater(t, interval, time.Duration(0))
+		}
+
+		// Test exponential behavior: the average of later intervals should be larger
+		// This accounts for jitter while still validating exponential growth
+		if len(intervals) >= 4 {
+			firstHalf := (intervals[0] + intervals[1]) / 2
+			secondHalf := (intervals[2] + intervals[3]) / 2
+			assert.Greater(t, secondHalf, firstHalf, "Later intervals should be larger on average")
+		}
+
+		// Verify intervals are within reasonable bounds for exponential backoff
+		// First interval should be close to initial duration (allowing for jitter)
+		assert.GreaterOrEqual(t, intervals[0], 50*time.Millisecond) // At least 50% of initial
+		assert.LessOrEqual(t, intervals[0], 200*time.Millisecond)   // At most 200% of initial
 	})
 
 	t.Run("ShouldRespectMaxAttempts", func(t *testing.T) {
