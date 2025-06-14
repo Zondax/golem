@@ -41,8 +41,3 @@ func IntToInt32(value int) int32 {
 	}
 	return int32(value)
 }
-
-// LenToInt32 converts the length of a slice/array to int32 safely, capping at MaxInt32
-func LenToInt32(length int) int32 {
-	return IntToInt32(length)
-}
