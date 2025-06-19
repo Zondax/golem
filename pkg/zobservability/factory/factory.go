@@ -87,7 +87,9 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 	}
 
 	// Check if parent sampling should be ignored
-	ignoreParentSampling := false
+	// DEFAULT: true - This fixes trace loss in Google Cloud Run and other cloud environments
+	// where trace headers are automatically injected with sampling decisions
+	ignoreParentSampling := true // Changed from false to true as default
 	if ignoreParentStr, ok := config.CustomConfig[signoz.ConfigKeyIgnoreParentSampling]; ok {
 		ignoreParentSampling = strings.ToLower(ignoreParentStr) == signoz.ConfigKeyTrueValue
 	}

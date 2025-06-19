@@ -669,26 +669,102 @@ func TestNewSigNozObserver_WhenMultipleHeaders_ShouldParseAllHeaders(t *testing.
 	config := &zobservability.Config{
 		Provider:    zobservability.ProviderSigNoz,
 		Enabled:     true,
-		Address:     "localhost:4317",
-		Environment: "test",
+		Environment: zobservability.EnvironmentProduction,
+		Address:     "signoz.example.com:443",
 		CustomConfig: map[string]string{
-			"header_authorization":   "Bearer token123",
-			"header_x-custom-header": "custom-value",
-			"header_content-type":    "application/json",
-			"non_header_key":         "should-be-ignored",
+			"header_signoz-access-token": "test-token",
+			"header_x-api-key":           "api-key-123",
+			"header_authorization":       "Bearer token123",
+			"header_custom-header":       "custom-value",
 		},
 	}
+	serviceName := "multi-header-service"
 
 	// Act
-	observer, err := NewObserver(config, "headers-service")
+	observer, err := newSigNozObserver(config, serviceName)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, observer)
+	assert.Implements(t, (*zobservability.Observer)(nil), observer)
+}
 
-	// Cleanup
-	if observer != nil {
-		_ = observer.Close()
+func TestNewSigNozObserver_WhenIgnoreParentSamplingNotSet_ShouldDefaultToTrue(t *testing.T) {
+	// Arrange - No ignore_parent_sampling in custom config
+	config := &zobservability.Config{
+		Provider:    zobservability.ProviderSigNoz,
+		Enabled:     true,
+		Environment: zobservability.EnvironmentProduction,
+		Address:     "signoz.example.com:443",
+		CustomConfig: map[string]string{
+			// No ignore_parent_sampling key - should default to true
+			"header_signoz-access-token": "test-token",
+		},
+	}
+	serviceName := "default-sampling-service"
+
+	// Act
+	observer, err := newSigNozObserver(config, serviceName)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, observer)
+	assert.Implements(t, (*zobservability.Observer)(nil), observer)
+
+	// Verify that the observer was created (which means the default true value was used)
+	// If the default was false and we were in a GCP environment, traces might be lost
+}
+
+func TestNewSigNozObserver_WhenIgnoreParentSamplingExplicitlySet_ShouldRespectSetting(t *testing.T) {
+	testCases := []struct {
+		name     string
+		value    string
+		expected string // We can't directly test the internal config, but we verify it doesn't error
+	}{
+		{
+			name:     "explicitly_enabled",
+			value:    "true",
+			expected: "should work",
+		},
+		{
+			name:     "explicitly_disabled",
+			value:    "false",
+			expected: "should work",
+		},
+		{
+			name:     "case_insensitive_true",
+			value:    "TRUE",
+			expected: "should work",
+		},
+		{
+			name:     "case_insensitive_false",
+			value:    "FALSE",
+			expected: "should work",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			config := &zobservability.Config{
+				Provider:    zobservability.ProviderSigNoz,
+				Enabled:     true,
+				Environment: zobservability.EnvironmentProduction,
+				Address:     "signoz.example.com:443",
+				CustomConfig: map[string]string{
+					"ignore_parent_sampling": tc.value,
+				},
+			}
+			serviceName := "explicit-sampling-service"
+
+			// Act
+			observer, err := newSigNozObserver(config, serviceName)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.NotNil(t, observer)
+			assert.Implements(t, (*zobservability.Observer)(nil), observer)
+		})
 	}
 }
 

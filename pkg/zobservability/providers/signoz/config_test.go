@@ -607,3 +607,29 @@ func TestConfig_ShouldIgnoreParentSampling_WhenExplicitlyEnabled_ShouldReturnTru
 	// Assert
 	assert.True(t, result)
 }
+
+func TestConfig_ShouldIgnoreParentSampling_WhenExplicitlyDisabled_ShouldReturnFalse(t *testing.T) {
+	// Arrange
+	config := &Config{
+		IgnoreParentSampling: false,
+	}
+
+	// Act
+	result := config.ShouldIgnoreParentSampling()
+
+	// Assert
+	assert.False(t, result)
+}
+
+func TestConfig_ShouldIgnoreParentSampling_WhenNotSet_ShouldDefaultToFalse(t *testing.T) {
+	// Arrange - IgnoreParentSampling not explicitly set (zero value = false)
+	config := &Config{}
+
+	// Act
+	result := config.ShouldIgnoreParentSampling()
+
+	// Assert
+	// Note: The struct field defaults to false, but the factory defaults to true
+	// This test verifies the struct behavior, while the factory test verifies the default behavior
+	assert.False(t, result)
+}

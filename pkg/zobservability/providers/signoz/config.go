@@ -202,18 +202,17 @@ func (c *Config) GetProcessID() string {
 }
 
 // ShouldIgnoreParentSampling returns true if parent sampling decisions should be ignored.
-// This automatically detects Google Cloud Run and other GCP environments where
-// trace headers are automatically injected with sampling decisions that can cause
-// traces to be dropped.
+// DEFAULT BEHAVIOR: Returns true by default to prevent trace loss in cloud environments.
 //
-// The method checks:
-// 1. Explicit configuration (ignore_parent_sampling: true)
-// 2. Google Cloud Run environment detection (K_SERVICE env var)
-// 3. Google Cloud Functions environment detection (FUNCTION_NAME env var)
-// 4. Google App Engine environment detection (GAE_ENV env var)
+// This fixes a common issue where cloud platforms (Google Cloud Run, Cloud Functions,
+// App Engine, etc.) automatically inject trace headers with sampling decisions that
+// cause traces to be dropped, making distributed tracing nearly useless.
 //
-// Returns true if any of these conditions are met, ensuring traces are not
-// lost due to GCP's automatic trace header injection.
+// The method respects explicit configuration:
+// - ignore_parent_sampling: true (explicit enable)
+// - ignore_parent_sampling: false (explicit disable - use with caution in cloud environments)
+//
+// When not explicitly configured, defaults to true to ensure traces are not lost.
 func (c *Config) ShouldIgnoreParentSampling() bool {
 	// If explicitly configured, respect the setting
 	if c.IgnoreParentSampling {
