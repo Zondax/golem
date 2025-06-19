@@ -86,6 +86,12 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		insecure = strings.ToLower(insecureStr) == signoz.ConfigKeyTrueValue
 	}
 
+	// Check if parent sampling should be ignored
+	ignoreParentSampling := false
+	if ignoreParentStr, ok := config.CustomConfig[signoz.ConfigKeyIgnoreParentSampling]; ok {
+		ignoreParentSampling = strings.ToLower(ignoreParentStr) == signoz.ConfigKeyTrueValue
+	}
+
 	// Parse advanced batch configuration if present
 	// BatchConfig controls performance and batching behavior
 	batchConfig, err := parseBatchConfig(config.CustomConfig)
@@ -105,16 +111,17 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 
 	// Create SigNoz configuration with all parsed settings
 	signozConfig := &signoz.Config{
-		Endpoint:       config.Address,
-		ServiceName:    serviceName,
-		Environment:    config.Environment,
-		Release:        config.Release,
-		Debug:          config.Debug,
-		Insecure:       insecure,
-		Headers:        headers,
-		SampleRate:     config.SampleRate,
-		BatchConfig:    batchConfig,    // Optional: nil means use defaults
-		ResourceConfig: resourceConfig, // Optional: nil means use defaults
+		Endpoint:             config.Address,
+		ServiceName:          serviceName,
+		Environment:          config.Environment,
+		Release:              config.Release,
+		Debug:                config.Debug,
+		Insecure:             insecure,
+		Headers:              headers,
+		SampleRate:           config.SampleRate,
+		BatchConfig:          batchConfig,          // Optional: nil means use defaults
+		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults
+		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
 	}
 
 	return signoz.NewObserver(signozConfig)

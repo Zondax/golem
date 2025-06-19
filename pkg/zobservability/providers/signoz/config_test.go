@@ -590,3 +590,20 @@ func TestConfig_WhenCompleteConfiguration_ShouldWorkCorrectly(t *testing.T) {
 	assert.True(t, metricsConfig.Enabled)
 	assert.Equal(t, string(zobservability.MetricsProviderOpenTelemetry), metricsConfig.Provider)
 }
+
+// =============================================================================
+// IGNORE PARENT SAMPLING TESTS
+// =============================================================================
+
+func TestConfig_ShouldIgnoreParentSampling_WhenExplicitlyEnabled_ShouldReturnTrue(t *testing.T) {
+	// Arrange
+	config := &Config{
+		IgnoreParentSampling: true,
+	}
+
+	// Act
+	result := config.ShouldIgnoreParentSampling()
+
+	// Assert
+	assert.True(t, result)
+}

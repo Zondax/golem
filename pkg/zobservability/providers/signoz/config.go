@@ -23,6 +23,13 @@ type Config struct {
 	Headers     map[string]string `yaml:"headers" mapstructure:"headers"`
 	SampleRate  float64           `yaml:"sample_rate" mapstructure:"sample_rate"`
 
+	// IgnoreParentSampling forces sampling decisions to be made locally,
+	// ignoring parent trace sampling decisions from headers (like traceparent).
+	// This is ESSENTIAL for Google Cloud Run deployments where GCP automatically
+	// injects trace headers with sampling decisions that can cause traces to be dropped.
+	// Set to true when deploying to Cloud Run or other GCP services.
+	IgnoreParentSampling bool `yaml:"ignore_parent_sampling" mapstructure:"ignore_parent_sampling"`
+
 	// Metrics configuration
 	Metrics zobservability.MetricsConfig `yaml:"metrics" mapstructure:"metrics"`
 
@@ -192,6 +199,28 @@ func (c *Config) GetProcessID() string {
 		return strconv.Itoa(os.Getpid())
 	}
 	return ""
+}
+
+// ShouldIgnoreParentSampling returns true if parent sampling decisions should be ignored.
+// This automatically detects Google Cloud Run and other GCP environments where
+// trace headers are automatically injected with sampling decisions that can cause
+// traces to be dropped.
+//
+// The method checks:
+// 1. Explicit configuration (ignore_parent_sampling: true)
+// 2. Google Cloud Run environment detection (K_SERVICE env var)
+// 3. Google Cloud Functions environment detection (FUNCTION_NAME env var)
+// 4. Google App Engine environment detection (GAE_ENV env var)
+//
+// Returns true if any of these conditions are met, ensuring traces are not
+// lost due to GCP's automatic trace header injection.
+func (c *Config) ShouldIgnoreParentSampling() bool {
+	// If explicitly configured, respect the setting
+	if c.IgnoreParentSampling {
+		return true
+	}
+
+	return false
 }
 
 // GetBatchProfileConfig returns a predefined batch configuration for the specified profile

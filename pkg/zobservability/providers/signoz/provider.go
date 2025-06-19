@@ -123,6 +123,27 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		sampler = sdktrace.TraceIDRatioBased(sampleRate)
 	}
 
+	// CRITICAL FIX FOR GOOGLE CLOUD RUN:
+	// Google Cloud Platform (Cloud Run, Cloud Functions, App Engine) automatically injects
+	// trace headers (traceparent) with sampling decisions that can cause traces to be dropped.
+	// When ShouldIgnoreParentSampling() returns true, we use our local sampling decision
+	// instead of respecting the parent's sampling decision from GCP headers.
+	//
+	// This fixes the issue described in:
+	// https://anecdotes.dev/opentelemetry-on-google-cloud-unraveling-the-mystery-f61f044c18be
+	//
+	// Without this fix, most traces in Cloud Run would be created as NonRecordingSpan
+	// and never exported to SigNoz, making distributed tracing nearly useless.
+	if !cfg.ShouldIgnoreParentSampling() {
+		// Normal behavior: respect parent sampling decisions (for non-GCP environments)
+		// This creates a ParentBased sampler that:
+		// - Uses parent's sampling decision if present
+		// - Falls back to our local sampler if no parent
+		sampler = sdktrace.ParentBased(sampler)
+	}
+	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
+	// This ensures our application makes its own sampling decisions regardless of GCP headers
+
 	// Get batch configuration for performance tuning
 	batchConfig := cfg.GetBatchConfig()
 

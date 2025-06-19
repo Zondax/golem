@@ -30,6 +30,9 @@ const (
 	ConfigKeyResourceConfig = "resource_config" // Key for resource configuration
 	ConfigKeyBatchProfile   = "batch_profile"   // Key for predefined batch profile
 
+	// Sampling configuration keys
+	ConfigKeyIgnoreParentSampling = "ignore_parent_sampling" // Key for ignoring parent sampling decisions
+
 	// Standardized Batch Profiles - optimized configurations for different scenarios
 	BatchProfileDevelopment = "development" // Real-time visibility, low latency
 	BatchProfileProduction  = "production"  // Balanced performance and efficiency
