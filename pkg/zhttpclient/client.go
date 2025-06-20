@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zondax/golem/pkg/utils"
-
 	"github.com/go-resty/resty/v2"
+	"github.com/zondax/golem/pkg/zconverters"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -129,7 +128,7 @@ func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient {
 	// default backoff function is provided by resty
 	if retryPolicy.backoffFn != nil {
 		z.client.SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
-			attempt, _ := utils.IntToUInt(r.Request.Attempt)
+			attempt, _ := zconverters.IntToUInt(r.Request.Attempt)
 			return retryPolicy.backoffFn(attempt, r.RawResponse, nil), nil
 		})
 	}
