@@ -104,9 +104,9 @@ func TestCloudSQLPostgresConnector_ValidateConfig(t *testing.T) {
 
 func TestBuildCloudSQLPostgresDSN(t *testing.T) {
 	tests := []struct {
-		name     string
-		params   zdbconfig.ConnectionParams
-		expected string
+		name           string
+		params         zdbconfig.ConnectionParams
+		expectedParams []string // Using slice because map iteration order is not guaranteed
 	}{
 		{
 			name: "Basic DSN with password",
@@ -118,7 +118,7 @@ func TestBuildCloudSQLPostgresDSN(t *testing.T) {
 					UseIAMAuth: false,
 				},
 			},
-			expected: "user=testuser database=testdb password=testpass sslmode=disable",
+			expectedParams: []string{"user=testuser", "database=testdb", "password=testpass", "sslmode=disable"},
 		},
 		{
 			name: "DSN with IAM auth (no password)",
@@ -129,7 +129,7 @@ func TestBuildCloudSQLPostgresDSN(t *testing.T) {
 					UseIAMAuth: true,
 				},
 			},
-			expected: "user=test-sa@project.iam database=testdb sslmode=disable",
+			expectedParams: []string{"user=test-sa@project.iam", "database=testdb", "sslmode=disable"},
 		},
 		{
 			name: "DSN with additional params",
@@ -142,14 +142,22 @@ func TestBuildCloudSQLPostgresDSN(t *testing.T) {
 					UseIAMAuth: false,
 				},
 			},
-			expected: "user=testuser database=testdb password=testpass sslmode=disable application_name=myapp connect_timeout=10",
+			expectedParams: []string{"user=testuser", "database=testdb", "password=testpass", "sslmode=disable", "application_name=myapp", "connect_timeout=10"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := buildCloudSQLPostgresDSN(tt.params)
-			assert.Equal(t, tt.expected, result)
+
+			// Split the result and check that all expected parts are present
+			resultParts := strings.Split(result, " ")
+			assert.Len(t, resultParts, len(tt.expectedParams))
+
+			// Check that all expected parts are in the result
+			for _, expectedParam := range tt.expectedParams {
+				assert.Contains(t, resultParts, expectedParam)
+			}
 		})
 	}
 }
