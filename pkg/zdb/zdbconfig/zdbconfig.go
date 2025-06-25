@@ -29,6 +29,9 @@ type ConnectionParams struct {
 	Port     uint
 	Params   string
 	Protocol string
+
+	// Cloud SQL specific configuration
+	CloudSQL CloudSQLConfig
 }
 
 type Config struct {
@@ -73,6 +76,27 @@ type OpenTelemetryConfig struct {
 
 	// DBStatsEnabled controls whether to collect database connection pool stats
 	DBStatsEnabled bool
+}
+
+// CloudSQLConfig represents Cloud SQL specific configuration
+type CloudSQLConfig struct {
+	// Enabled controls whether to use Cloud SQL connector
+	Enabled bool
+
+	// InstanceName is the Cloud SQL instance connection name (project:region:instance)
+	InstanceName string
+
+	// UsePrivateIP controls whether to use private IP for connection
+	UsePrivateIP bool
+
+	// UseIAMAuth controls whether to use IAM authentication
+	UseIAMAuth bool
+
+	// CredentialsFile path to service account credentials file
+	CredentialsFile string
+
+	// RefreshTimeout for connection refresh (optional)
+	RefreshTimeout int
 }
 
 func BuildGormConfig(logConfig LogConfig) *gorm.Config {
