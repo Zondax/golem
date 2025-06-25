@@ -29,11 +29,11 @@ type CloudSQLPostgresConnector struct{}
 
 func (c *CloudSQLPostgresConnector) Connect(config *zdbconfig.Config) (*gorm.DB, error) {
 	if !config.ConnectionParams.CloudSQL.Enabled {
-		return nil, fmt.Errorf("Cloud SQL is not enabled in configuration")
+		return nil, fmt.Errorf("cloud SQL is not enabled in configuration")
 	}
 
 	if config.ConnectionParams.CloudSQL.InstanceName == "" {
-		return nil, fmt.Errorf("Cloud SQL instance name is required")
+		return nil, fmt.Errorf("cloud SQL instance name is required")
 	}
 
 	ctx := context.Background()
@@ -80,7 +80,7 @@ func (c *CloudSQLPostgresConnector) Connect(config *zdbconfig.Config) (*gorm.DB,
 	// Parse the DSN using pgx
 	pgxConfig, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		dialer.Close()
+		_ = dialer.Close()
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
 
@@ -101,14 +101,14 @@ func (c *CloudSQLPostgresConnector) Connect(config *zdbconfig.Config) (*gorm.DB,
 		DSN:        connStr,
 	}), gormConfig)
 	if err != nil {
-		dialer.Close()
+		_ = dialer.Close()
 		return nil, fmt.Errorf("failed to connect to Cloud SQL PostgreSQL: %w", err)
 	}
 
 	// Configure connection pool settings
 	sqlDB, err := dbConn.DB()
 	if err != nil {
-		dialer.Close()
+		_ = dialer.Close()
 		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 

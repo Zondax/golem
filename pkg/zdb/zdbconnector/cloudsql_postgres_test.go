@@ -27,7 +27,7 @@ func TestCloudSQLPostgresConnector_ValidateConfig(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorMsg:    "Cloud SQL is not enabled in configuration",
+			errorMsg:    "cloud SQL is not enabled in configuration",
 		},
 		{
 			name: "Missing instance name",
@@ -40,7 +40,7 @@ func TestCloudSQLPostgresConnector_ValidateConfig(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorMsg:    "Cloud SQL instance name is required",
+			errorMsg:    "cloud SQL instance name is required",
 		},
 		{
 			name: "Valid config with IAM auth",
@@ -92,13 +92,11 @@ func TestCloudSQLPostgresConnector_ValidateConfig(t *testing.T) {
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
-			} else {
+			} else if err != nil {
 				// Note: We expect an error here because we're not actually connecting to a real Cloud SQL instance
 				// but we should not get validation errors
-				if err != nil {
-					assert.NotContains(t, err.Error(), "Cloud SQL is not enabled")
-					assert.NotContains(t, err.Error(), "instance name is required")
-				}
+				assert.NotContains(t, err.Error(), "cloud SQL is not enabled")
+				assert.NotContains(t, err.Error(), "instance name is required")
 			}
 		})
 	}
