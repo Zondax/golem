@@ -63,3 +63,51 @@ The `zdatabase` package can be configured through the `zdbconfig` package. OpenT
 
 - clickhouse
 - postgresql
+- cloud sql postgres
+
+## Cloud SQL PostgreSQL Connector
+
+### Configuration
+
+```go
+config := &zdbconfig.Config{
+    ConnectionParams: zdbconfig.ConnectionParams{
+        User: "service-account@project-id.iam", // For IAM auth
+        Name: "database-name",
+        CloudSQL: zdbconfig.CloudSQLConfig{
+            Enabled:      true,
+            InstanceName: "project:region:instance",
+            UseIAMAuth:   true,  // Recommended for production
+            UsePrivateIP: true,  // For VPC connections
+        },
+    },
+    LogConfig: zdbconfig.LogConfig{
+        LogLevel: "info",
+    },
+}
+
+db, err := zdb.NewInstance(zdbconnector.DBTypeCloudSQLPostgres, config)
+```
+
+### Authentication Options
+
+**IAM Authentication (Recommended):**
+```go
+CloudSQL: zdbconfig.CloudSQLConfig{
+    UseIAMAuth: true,
+    // No password needed
+}
+```
+
+**Password Authentication:**
+```go
+ConnectionParams: zdbconfig.ConnectionParams{
+    Password: "your-password",
+},
+CloudSQL: zdbconfig.CloudSQLConfig{
+    UseIAMAuth: false,
+}
+```
+
+### Instance Name Format
+Always use: `"project-id:region:instance-name"`

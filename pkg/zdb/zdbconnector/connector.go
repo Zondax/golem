@@ -6,13 +6,15 @@ import (
 )
 
 const (
-	DBTypeClickhouse = "clickhouse"
-	DBTypePostgres   = "postgres"
+	DBTypeClickhouse       = "clickhouse"
+	DBTypePostgres         = "postgres"
+	DBTypeCloudSQLPostgres = "cloudsql-postgres"
 )
 
 var Connectors = map[string]DBConnector{
-	DBTypeClickhouse: &ClickHouseConnector{},
-	DBTypePostgres:   &PostgresConnector{},
+	DBTypeClickhouse:       &ClickHouseConnector{},
+	DBTypePostgres:         &PostgresConnector{},
+	DBTypeCloudSQLPostgres: &CloudSQLPostgresConnector{},
 }
 
 type DBConnector interface {
