@@ -8,6 +8,7 @@ require (
 	cloud.google.com/go/cloudsqlconn v1.17.2
 	cloud.google.com/go/secretmanager v1.15.0
 	github.com/ClickHouse/clickhouse-go/v2 v2.37.2
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/getsentry/sentry-go v0.34.0
 	github.com/go-chi/chi/v5 v5.2.2
@@ -48,7 +49,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.53.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
