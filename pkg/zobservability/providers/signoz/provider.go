@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
@@ -140,7 +140,10 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		// This creates a ParentBased sampler that:
 		// - Uses parent's sampling decision if present
 		// - Falls back to our local sampler if no parent
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler")
 		sampler = sdktrace.ParentBased(sampler)
+	} else {
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler")
 	}
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
@@ -192,7 +195,7 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		// Google Cloud Trace propagator (reads X-Cloud-Trace-Context, writes W3C)
 		// Putting this first means W3C traceparent takes precedence if both headers exist
-		gcppropagator.CloudTraceOneWayPropagator{},
+		// gcppropagator.CloudTraceOneWayPropagator{},
 		propagation.TraceContext{}, // W3C Trace Context (standard)
 		propagation.Baggage{},      // W3C Baggage (for custom attributes)
 	))
@@ -247,6 +250,7 @@ func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts
 }
 
 func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
+	logger.GetLoggerFromContext(ctx).Infof("Starting span", "operation", operation)
 	ctx, span := s.tracer.Start(ctx, operation)
 
 	signozSpan := &signozSpan{

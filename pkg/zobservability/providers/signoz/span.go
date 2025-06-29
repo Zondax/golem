@@ -1,6 +1,9 @@
 package signoz
 
 import (
+	"context"
+
+	"github.com/zondax/golem/pkg/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -27,5 +30,6 @@ func (s *signozSpan) SetError(err error, opts ...trace.EventOption) {
 }
 
 func (s *signozSpan) Finish() {
+	logger.GetLoggerFromContext(context.Background()).Infof("Finishing span", "operation", s.operation)
 	s.span.End()
 }
