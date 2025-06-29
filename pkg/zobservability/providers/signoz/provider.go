@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
@@ -139,7 +140,10 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		// This creates a ParentBased sampler that:
 		// - Uses parent's sampling decision if present
 		// - Falls back to our local sampler if no parent
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler")
 		sampler = sdktrace.ParentBased(sampler)
+	} else {
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler")
 	}
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
@@ -179,7 +183,19 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	// Configure text map propagator for distributed tracing
 	// This is CRITICAL for distributed tracing to work across services
 	// It tells OpenTelemetry how to inject/extract trace context in HTTP/gRPC headers
+	//
+	// GOOGLE CLOUD TRACE CONTEXT SUPPORT:
+	// Google Cloud services (Load Balancing, API Gateway, Cloud Run) inject X-Cloud-Trace-Context headers
+	// alongside the standard W3C traceparent headers. To prevent trace chain breaks in Google Cloud
+	// environments, we include the CloudTraceOneWayPropagator which can read both header formats.
+	//
+	// CloudTraceOneWayPropagator reads X-Cloud-Trace-Context but only writes W3C headers,
+	// making the application "bilingual" while preferring the W3C standard for outgoing requests.
+	// This ensures compatibility with both Google Cloud infrastructure and standard OpenTelemetry.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		// Google Cloud Trace propagator (reads X-Cloud-Trace-Context, writes W3C)
+		// Putting this first means W3C traceparent takes precedence if both headers exist
+		// gcppropagator.CloudTraceOneWayPropagator{},
 		propagation.TraceContext{}, // W3C Trace Context (standard)
 		propagation.Baggage{},      // W3C Baggage (for custom attributes)
 	))
@@ -234,6 +250,7 @@ func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts
 }
 
 func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
+	logger.GetLoggerFromContext(ctx).Infof("Starting span", "operation", operation)
 	ctx, span := s.tracer.Start(ctx, operation)
 
 	signozSpan := &signozSpan{
