@@ -9,6 +9,10 @@ const (
 	// DefaultShutdownTimeout is the default timeout for shutting down the tracer provider
 	DefaultShutdownTimeout = 5 * time.Second
 
+	// DefaultForceFlushTimeout is the default timeout for forcing span exports
+	// Optimized for Cloud Run environments where containers can be terminated quickly
+	DefaultForceFlushTimeout = 10 * time.Second
+
 	// Batch processor configuration
 	DefaultBatchTimeout   = 5 * time.Second  // How often to send batches
 	DefaultExportTimeout  = 30 * time.Second // Timeout for individual exports

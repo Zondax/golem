@@ -321,20 +321,67 @@ func (s *signozObserver) GetMetrics() zobservability.MetricsProvider {
 	return s.metrics
 }
 
+// ForceFlush forces the immediate export of all spans that have not yet been exported.
+// This is particularly important for Cloud Run environments where containers can be
+// terminated without warning, potentially causing spans to be lost if they remain buffered.
+//
+// ForceFlush ensures that all manually created spans (via StartSpan or NewEventSpanBuilder)
+// are immediately sent to SigNoz, complementing the automatic gRPC interceptor spans.
+func (s *signozObserver) ForceFlush(ctx context.Context) error {
+	if s.tracerProvider == nil {
+		return nil // Nothing to flush if tracer provider is not initialized
+	}
+
+	// Create timeout context for the flush operation
+	// Use a generous timeout to ensure spans have time to export, especially important for:
+	// - Slow network connections to SigNoz
+	// - Large batches of spans waiting to be exported
+	// - Cloud Run cold starts where export might take longer
+	flushCtx, cancel := context.WithTimeout(ctx, DefaultForceFlushTimeout)
+	defer cancel()
+
+	// ForceFlush immediately exports all spans that have not yet been exported
+	// for all the registered span processors. This is critical for ensuring
+	// that manually instrumented business logic spans are not lost when containers terminate.
+	if err := s.tracerProvider.ForceFlush(flushCtx); err != nil {
+		return fmt.Errorf("failed to force flush spans: %w", err)
+	}
+
+	return nil
+}
+
 // Close shuts down the observer and all its providers
+// CRITICAL: ForceFlush is called before Shutdown to ensure all pending spans are exported.
+// This prevents data loss in Cloud Run environments where containers can be terminated abruptly.
 func (s *signozObserver) Close() error {
-	// Close metrics provider
+	// Create a shutdown context with sufficient timeout for both flush and shutdown operations
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout+DefaultForceFlushTimeout)
+	defer cancel()
+
+	// 1. Force flush all pending spans before shutting down
+	// This ensures manually instrumented spans (StartSpan, NewEventSpanBuilder) are exported
+	// before the tracer provider shuts down and stops accepting new export operations
+	if err := s.ForceFlush(ctx); err != nil {
+		// Log the error but continue with shutdown - we don't want to block cleanup
+		// if ForceFlush fails, but we still need to properly close resources
+		// Note: This could be improved with better logging once logger is available in context
+		logger.GetLoggerFromContext(ctx).Errorf("Warning: failed to force flush spans during close: %v\n", err)
+	}
+
+	// 2. Close metrics provider
 	if s.metrics != nil {
 		if err := s.metrics.Stop(); err != nil {
 			return fmt.Errorf("failed to stop metrics provider: %w", err)
 		}
 	}
 
-	// Close tracer provider
+	// 3. Close tracer provider (includes final flush as per OpenTelemetry spec)
+	// Shutdown() automatically includes the effects of ForceFlush(), but we've already
+	// called it explicitly above with better error handling and timeout management
 	if s.tracerProvider != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout)
-		defer cancel()
-		if err := s.tracerProvider.Shutdown(ctx); err != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, DefaultShutdownTimeout)
+		defer shutdownCancel()
+		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to shutdown tracer provider: %w", err)
 		}
 	}

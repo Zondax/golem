@@ -37,6 +37,11 @@ func (n *noopObserver) GetMetrics() MetricsProvider {
 	return n.metrics
 }
 
+func (n *noopObserver) ForceFlush(ctx context.Context) error {
+	// No-op implementation - nothing to flush when observability is disabled
+	return nil
+}
+
 func (n *noopObserver) Close() error {
 	return nil
 }
