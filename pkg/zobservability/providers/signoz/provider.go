@@ -148,21 +148,34 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
 
-	// Get batch configuration for performance tuning
-	batchConfig := cfg.GetBatchConfig()
-
 	// Create tracer provider - this is the "engine" that creates and manages traces
 	// TracerProvider is responsible for:
 	// 1. Creating individual tracers for different components
 	// 2. Applying sampling decisions (what to collect)
 	// 3. Batching and sending data to SigNoz via the exporter
 	// 4. Managing trace lifecycle and resource cleanup
-	tracerProvider := sdktrace.NewTracerProvider(
-		// Sampling strategy - controls data volume and costs
+	var tracerProviderOpts []sdktrace.TracerProviderOption
+
+	// Add sampler and resource options
+	tracerProviderOpts = append(tracerProviderOpts,
 		sdktrace.WithSampler(sampler),
+		sdktrace.WithResource(resources),
+	)
+
+	// Choose between SimpleSpan (immediate export) or Batch processor
+	if cfg.UseSimpleSpan {
+		// Use OpenTelemetry's native SimpleSpanProcessor for immediate export without batching
+		// This processor exports spans immediately when they finish, providing real-time visibility
+		// at the cost of increased network overhead (one request per span)
+		simpleProcessor := sdktrace.NewSimpleSpanProcessor(exporter)
+		tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(simpleProcessor))
+	} else {
+		// Get batch configuration for performance tuning
+		batchConfig := cfg.GetBatchConfig()
+
 		// Batch processor - groups spans before sending (more efficient than one-by-one)
 		// Configurable batching improves performance and reduces network overhead
-		sdktrace.WithBatcher(
+		tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithBatcher(
 			exporter,
 			// How often to send batches (lower = more real-time, higher = more efficient)
 			sdktrace.WithBatchTimeout(batchConfig.BatchTimeout),
@@ -172,10 +185,10 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 			sdktrace.WithMaxExportBatchSize(batchConfig.MaxExportBatch),
 			// Maximum spans in queue (higher = less data loss, but more memory)
 			sdktrace.WithMaxQueueSize(batchConfig.MaxQueueSize),
-		),
-		// Resource metadata - attaches service info to all traces
-		sdktrace.WithResource(resources),
-	)
+		))
+	}
+
+	tracerProvider := sdktrace.NewTracerProvider(tracerProviderOpts...)
 
 	// Set global tracer provider
 	otel.SetTracerProvider(tracerProvider)

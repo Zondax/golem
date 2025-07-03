@@ -44,6 +44,11 @@ type Config struct {
 	// ResourceConfig is also a POINTER for the same reasons as BatchConfig
 	// Allows optional metadata configuration without forcing all users to specify it
 	ResourceConfig *ResourceConfig `yaml:"resource_config,omitempty" mapstructure:"resource_config"`
+
+	// UseSimpleSpan enables immediate span export without batching
+	// When true, spans are exported immediately when they finish instead of being batched
+	// This can increase network overhead but provides real-time visibility
+	UseSimpleSpan bool `yaml:"use_simple_span" mapstructure:"use_simple_span"`
 }
 
 // BatchConfig controls how spans are batched and sent to SigNoz

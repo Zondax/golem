@@ -94,6 +94,12 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		ignoreParentSampling = strings.ToLower(ignoreParentStr) == signoz.ConfigKeyTrueValue
 	}
 
+	// Parse SimpleSpan configuration
+	useSimpleSpan := false
+	if simpleSpanStr, ok := config.CustomConfig[signoz.ConfigKeyUseSimpleSpan]; ok {
+		useSimpleSpan = strings.ToLower(simpleSpanStr) == signoz.ConfigKeyTrueValue
+	}
+
 	// Parse advanced batch configuration if present
 	// BatchConfig controls performance and batching behavior
 	batchConfig, err := parseBatchConfig(config.CustomConfig)
@@ -124,6 +130,7 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		BatchConfig:          batchConfig,          // Optional: nil means use defaults
 		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults
 		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
+		UseSimpleSpan:        useSimpleSpan,        // Enable immediate span export
 	}
 
 	return signoz.NewObserver(signozConfig)
