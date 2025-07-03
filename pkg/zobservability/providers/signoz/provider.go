@@ -193,22 +193,7 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	// Set global tracer provider
 	otel.SetTracerProvider(tracerProvider)
 
-	// Configure text map propagator for distributed tracing
-	// This is CRITICAL for distributed tracing to work across services
-	// It tells OpenTelemetry how to inject/extract trace context in HTTP/gRPC headers
-	//
-	// GOOGLE CLOUD TRACE CONTEXT SUPPORT:
-	// Google Cloud services (Load Balancing, API Gateway, Cloud Run) inject X-Cloud-Trace-Context headers
-	// alongside the standard W3C traceparent headers. To prevent trace chain breaks in Google Cloud
-	// environments, we include the CloudTraceOneWayPropagator which can read both header formats.
-	//
-	// CloudTraceOneWayPropagator reads X-Cloud-Trace-Context but only writes W3C headers,
-	// making the application "bilingual" while preferring the W3C standard for outgoing requests.
-	// This ensures compatibility with both Google Cloud infrastructure and standard OpenTelemetry.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		// Google Cloud Trace propagator (reads X-Cloud-Trace-Context, writes W3C)
-		// Putting this first means W3C traceparent takes precedence if both headers exist
-		// gcppropagator.CloudTraceOneWayPropagator{},
 		propagation.TraceContext{}, // W3C Trace Context (standard)
 		propagation.Baggage{},      // W3C Baggage (for custom attributes)
 	))

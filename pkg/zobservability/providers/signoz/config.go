@@ -1,8 +1,6 @@
 package signoz
 
 import (
-	"context"
-	"net/http"
 	"os"
 	"strconv"
 	"sync"
@@ -13,7 +11,17 @@ import (
 
 const (
 	unknownHostFallback = "unknown-host"
-	gcpMetadataURL      = "http://metadata.google.internal/computeMetadata/v1/instance/hostname"
+
+	// Environment variable names for hostname detection
+	envOtelResourceHostname = "OTEL_RESOURCE_HOSTNAME"
+	envKService             = "K_SERVICE"            // Cloud Run service name
+	envKRevision            = "K_REVISION"           // Cloud Run revision
+	envGAEService           = "GAE_SERVICE"          // App Engine service
+	envGAEVersion           = "GAE_VERSION"          // App Engine version
+	envFunctionName         = "FUNCTION_NAME"        // Cloud Functions
+	envGoogleCloudProject   = "GOOGLE_CLOUD_PROJECT" // GCP project ID
+	envServiceName          = "SERVICE_NAME"         // Generic service name
+	envHostname             = "HOSTNAME"             // Container/Pod hostname
 )
 
 var (
@@ -180,15 +188,13 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 	return c.ResourceConfig
 }
 
-// initializeHostname initializes the hostname once using various detection methods
+// initializeHostname initializes the hostname once using environment variables and config
 // This is called only once per process lifecycle using sync.Once
 func initializeHostname() {
-	// Try GCP metadata service only if we're running on GCP
-	if isRunningOnGCP() {
-		if gcpHostname := tryGCPMetadataService(); gcpHostname != "" {
-			cachedHostname = gcpHostname
-			return
-		}
+	// Try to build a meaningful hostname from environment variables
+	if hostname := buildHostnameFromEnv(); hostname != "" {
+		cachedHostname = hostname
+		return
 	}
 
 	// Fallback to os.Hostname()
@@ -201,59 +207,50 @@ func initializeHostname() {
 	cachedHostname = unknownHostFallback
 }
 
-// isRunningOnGCP checks if the current process is running on Google Cloud Platform
-// Uses environment variables and other indicators to avoid unnecessary HTTP requests
-func isRunningOnGCP() bool {
-	// Check common GCP environment variables
-	if os.Getenv("GOOGLE_CLOUD_PROJECT") != "" ||
-		os.Getenv("GCLOUD_PROJECT") != "" ||
-		os.Getenv("GCP_PROJECT") != "" ||
-		os.Getenv("K_SERVICE") != "" ||        // Cloud Run
-		os.Getenv("K_REVISION") != "" ||       // Cloud Run
-		os.Getenv("K_CONFIGURATION") != "" ||  // Cloud Run
-		os.Getenv("GAE_SERVICE") != "" ||      // App Engine
-		os.Getenv("GAE_VERSION") != "" ||      // App Engine
-		os.Getenv("FUNCTION_NAME") != "" {     // Cloud Functions
-		return true
+// buildHostnameFromEnv creates a meaningful hostname using environment variables
+// This avoids HTTP requests and provides better identification than container hostnames
+func buildHostnameFromEnv() string {
+	// Check for explicit hostname override first
+	if hostname := os.Getenv(envOtelResourceHostname); hostname != "" {
+		return hostname
 	}
 
-	// Check for GCE (Google Compute Engine) metadata server availability
-	// This is a quick check without making the actual hostname request
-	return false // For now, rely on environment variables
-}
-
-// tryGCPMetadataService tries to get the hostname from GCP metadata service
-// This returns the actual GCP instance hostname instead of container hostname
-func tryGCPMetadataService() string {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", gcpMetadataURL, nil)
-	if err != nil {
-		return ""
+	// Cloud Run - build from service name and revision
+	if service := os.Getenv(envKService); service != "" {
+		if revision := os.Getenv(envKRevision); revision != "" {
+			return service + "-" + revision
+		}
+		return service
 	}
 
-	// GCP metadata service requires this header
-	req.Header.Set("Metadata-Flavor", "Google")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return ""
+	// App Engine - build from service and version
+	if service := os.Getenv(envGAEService); service != "" {
+		if version := os.Getenv(envGAEVersion); version != "" {
+			return service + "-" + version
+		}
+		return service
 	}
 
-	hostname := make([]byte, 256)
-	n, err := resp.Body.Read(hostname)
-	if err != nil {
-		return ""
+	// Cloud Functions - use function name
+	if functionName := os.Getenv(envFunctionName); functionName != "" {
+		return functionName
 	}
 
-	return string(hostname[:n])
+	// Generic GCP - use project ID + service name pattern
+	if project := os.Getenv(envGoogleCloudProject); project != "" {
+		// Try to get service name from common patterns
+		if service := os.Getenv(envServiceName); service != "" {
+			return project + "-" + service
+		}
+		return project
+	}
+
+	// Docker/Kubernetes - use pod name or container name
+	if podName := os.Getenv(envHostname); podName != "" && podName != "localhost" {
+		return podName
+	}
+
+	return ""
 }
 
 // GetHostname returns the hostname - now ALWAYS included for service identification
@@ -267,7 +264,7 @@ func tryGCPMetadataService() string {
 func (c *Config) GetHostname() string {
 	// Initialize hostname only once using sync.Once
 	hostnameOnce.Do(initializeHostname)
-	
+
 	return cachedHostname
 }
 
