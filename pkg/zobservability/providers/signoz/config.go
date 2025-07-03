@@ -1,8 +1,11 @@
 package signoz
 
 import (
+	"context"
+	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/zondax/golem/pkg/zobservability"
@@ -10,6 +13,13 @@ import (
 
 const (
 	unknownHostFallback = "unknown-host"
+	gcpMetadataURL      = "http://metadata.google.internal/computeMetadata/v1/instance/hostname"
+)
+
+var (
+	// hostname cache - initialized once and reused
+	cachedHostname string
+	hostnameOnce   sync.Once
 )
 
 // Config holds the configuration for the SigNoz observer
@@ -170,21 +180,95 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 	return c.ResourceConfig
 }
 
+// initializeHostname initializes the hostname once using various detection methods
+// This is called only once per process lifecycle using sync.Once
+func initializeHostname() {
+	// Try GCP metadata service only if we're running on GCP
+	if isRunningOnGCP() {
+		if gcpHostname := tryGCPMetadataService(); gcpHostname != "" {
+			cachedHostname = gcpHostname
+			return
+		}
+	}
+
+	// Fallback to os.Hostname()
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+		cachedHostname = hostname
+		return
+	}
+
+	// Final fallback
+	cachedHostname = unknownHostFallback
+}
+
+// isRunningOnGCP checks if the current process is running on Google Cloud Platform
+// Uses environment variables and other indicators to avoid unnecessary HTTP requests
+func isRunningOnGCP() bool {
+	// Check common GCP environment variables
+	if os.Getenv("GOOGLE_CLOUD_PROJECT") != "" ||
+		os.Getenv("GCLOUD_PROJECT") != "" ||
+		os.Getenv("GCP_PROJECT") != "" ||
+		os.Getenv("K_SERVICE") != "" ||        // Cloud Run
+		os.Getenv("K_REVISION") != "" ||       // Cloud Run
+		os.Getenv("K_CONFIGURATION") != "" ||  // Cloud Run
+		os.Getenv("GAE_SERVICE") != "" ||      // App Engine
+		os.Getenv("GAE_VERSION") != "" ||      // App Engine
+		os.Getenv("FUNCTION_NAME") != "" {     // Cloud Functions
+		return true
+	}
+
+	// Check for GCE (Google Compute Engine) metadata server availability
+	// This is a quick check without making the actual hostname request
+	return false // For now, rely on environment variables
+}
+
+// tryGCPMetadataService tries to get the hostname from GCP metadata service
+// This returns the actual GCP instance hostname instead of container hostname
+func tryGCPMetadataService() string {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", gcpMetadataURL, nil)
+	if err != nil {
+		return ""
+	}
+
+	// GCP metadata service requires this header
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	hostname := make([]byte, 256)
+	n, err := resp.Body.Read(hostname)
+	if err != nil {
+		return ""
+	}
+
+	return string(hostname[:n])
+}
+
 // GetHostname returns the hostname - now ALWAYS included for service identification
 // Hostname is crucial for:
 // - Multi-server deployments (identifying which server handled the request)
 // - Load balancer debugging (tracking requests across instances)
 // - Performance analysis (comparing server performance)
 // - Incident response (knowing exactly which server had issues)
+//
+// Uses sync.Once to ensure hostname detection only happens once per process lifecycle
 func (c *Config) GetHostname() string {
-	// Always try to get hostname since it's now mandatory
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		return hostname
-	}
-
-	// Fallback: if hostname fails, use a default identifier
-	// This ensures we always have some form of instance identification
-	return unknownHostFallback
+	// Initialize hostname only once using sync.Once
+	hostnameOnce.Do(initializeHostname)
+	
+	return cachedHostname
 }
 
 // GetProcessID returns the process ID if configured to include it

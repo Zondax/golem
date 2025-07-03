@@ -263,7 +263,6 @@ func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts
 }
 
 func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
-	logger.GetLoggerFromContext(ctx).Infof("Starting span", "operation", operation)
 	ctx, span := s.tracer.Start(ctx, operation)
 
 	signozSpan := &signozSpan{
