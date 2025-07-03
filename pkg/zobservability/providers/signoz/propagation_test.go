@@ -2,13 +2,11 @@ package signoz
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/zondax/golem/pkg/zobservability"
@@ -231,45 +229,22 @@ func TestConfigGetPropagationConfig(t *testing.T) {
 
 // Helper functions
 
-func validatePropagatorTypes(t *testing.T, compositePropagator propagation.TextMapPropagator, expectedTypes []string) {
+func validatePropagatorTypes(t *testing.T, compositePropagator propagation.TextMapPropagator, _ []string) {
 	// Since we can't easily access internal fields of CompositeTextMapPropagator,
 	// we'll test by injecting and extracting headers to verify the propagator works correctly
-	
+
 	// Create a test span context
 	ctx := context.Background()
-	
+
 	// Create an HTTP request to test injection
 	req := &http.Request{Header: make(http.Header)}
-	
+
 	// Inject context into headers
 	compositePropagator.Inject(ctx, propagation.HeaderCarrier(req.Header))
-	
+
 	// Verify that some headers were injected (basic smoke test)
 	assert.GreaterOrEqual(t, len(req.Header), 0, "Headers should be injected")
-	
+
 	// Note: This is a simplified test. For more thorough testing,
 	// we would need to create actual span contexts and verify specific header formats
-}
-
-func validatePropagatorType(t *testing.T, propagator propagation.TextMapPropagator, expectedType string) {
-	actualType := getPropagatorType(propagator)
-	assert.Equal(t, expectedType, actualType, "Propagator type doesn't match expected")
-}
-
-func getPropagatorType(propagator propagation.TextMapPropagator) string {
-	switch propagator.(type) {
-	case propagation.TraceContext:
-		return "TraceContext"
-	case propagation.Baggage:
-		return "Baggage"
-	case jaeger.Jaeger:
-		return "Jaeger"
-	default:
-		// For B3, check the type name since it's a pointer type
-		typeName := fmt.Sprintf("%T", propagator)
-		if typeName == "*b3.B3" || typeName == "b3.B3" {
-			return "B3"
-		}
-		return typeName // Return actual type name for debugging
-	}
 }

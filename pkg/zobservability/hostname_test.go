@@ -120,12 +120,12 @@ func TestBuildHostnameFromEnv(t *testing.T) {
 			}
 
 			for _, env := range clearEnvVars {
-				os.Unsetenv(env)
+				_ = os.Unsetenv(env)
 			}
 
 			// Set test environment variables
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				_ = os.Setenv(key, value)
 			}
 
 			// Test the function
@@ -134,7 +134,7 @@ func TestBuildHostnameFromEnv(t *testing.T) {
 
 			// Clean up
 			for key := range tt.envVars {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			}
 		})
 	}
@@ -151,11 +151,11 @@ func TestGetHostname_Caching(t *testing.T) {
 		resetHostnameCache()
 
 		// Set up environment
-		os.Setenv(envKService, "test-service")
-		os.Setenv(envKRevision, "test-revision")
+		_ = os.Setenv(envKService, "test-service")
+		_ = os.Setenv(envKRevision, "test-revision")
 		defer func() {
-			os.Unsetenv(envKService)
-			os.Unsetenv(envKRevision)
+			_ = os.Unsetenv(envKService)
+			_ = os.Unsetenv(envKRevision)
 		}()
 
 		// First call should initialize
@@ -164,7 +164,7 @@ func TestGetHostname_Caching(t *testing.T) {
 		assert.Equal(t, expected, hostname1, "First call: GetHostname() = %q, want %q", hostname1, expected)
 
 		// Change environment (should not affect cached result)
-		os.Setenv(envKService, "different-service")
+		_ = os.Setenv(envKService, "different-service")
 
 		// Second call should return cached value
 		hostname2 := GetHostname()
@@ -191,7 +191,7 @@ func TestGetHostname_Caching(t *testing.T) {
 		}
 
 		for _, env := range clearEnvVars {
-			os.Unsetenv(env)
+			_ = os.Unsetenv(env)
 		}
 
 		hostname := GetHostname()
@@ -212,8 +212,8 @@ func TestGetHostname_Caching(t *testing.T) {
 	t.Run("sync.Once ensures single execution", func(t *testing.T) {
 		resetHostnameCache()
 
-		os.Setenv(envKService, "once-test")
-		defer os.Unsetenv(envKService)
+		_ = os.Setenv(envKService, "once-test")
+		defer func() { _ = os.Unsetenv(envKService) }()
 
 		// Call multiple times concurrently
 		const numGoroutines = 10
@@ -245,13 +245,13 @@ func TestInitializeHostname_Priority(t *testing.T) {
 
 	t.Run("prioritizes environment variables correctly", func(t *testing.T) {
 		// Set multiple env vars to test priority
-		os.Setenv(envOtelResourceHostname, "override-hostname")
-		os.Setenv(envKService, "service")
-		os.Setenv(envKRevision, "revision")
+		_ = os.Setenv(envOtelResourceHostname, "override-hostname")
+		_ = os.Setenv(envKService, "service")
+		_ = os.Setenv(envKRevision, "revision")
 		defer func() {
-			os.Unsetenv(envOtelResourceHostname)
-			os.Unsetenv(envKService)
-			os.Unsetenv(envKRevision)
+			_ = os.Unsetenv(envOtelResourceHostname)
+			_ = os.Unsetenv(envKService)
+			_ = os.Unsetenv(envKRevision)
 		}()
 
 		initializeHostname()
@@ -273,7 +273,7 @@ func TestGetHostname_Integration(t *testing.T) {
 		// Call GetHostname multiple times to ensure it's consistent
 		hostname1 := GetHostname()
 		hostname2 := GetHostname()
-		
+
 		assert.Equal(t, hostname1, hostname2, "GetHostname() should return consistent results")
 		assert.NotEmpty(t, hostname1, "Hostname should not be empty")
 	})
@@ -315,23 +315,23 @@ func TestBuildCloudRunHostname(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(envKService)
-			os.Unsetenv(envKRevision)
+			_ = os.Unsetenv(envKService)
+			_ = os.Unsetenv(envKRevision)
 
 			// Set test values
 			if tt.service != "" {
-				os.Setenv(envKService, tt.service)
+				_ = os.Setenv(envKService, tt.service)
 			}
 			if tt.revision != "" {
-				os.Setenv(envKRevision, tt.revision)
+				_ = os.Setenv(envKRevision, tt.revision)
 			}
 
 			result := buildCloudRunHostname()
 			assert.Equal(t, tt.expected, result)
 
 			// Clean up
-			os.Unsetenv(envKService)
-			os.Unsetenv(envKRevision)
+			_ = os.Unsetenv(envKService)
+			_ = os.Unsetenv(envKRevision)
 		})
 	}
 }
@@ -366,23 +366,23 @@ func TestBuildAppEngineHostname(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(envGAEService)
-			os.Unsetenv(envGAEVersion)
+			_ = os.Unsetenv(envGAEService)
+			_ = os.Unsetenv(envGAEVersion)
 
 			// Set test values
 			if tt.service != "" {
-				os.Setenv(envGAEService, tt.service)
+				_ = os.Setenv(envGAEService, tt.service)
 			}
 			if tt.version != "" {
-				os.Setenv(envGAEVersion, tt.version)
+				_ = os.Setenv(envGAEVersion, tt.version)
 			}
 
 			result := buildAppEngineHostname()
 			assert.Equal(t, tt.expected, result)
 
 			// Clean up
-			os.Unsetenv(envGAEService)
-			os.Unsetenv(envGAEVersion)
+			_ = os.Unsetenv(envGAEService)
+			_ = os.Unsetenv(envGAEVersion)
 		})
 	}
 }
@@ -417,23 +417,23 @@ func TestBuildGCPProjectHostname(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(envGoogleCloudProject)
-			os.Unsetenv(envServiceName)
+			_ = os.Unsetenv(envGoogleCloudProject)
+			_ = os.Unsetenv(envServiceName)
 
 			// Set test values
 			if tt.project != "" {
-				os.Setenv(envGoogleCloudProject, tt.project)
+				_ = os.Setenv(envGoogleCloudProject, tt.project)
 			}
 			if tt.service != "" {
-				os.Setenv(envServiceName, tt.service)
+				_ = os.Setenv(envServiceName, tt.service)
 			}
 
 			result := buildGCPProjectHostname()
 			assert.Equal(t, tt.expected, result)
 
 			// Clean up
-			os.Unsetenv(envGoogleCloudProject)
-			os.Unsetenv(envServiceName)
+			_ = os.Unsetenv(envGoogleCloudProject)
+			_ = os.Unsetenv(envServiceName)
 		})
 	}
 }
@@ -459,18 +459,18 @@ func TestBuildCloudFunctionsHostname(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(envFunctionName)
+			_ = os.Unsetenv(envFunctionName)
 
 			// Set test value
 			if tt.functionName != "" {
-				os.Setenv(envFunctionName, tt.functionName)
+				_ = os.Setenv(envFunctionName, tt.functionName)
 			}
 
 			result := buildCloudFunctionsHostname()
 			assert.Equal(t, tt.expected, result)
 
 			// Clean up
-			os.Unsetenv(envFunctionName)
+			_ = os.Unsetenv(envFunctionName)
 		})
 	}
 }
@@ -501,18 +501,18 @@ func TestBuildContainerHostname(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(envHostname)
+			_ = os.Unsetenv(envHostname)
 
 			// Set test value
 			if tt.hostname != "" {
-				os.Setenv(envHostname, tt.hostname)
+				_ = os.Setenv(envHostname, tt.hostname)
 			}
 
 			result := buildContainerHostname()
 			assert.Equal(t, tt.expected, result)
 
 			// Clean up
-			os.Unsetenv(envHostname)
+			_ = os.Unsetenv(envHostname)
 		})
 	}
 }

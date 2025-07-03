@@ -8,7 +8,6 @@ import (
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
-
 // Config holds the configuration for the SigNoz observer
 type Config struct {
 	Endpoint    string            `yaml:"endpoint" mapstructure:"endpoint"`
@@ -42,12 +41,11 @@ type Config struct {
 	// Allows optional metadata configuration without forcing all users to specify it
 	ResourceConfig *ResourceConfig `yaml:"resource_config,omitempty" mapstructure:"resource_config"`
 
-
 	// UseSimpleSpan enables immediate span export without batching
 	// When true, spans are exported immediately when they finish instead of being batched
 	// This can increase network overhead but provides real-time visibility
 	UseSimpleSpan bool `yaml:"use_simple_span" mapstructure:"use_simple_span"`
-	
+
 	// Propagation configuration
 	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
 }
@@ -92,7 +90,6 @@ type ResourceConfig struct {
 	// CustomAttributes allows adding custom resource attributes
 	CustomAttributes map[string]string `yaml:"custom_attributes,omitempty" mapstructure:"custom_attributes"`
 }
-
 
 // Validate validates the SigNoz configuration
 func (c *Config) Validate() error {
@@ -171,8 +168,6 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 
 	return c.ResourceConfig
 }
-
-
 
 // GetHostname returns the hostname using the generic zobservability hostname detection
 func (c *Config) GetHostname() string {
@@ -280,7 +275,7 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 // GetPropagationConfig returns the propagation configuration with defaults
 func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
 	if len(c.Propagation.Formats) == 0 {
-		// Default to W3C for backward compatibility
+		// Default to W3C
 		return zobservability.PropagationConfig{
 			Formats: []string{zobservability.PropagationW3C},
 		}

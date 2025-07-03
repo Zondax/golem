@@ -117,7 +117,6 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		}
 	}
 
-
 	// Create SigNoz configuration with all parsed settings
 	signozConfig := &signoz.Config{
 		Endpoint:             config.Address,

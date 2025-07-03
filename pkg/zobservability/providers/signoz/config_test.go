@@ -649,11 +649,11 @@ func TestGetHostname_Integration(t *testing.T) {
 
 	t.Run("calls generic zobservability hostname function", func(t *testing.T) {
 		config := &Config{}
-		
+
 		// Call GetHostname multiple times to ensure it's consistent
 		hostname1 := config.GetHostname()
 		hostname2 := config.GetHostname()
-		
+
 		assert.Equal(t, hostname1, hostname2, "GetHostname() should return consistent results")
 		assert.NotEmpty(t, hostname1, "Hostname should not be empty")
 	})

@@ -11,7 +11,7 @@ const (
 
 	// DefaultForceFlushTimeout is the default timeout for forcing span exports
 	// Optimized for Cloud Run environments where containers can be terminated quickly
-	DefaultForceFlushTimeout = 10 * time.Second
+	DefaultForceFlushTimeout = 5 * time.Second
 
 	// Batch processor configuration
 	DefaultBatchTimeout   = 5 * time.Second  // How often to send batches
@@ -30,9 +30,9 @@ const (
 	GCPObservabilityAPIKeyField = "gcp_observability_api_key"  // nolint:gosec // GCP field name for observability API key
 
 	// Advanced configuration keys
-	ConfigKeyBatchConfig     = "batch_config"     // Key for batch configuration
-	ConfigKeyResourceConfig  = "resource_config"  // Key for resource configuration
-	ConfigKeyBatchProfile    = "batch_profile"    // Key for predefined batch profile
+	ConfigKeyBatchConfig    = "batch_config"    // Key for batch configuration
+	ConfigKeyResourceConfig = "resource_config" // Key for resource configuration
+	ConfigKeyBatchProfile   = "batch_profile"   // Key for predefined batch profile
 
 	// Sampling configuration keys
 	ConfigKeyIgnoreParentSampling = "ignore_parent_sampling" // Key for ignoring parent sampling decisions

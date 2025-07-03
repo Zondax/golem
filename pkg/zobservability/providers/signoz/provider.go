@@ -145,7 +145,7 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler (ignore_parent_sampling=false)")
 		sampler = sdktrace.ParentBased(sampler)
 	} else {
-		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler (ignore_parent_sampling=true) - Cloud Run fix enabled")
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler (ignore_parent_sampling=true)")
 	}
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
@@ -191,7 +191,7 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	}
 
 	// Use the base processor directly
-	var finalProcessor sdktrace.SpanProcessor = baseProcessor
+	finalProcessor := baseProcessor
 
 	// Debug configuration values
 	logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v",
@@ -223,7 +223,7 @@ func createPropagator(cfg *Config) propagation.TextMapPropagator {
 	propagationConfig := cfg.GetPropagationConfig()
 	formats := propagationConfig.Formats
 
-	// Default to W3C for backward compatibility when no formats specified
+	// Default to W3C
 	if len(formats) == 0 {
 		return createW3CPropagator()
 	}
