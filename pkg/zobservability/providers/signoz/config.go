@@ -328,12 +328,9 @@ func (c *Config) GetProcessID() string {
 //
 // When not explicitly configured, defaults to true to ensure traces are not lost.
 func (c *Config) ShouldIgnoreParentSampling() bool {
-	// If explicitly configured, respect the setting
-	if c.IgnoreParentSampling {
-		return true
-	}
-
-	return false
+	// DEFAULT: true for cloud environments to prevent trace loss
+	// Return the configured value, with true as default
+	return c.IgnoreParentSampling
 }
 
 // GetBatchProfileConfig returns a predefined batch configuration for the specified profile

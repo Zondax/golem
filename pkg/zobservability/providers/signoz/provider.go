@@ -141,10 +141,10 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		// This creates a ParentBased sampler that:
 		// - Uses parent's sampling decision if present
 		// - Falls back to our local sampler if no parent
-		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler")
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler (ignore_parent_sampling=false)")
 		sampler = sdktrace.ParentBased(sampler)
 	} else {
-		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler")
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler (ignore_parent_sampling=true) - Cloud Run fix enabled")
 	}
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
@@ -198,6 +198,10 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	} else {
 		log.Printf("DEBUG: Span counting disabled - Config: %+v", spanCountingConfig)
 	}
+	
+	// Debug configuration values
+	log.Printf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v", 
+		cfg.IgnoreParentSampling, cfg.SampleRate, cfg.UseSimpleSpan)
 
 	tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(finalProcessor))
 
