@@ -1,12 +1,14 @@
 package signoz
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
@@ -399,11 +401,18 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 
 // GetPropagationConfig returns the propagation configuration with defaults
 func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
+	// Debug: Log what we're working with
+	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - c.Propagation: %+v", c.Propagation)
+	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - c.Propagation.Formats: %v", c.Propagation.Formats)
+	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - len(c.Propagation.Formats): %d", len(c.Propagation.Formats))
+	
 	if len(c.Propagation.Formats) == 0 {
 		// Default to W3C for backward compatibility
+		logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - Using W3C default (formats array was empty)")
 		return zobservability.PropagationConfig{
 			Formats: []string{zobservability.PropagationW3C},
 		}
 	}
+	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - Using configured formats: %v", c.Propagation.Formats)
 	return c.Propagation
 }

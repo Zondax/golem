@@ -127,6 +127,11 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		}
 	}
 
+	// Debug: Log propagation configuration copying
+	log := logger.NewLogger()
+	log.Debugf("Factory - Original config.Propagation: %+v", config.Propagation)
+	log.Debugf("Factory - config.Propagation.Formats: %v", config.Propagation.Formats)
+
 	// Create SigNoz configuration with all parsed settings
 	signozConfig := &signoz.Config{
 		Endpoint:             config.Address,
@@ -142,7 +147,12 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		SpanCountingConfig:   spanCountingConfig,   // Optional: nil means use defaults
 		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
 		UseSimpleSpan:        useSimpleSpan,        // Enable immediate span export
+		Propagation:          config.Propagation,   // Copy propagation configuration
 	}
+
+	// Debug: Log SigNoz config propagation after creation
+	log.Debugf("Factory - signozConfig.Propagation: %+v", signozConfig.Propagation)
+	log.Debugf("Factory - signozConfig.Propagation.Formats: %v", signozConfig.Propagation.Formats)
 
 	return signoz.NewObserver(signozConfig)
 }

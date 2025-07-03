@@ -3,8 +3,9 @@ package signoz
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -14,8 +15,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/contrib/propagators/b3"
-	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/zondax/golem/pkg/logger"
@@ -196,13 +195,13 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	spanCountingConfig := cfg.GetSpanCountingConfig()
 	if spanCountingConfig.Enabled {
 		finalProcessor = NewSpanCountingProcessor(baseProcessor, spanCountingConfig.LogSpanCounts)
-		log.Printf("DEBUG: Span counting enabled - LogSpanCounts: %v", spanCountingConfig.LogSpanCounts)
+		logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: Span counting enabled - LogSpanCounts: %v", spanCountingConfig.LogSpanCounts)
 	} else {
-		log.Printf("DEBUG: Span counting disabled - Config: %+v", spanCountingConfig)
+		logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: Span counting disabled - Config: %+v", spanCountingConfig)
 	}
-	
+
 	// Debug configuration values
-	log.Printf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v", 
+	logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v",
 		cfg.IgnoreParentSampling, cfg.SampleRate, cfg.UseSimpleSpan)
 
 	tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(finalProcessor))
@@ -213,7 +212,12 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	otel.SetTracerProvider(tracerProvider)
 
 	// Configure propagators based on configuration
-	otel.SetTextMapPropagator(createPropagator(cfg))
+	propagator := createPropagator(cfg)
+	otel.SetTextMapPropagator(propagator)
+
+	// Log which propagator is being used
+	logger.GetLoggerFromContext(context.Background()).Infof("OpenTelemetry propagator configured: type=%T, formats=%v",
+		propagator, cfg.GetPropagationConfig().Formats)
 
 	// Create tracer
 	tracer := otel.Tracer(cfg.ServiceName)
@@ -225,7 +229,7 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 func createPropagator(cfg *Config) propagation.TextMapPropagator {
 	propagationConfig := cfg.GetPropagationConfig()
 	formats := propagationConfig.Formats
-	
+
 	// Default to W3C for backward compatibility when no formats specified
 	if len(formats) == 0 {
 		return createW3CPropagator()
