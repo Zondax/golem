@@ -275,9 +275,9 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 // GetPropagationConfig returns the propagation configuration with defaults
 func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
 	if len(c.Propagation.Formats) == 0 {
-		// Default to W3C
+		// Default to B3 because is the only one supported by GCP+Signoz
 		return zobservability.PropagationConfig{
-			Formats: []string{zobservability.PropagationW3C},
+			Formats: []string{zobservability.PropagationB3},
 		}
 	}
 	return c.Propagation

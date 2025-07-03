@@ -20,13 +20,13 @@ func TestCreatePropagator(t *testing.T) {
 		shouldFallback bool
 	}{
 		{
-			name: "default W3C when no formats specified",
+			name: "default B3 when no formats specified",
 			config: &Config{
 				Propagation: zobservability.PropagationConfig{
 					Formats: []string{},
 				},
 			},
-			expectedTypes:  []string{"TraceContext", "Baggage"},
+			expectedTypes:  []string{"B3"},
 			shouldFallback: false,
 		},
 		{
@@ -199,20 +199,20 @@ func TestConfigGetPropagationConfig(t *testing.T) {
 			expectedFirst:  zobservability.PropagationB3,
 		},
 		{
-			name: "with empty formats defaults to W3C",
+			name: "with empty formats defaults to B3",
 			config: &Config{
 				Propagation: zobservability.PropagationConfig{
 					Formats: []string{},
 				},
 			},
 			expectedLength: 1,
-			expectedFirst:  zobservability.PropagationW3C,
+			expectedFirst:  zobservability.PropagationB3,
 		},
 		{
-			name:           "with nil config defaults to W3C",
+			name:           "with nil config defaults to B3",
 			config:         &Config{},
 			expectedLength: 1,
-			expectedFirst:  zobservability.PropagationW3C,
+			expectedFirst:  zobservability.PropagationB3,
 		},
 	}
 

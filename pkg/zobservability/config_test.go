@@ -360,7 +360,7 @@ func TestPropagationConfig(t *testing.T) {
 	}
 }
 
-func TestConfig_WhenSetDefaultsPropagationFormats_ShouldSetW3CDefault(t *testing.T) {
+func TestConfig_WhenSetDefaultsPropagationFormats_ShouldSetB3Default(t *testing.T) {
 	tests := []struct {
 		name           string
 		initialConfig  Config
@@ -368,24 +368,24 @@ func TestConfig_WhenSetDefaultsPropagationFormats_ShouldSetW3CDefault(t *testing
 		expectedFirst  string
 	}{
 		{
-			name: "empty propagation formats get W3C default",
+			name: "empty propagation formats get B3 default",
 			initialConfig: Config{
 				Propagation: PropagationConfig{
 					Formats: []string{},
 				},
 			},
 			expectedLength: 1,
-			expectedFirst:  PropagationW3C,
+			expectedFirst:  PropagationB3,
 		},
 		{
-			name: "nil propagation formats get W3C default",
+			name: "nil propagation formats get B3 default",
 			initialConfig: Config{
 				Propagation: PropagationConfig{
 					Formats: nil,
 				},
 			},
 			expectedLength: 1,
-			expectedFirst:  PropagationW3C,
+			expectedFirst:  PropagationB3,
 		},
 		{
 			name: "existing formats are preserved",

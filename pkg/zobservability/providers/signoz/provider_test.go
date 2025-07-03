@@ -5,11 +5,8 @@ import (
 	"testing"
 	"time"
 
-	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/zondax/golem/pkg/zobservability"
 )
@@ -464,54 +461,6 @@ func TestCreateTracerProvider_WhenCustomBatchConfig_ShouldReturnProvider(t *test
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
 	assert.NotNil(t, tracer)
-
-	// Cleanup
-	if provider != nil {
-		_ = provider.Shutdown(context.Background())
-	}
-}
-
-func TestCreateTracerProvider_WhenCalled_ShouldConfigureGoogleCloudPropagator(t *testing.T) {
-	// Arrange
-	config := &Config{
-		Endpoint:    "localhost:4317",
-		ServiceName: "test-service",
-		Environment: "test",
-		Release:     "1.0.0",
-		Insecure:    true,
-		SampleRate:  1.0,
-	}
-
-	// Act
-	provider, tracer, err := createTracerProvider(config)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, provider)
-	assert.NotNil(t, tracer)
-
-	// Verify that the global propagator is configured
-	propagator := otel.GetTextMapPropagator()
-	assert.NotNil(t, propagator)
-
-	// Check that it's a composite propagator with the expected fields
-	// The composite propagator should include fields from all three propagators:
-	// CloudTraceOneWayPropagator, TraceContext, and Baggage
-	fields := propagator.Fields()
-	assert.NotEmpty(t, fields)
-
-	// Verify that the expected propagator types are configured by checking
-	// if we can create the same composite propagator manually
-	expectedPropagator := propagation.NewCompositeTextMapPropagator(
-		gcppropagator.CloudTraceOneWayPropagator{},
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	)
-	expectedFields := expectedPropagator.Fields()
-
-	// The fields should match (order doesn't matter)
-	assert.ElementsMatch(t, expectedFields, fields,
-		"Global propagator should include Google Cloud Trace, W3C TraceContext, and Baggage propagators")
 
 	// Cleanup
 	if provider != nil {
