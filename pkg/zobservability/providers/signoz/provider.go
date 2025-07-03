@@ -190,15 +190,8 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		)
 	}
 
-	// Wrap with span counting processor if enabled
+	// Use the base processor directly
 	var finalProcessor sdktrace.SpanProcessor = baseProcessor
-	spanCountingConfig := cfg.GetSpanCountingConfig()
-	if spanCountingConfig.Enabled {
-		finalProcessor = NewSpanCountingProcessor(baseProcessor, spanCountingConfig.LogSpanCounts)
-		logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: Span counting enabled - LogSpanCounts: %v", spanCountingConfig.LogSpanCounts)
-	} else {
-		logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: Span counting disabled - Config: %+v", spanCountingConfig)
-	}
 
 	// Debug configuration values
 	logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v",

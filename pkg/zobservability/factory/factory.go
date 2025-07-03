@@ -117,20 +117,6 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		}
 	}
 
-	// Parse span counting configuration if present
-	// SpanCountingConfig controls span counting per trace
-	var spanCountingConfig *signoz.SpanCountingConfig
-	if config.SpanCounting != nil {
-		spanCountingConfig = &signoz.SpanCountingConfig{
-			Enabled:       config.SpanCounting.Enabled,
-			LogSpanCounts: config.SpanCounting.LogSpanCounts,
-		}
-	}
-
-	// Debug: Log propagation configuration copying
-	log := logger.NewLogger()
-	log.Debugf("Factory - Original config.Propagation: %+v", config.Propagation)
-	log.Debugf("Factory - config.Propagation.Formats: %v", config.Propagation.Formats)
 
 	// Create SigNoz configuration with all parsed settings
 	signozConfig := &signoz.Config{
@@ -144,15 +130,10 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		SampleRate:           config.SampleRate,
 		BatchConfig:          batchConfig,          // Optional: nil means use defaults
 		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults
-		SpanCountingConfig:   spanCountingConfig,   // Optional: nil means use defaults
 		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
 		UseSimpleSpan:        useSimpleSpan,        // Enable immediate span export
 		Propagation:          config.Propagation,   // Copy propagation configuration
 	}
-
-	// Debug: Log SigNoz config propagation after creation
-	log.Debugf("Factory - signozConfig.Propagation: %+v", signozConfig.Propagation)
-	log.Debugf("Factory - signozConfig.Propagation.Formats: %v", signozConfig.Propagation.Formats)
 
 	return signoz.NewObserver(signozConfig)
 }

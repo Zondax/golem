@@ -1,37 +1,13 @@
 package signoz
 
 import (
-	"context"
 	"os"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
 
-	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
-const (
-	unknownHostFallback = "unknown-host"
-
-	// Environment variable names for hostname detection
-	envOtelResourceHostname = "OTEL_RESOURCE_HOSTNAME"
-	envKService             = "K_SERVICE"            // Cloud Run service name
-	envKRevision            = "K_REVISION"           // Cloud Run revision
-	envGAEService           = "GAE_SERVICE"          // App Engine service
-	envGAEVersion           = "GAE_VERSION"          // App Engine version
-	envFunctionName         = "FUNCTION_NAME"        // Cloud Functions
-	envGoogleCloudProject   = "GOOGLE_CLOUD_PROJECT" // GCP project ID
-	envServiceName          = "SERVICE_NAME"         // Generic service name
-	envHostname             = "HOSTNAME"             // Container/Pod hostname
-)
-
-var (
-	// hostname cache - initialized once and reused
-	cachedHostname string
-	hostnameOnce   sync.Once
-)
 
 // Config holds the configuration for the SigNoz observer
 type Config struct {
@@ -66,8 +42,6 @@ type Config struct {
 	// Allows optional metadata configuration without forcing all users to specify it
 	ResourceConfig *ResourceConfig `yaml:"resource_config,omitempty" mapstructure:"resource_config"`
 
-	// SpanCountingConfig enables span counting per trace
-	SpanCountingConfig *SpanCountingConfig `yaml:"span_counting,omitempty" mapstructure:"span_counting"`
 
 	// UseSimpleSpan enables immediate span export without batching
 	// When true, spans are exported immediately when they finish instead of being batched
@@ -119,13 +93,6 @@ type ResourceConfig struct {
 	CustomAttributes map[string]string `yaml:"custom_attributes,omitempty" mapstructure:"custom_attributes"`
 }
 
-// SpanCountingConfig controls span counting functionality
-type SpanCountingConfig struct {
-	// Enabled enables span counting per trace
-	Enabled bool `yaml:"enabled,omitempty" mapstructure:"enabled"`
-	// LogSpanCounts enables logging of span counts (useful for debugging)
-	LogSpanCounts bool `yaml:"log_span_counts,omitempty" mapstructure:"log_span_counts"`
-}
 
 // Validate validates the SigNoz configuration
 func (c *Config) Validate() error {
@@ -205,100 +172,11 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 	return c.ResourceConfig
 }
 
-// GetSpanCountingConfig returns span counting configuration with defaults
-func (c *Config) GetSpanCountingConfig() *SpanCountingConfig {
-	if c.SpanCountingConfig == nil {
-		return &SpanCountingConfig{
-			Enabled:       false, // Default: disabled
-			LogSpanCounts: false, // Default: no logging
-		}
-	}
 
-	return c.SpanCountingConfig
-}
 
-// initializeHostname initializes the hostname once using environment variables and config
-// This is called only once per process lifecycle using sync.Once
-func initializeHostname() {
-	// Try to build a meaningful hostname from environment variables
-	if hostname := buildHostnameFromEnv(); hostname != "" {
-		cachedHostname = hostname
-		return
-	}
-
-	// Fallback to os.Hostname()
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		cachedHostname = hostname
-		return
-	}
-
-	// Final fallback
-	cachedHostname = unknownHostFallback
-}
-
-// buildHostnameFromEnv creates a meaningful hostname using environment variables
-// This avoids HTTP requests and provides better identification than container hostnames
-func buildHostnameFromEnv() string {
-	// Check for explicit hostname override first
-	if hostname := os.Getenv(envOtelResourceHostname); hostname != "" {
-		return hostname
-	}
-
-	// Cloud Run - build from service name and revision
-	if service := os.Getenv(envKService); service != "" {
-		if revision := os.Getenv(envKRevision); revision != "" {
-			// Avoid duplication if revision already contains the service name
-			if !strings.HasPrefix(revision, service) {
-				return service + "-" + revision
-			}
-			return revision
-		}
-		return service
-	}
-
-	// App Engine - build from service and version
-	if service := os.Getenv(envGAEService); service != "" {
-		if version := os.Getenv(envGAEVersion); version != "" {
-			return service + "-" + version
-		}
-		return service
-	}
-
-	// Cloud Functions - use function name
-	if functionName := os.Getenv(envFunctionName); functionName != "" {
-		return functionName
-	}
-
-	// Generic GCP - use project ID + service name pattern
-	if project := os.Getenv(envGoogleCloudProject); project != "" {
-		// Try to get service name from common patterns
-		if service := os.Getenv(envServiceName); service != "" {
-			return project + "-" + service
-		}
-		return project
-	}
-
-	// Docker/Kubernetes - use pod name or container name
-	if podName := os.Getenv(envHostname); podName != "" && podName != "localhost" {
-		return podName
-	}
-
-	return ""
-}
-
-// GetHostname returns the hostname - now ALWAYS included for service identification
-// Hostname is crucial for:
-// - Multi-server deployments (identifying which server handled the request)
-// - Load balancer debugging (tracking requests across instances)
-// - Performance analysis (comparing server performance)
-// - Incident response (knowing exactly which server had issues)
-//
-// Uses sync.Once to ensure hostname detection only happens once per process lifecycle
+// GetHostname returns the hostname using the generic zobservability hostname detection
 func (c *Config) GetHostname() string {
-	// Initialize hostname only once using sync.Once
-	hostnameOnce.Do(initializeHostname)
-
-	return cachedHostname
+	return zobservability.GetHostname()
 }
 
 // GetProcessID returns the process ID if configured to include it
@@ -401,18 +279,11 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 
 // GetPropagationConfig returns the propagation configuration with defaults
 func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
-	// Debug: Log what we're working with
-	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - c.Propagation: %+v", c.Propagation)
-	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - c.Propagation.Formats: %v", c.Propagation.Formats)
-	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - len(c.Propagation.Formats): %d", len(c.Propagation.Formats))
-	
 	if len(c.Propagation.Formats) == 0 {
 		// Default to W3C for backward compatibility
-		logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - Using W3C default (formats array was empty)")
 		return zobservability.PropagationConfig{
 			Formats: []string{zobservability.PropagationW3C},
 		}
 	}
-	logger.GetLoggerFromContext(context.Background()).Debugf("GetPropagationConfig - Using configured formats: %v", c.Propagation.Formats)
 	return c.Propagation
 }

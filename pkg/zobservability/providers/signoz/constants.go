@@ -32,7 +32,6 @@ const (
 	// Advanced configuration keys
 	ConfigKeyBatchConfig     = "batch_config"     // Key for batch configuration
 	ConfigKeyResourceConfig  = "resource_config"  // Key for resource configuration
-	ConfigKeySpanCounting    = "span_counting"    // Key for span counting configuration
 	ConfigKeyBatchProfile    = "batch_profile"    // Key for predefined batch profile
 
 	// Sampling configuration keys
