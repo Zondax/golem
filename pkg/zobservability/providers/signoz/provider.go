@@ -3,6 +3,7 @@ package signoz
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -163,19 +164,19 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	)
 
 	// Choose between SimpleSpan (immediate export) or Batch processor
+	var baseProcessor sdktrace.SpanProcessor
 	if cfg.UseSimpleSpan {
 		// Use OpenTelemetry's native SimpleSpanProcessor for immediate export without batching
 		// This processor exports spans immediately when they finish, providing real-time visibility
 		// at the cost of increased network overhead (one request per span)
-		simpleProcessor := sdktrace.NewSimpleSpanProcessor(exporter)
-		tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(simpleProcessor))
+		baseProcessor = sdktrace.NewSimpleSpanProcessor(exporter)
 	} else {
 		// Get batch configuration for performance tuning
 		batchConfig := cfg.GetBatchConfig()
 
 		// Batch processor - groups spans before sending (more efficient than one-by-one)
 		// Configurable batching improves performance and reduces network overhead
-		tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithBatcher(
+		baseProcessor = sdktrace.NewBatchSpanProcessor(
 			exporter,
 			// How often to send batches (lower = more real-time, higher = more efficient)
 			sdktrace.WithBatchTimeout(batchConfig.BatchTimeout),
@@ -185,8 +186,20 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 			sdktrace.WithMaxExportBatchSize(batchConfig.MaxExportBatch),
 			// Maximum spans in queue (higher = less data loss, but more memory)
 			sdktrace.WithMaxQueueSize(batchConfig.MaxQueueSize),
-		))
+		)
 	}
+
+	// Wrap with span counting processor if enabled
+	var finalProcessor sdktrace.SpanProcessor = baseProcessor
+	spanCountingConfig := cfg.GetSpanCountingConfig()
+	if spanCountingConfig.Enabled {
+		finalProcessor = NewSpanCountingProcessor(baseProcessor, spanCountingConfig.LogSpanCounts)
+		log.Printf("DEBUG: Span counting enabled - LogSpanCounts: %v", spanCountingConfig.LogSpanCounts)
+	} else {
+		log.Printf("DEBUG: Span counting disabled - Config: %+v", spanCountingConfig)
+	}
+
+	tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(finalProcessor))
 
 	tracerProvider := sdktrace.NewTracerProvider(tracerProviderOpts...)
 

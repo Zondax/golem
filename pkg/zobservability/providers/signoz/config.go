@@ -3,6 +3,7 @@ package signoz
 import (
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,6 +64,9 @@ type Config struct {
 	// Allows optional metadata configuration without forcing all users to specify it
 	ResourceConfig *ResourceConfig `yaml:"resource_config,omitempty" mapstructure:"resource_config"`
 
+	// SpanCountingConfig enables span counting per trace
+	SpanCountingConfig *SpanCountingConfig `yaml:"span_counting,omitempty" mapstructure:"span_counting"`
+
 	// UseSimpleSpan enables immediate span export without batching
 	// When true, spans are exported immediately when they finish instead of being batched
 	// This can increase network overhead but provides real-time visibility
@@ -108,6 +112,14 @@ type ResourceConfig struct {
 	IncludeProcessID bool `yaml:"include_process_id,omitempty" mapstructure:"include_process_id"`
 	// CustomAttributes allows adding custom resource attributes
 	CustomAttributes map[string]string `yaml:"custom_attributes,omitempty" mapstructure:"custom_attributes"`
+}
+
+// SpanCountingConfig controls span counting functionality
+type SpanCountingConfig struct {
+	// Enabled enables span counting per trace
+	Enabled bool `yaml:"enabled,omitempty" mapstructure:"enabled"`
+	// LogSpanCounts enables logging of span counts (useful for debugging)
+	LogSpanCounts bool `yaml:"log_span_counts,omitempty" mapstructure:"log_span_counts"`
 }
 
 // Validate validates the SigNoz configuration
@@ -188,6 +200,18 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 	return c.ResourceConfig
 }
 
+// GetSpanCountingConfig returns span counting configuration with defaults
+func (c *Config) GetSpanCountingConfig() *SpanCountingConfig {
+	if c.SpanCountingConfig == nil {
+		return &SpanCountingConfig{
+			Enabled:       false, // Default: disabled
+			LogSpanCounts: false, // Default: no logging
+		}
+	}
+
+	return c.SpanCountingConfig
+}
+
 // initializeHostname initializes the hostname once using environment variables and config
 // This is called only once per process lifecycle using sync.Once
 func initializeHostname() {
@@ -218,7 +242,11 @@ func buildHostnameFromEnv() string {
 	// Cloud Run - build from service name and revision
 	if service := os.Getenv(envKService); service != "" {
 		if revision := os.Getenv(envKRevision); revision != "" {
-			return service + "-" + revision
+			// Avoid duplication if revision already contains the service name
+			if !strings.HasPrefix(revision, service) {
+				return service + "-" + revision
+			}
+			return revision
 		}
 		return service
 	}

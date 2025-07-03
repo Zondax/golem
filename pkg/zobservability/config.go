@@ -4,18 +4,25 @@ import (
 	"fmt"
 )
 
+// SpanCountingConfig controls span counting functionality
+type SpanCountingConfig struct {
+	Enabled       bool `yaml:"enabled" mapstructure:"enabled"`
+	LogSpanCounts bool `yaml:"log_span_counts" mapstructure:"log_span_counts"`
+}
+
 // Config holds configuration for all observability features (tracing, logging, metrics)
 type Config struct {
-	Provider     string            `yaml:"provider" mapstructure:"provider"`
-	Enabled      bool              `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
-	Environment  string            `yaml:"environment" mapstructure:"environment"`
-	Release      string            `yaml:"release" mapstructure:"release"`
-	Debug        bool              `yaml:"debug" mapstructure:"debug"`
-	Address      string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
-	SampleRate   float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
-	Middleware   MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
-	Metrics      MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
-	CustomConfig map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
+	Provider     string             `yaml:"provider" mapstructure:"provider"`
+	Enabled      bool               `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
+	Environment  string             `yaml:"environment" mapstructure:"environment"`
+	Release      string             `yaml:"release" mapstructure:"release"`
+	Debug        bool               `yaml:"debug" mapstructure:"debug"`
+	Address      string             `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
+	SampleRate   float64            `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
+	Middleware   MiddlewareConfig   `yaml:"middleware" mapstructure:"middleware"`
+	Metrics      MetricsConfig      `yaml:"metrics" mapstructure:"metrics"`                     // Metrics configuration
+	SpanCounting *SpanCountingConfig `yaml:"span_counting,omitempty" mapstructure:"span_counting"` // Span counting configuration
+	CustomConfig map[string]string  `yaml:"custom_config" mapstructure:"custom_config"`        // Provider-specific configuration
 }
 
 func (c Config) Validate() error {
