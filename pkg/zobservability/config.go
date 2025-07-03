@@ -10,6 +10,11 @@ type SpanCountingConfig struct {
 	LogSpanCounts bool `yaml:"log_span_counts" mapstructure:"log_span_counts"`
 }
 
+// PropagationConfig controls trace propagation formats
+type PropagationConfig struct {
+	Formats []string `yaml:"formats" mapstructure:"formats"` // ["w3c", "b3", "b3-single", "jaeger"]
+}
+
 // Config holds configuration for all observability features (tracing, logging, metrics)
 type Config struct {
 	Provider     string             `yaml:"provider" mapstructure:"provider"`
@@ -22,6 +27,7 @@ type Config struct {
 	Middleware   MiddlewareConfig   `yaml:"middleware" mapstructure:"middleware"`
 	Metrics      MetricsConfig      `yaml:"metrics" mapstructure:"metrics"`                     // Metrics configuration
 	SpanCounting *SpanCountingConfig `yaml:"span_counting,omitempty" mapstructure:"span_counting"` // Span counting configuration
+	Propagation  PropagationConfig  `yaml:"propagation" mapstructure:"propagation"`             // Trace propagation configuration
 	CustomConfig map[string]string  `yaml:"custom_config" mapstructure:"custom_config"`        // Provider-specific configuration
 }
 
@@ -66,5 +72,10 @@ func (c *Config) SetDefaults() {
 	// Set metrics defaults
 	if c.Metrics.Provider == "" {
 		c.Metrics = DefaultMetricsConfig()
+	}
+
+	// Set propagation defaults
+	if len(c.Propagation.Formats) == 0 {
+		c.Propagation.Formats = []string{"w3c"} // Default to W3C for backward compatibility
 	}
 }

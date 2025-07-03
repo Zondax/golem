@@ -14,6 +14,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/zondax/golem/pkg/logger"
@@ -210,15 +212,67 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	// Set global tracer provider
 	otel.SetTracerProvider(tracerProvider)
 
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, // W3C Trace Context (standard)
-		propagation.Baggage{},      // W3C Baggage (for custom attributes)
-	))
+	// Configure propagators based on configuration
+	otel.SetTextMapPropagator(createPropagator(cfg))
 
 	// Create tracer
 	tracer := otel.Tracer(cfg.ServiceName)
 
 	return tracerProvider, tracer, nil
+}
+
+// createPropagator creates a composite propagator based on the configuration
+func createPropagator(cfg *Config) propagation.TextMapPropagator {
+	propagationConfig := cfg.GetPropagationConfig()
+	formats := propagationConfig.Formats
+	
+	// Default to W3C for backward compatibility when no formats specified
+	if len(formats) == 0 {
+		return createW3CPropagator()
+	}
+
+	var propagators []propagation.TextMapPropagator
+	for _, format := range formats {
+		if prop := createPropagatorByFormat(format); prop != nil {
+			propagators = append(propagators, prop...)
+		}
+	}
+
+	// Fallback to W3C if no valid propagators were created
+	if len(propagators) == 0 {
+		return createW3CPropagator()
+	}
+
+	return propagation.NewCompositeTextMapPropagator(propagators...)
+}
+
+// createW3CPropagator creates the default W3C propagator
+func createW3CPropagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
+}
+
+// createPropagatorByFormat creates propagators for a specific format
+func createPropagatorByFormat(format string) []propagation.TextMapPropagator {
+	switch format {
+	case zobservability.PropagationW3C:
+		return []propagation.TextMapPropagator{
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		}
+	case zobservability.PropagationB3:
+		return []propagation.TextMapPropagator{b3.New()}
+	case zobservability.PropagationB3Single:
+		return []propagation.TextMapPropagator{
+			b3.New(b3.WithInjectEncoding(b3.B3SingleHeader)),
+		}
+	case zobservability.PropagationJaeger:
+		return []propagation.TextMapPropagator{jaeger.Jaeger{}}
+	default:
+		return nil
+	}
 }
 
 // createTracingResource creates a resource with service information for tracing

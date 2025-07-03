@@ -71,6 +71,9 @@ type Config struct {
 	// When true, spans are exported immediately when they finish instead of being batched
 	// This can increase network overhead but provides real-time visibility
 	UseSimpleSpan bool `yaml:"use_simple_span" mapstructure:"use_simple_span"`
+	
+	// Propagation configuration
+	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
 }
 
 // BatchConfig controls how spans are batched and sent to SigNoz
@@ -392,4 +395,15 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 	}
 
 	return metrics
+}
+
+// GetPropagationConfig returns the propagation configuration with defaults
+func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
+	if len(c.Propagation.Formats) == 0 {
+		// Default to W3C for backward compatibility
+		return zobservability.PropagationConfig{
+			Formats: []string{zobservability.PropagationW3C},
+		}
+	}
+	return c.Propagation
 }
