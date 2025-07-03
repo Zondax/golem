@@ -36,7 +36,7 @@ const (
 
 	// Sampling configuration keys
 	ConfigKeyIgnoreParentSampling = "ignore_parent_sampling" // Key for ignoring parent sampling decisions
-	
+
 	// SimpleSpan configuration keys
 	ConfigKeyUseSimpleSpan = "use_simple_span" // Key for enabling SimpleSpan immediate export
 
