@@ -308,3 +308,203 @@ func TestConfig_WhenSetDefaultsMultipleTimes_ShouldBeIdempotent(t *testing.T) {
 	assert.Equal(t, firstSampleRate, config.SampleRate)
 	assert.Equal(t, firstCaptureErrors, config.Middleware.CaptureErrors)
 }
+
+// Tests for PropagationConfig
+
+func TestPropagationConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         PropagationConfig
+		expectedLength int
+		expectedFirst  string
+	}{
+		{
+			name: "single format",
+			config: PropagationConfig{
+				Formats: []string{PropagationB3},
+			},
+			expectedLength: 1,
+			expectedFirst:  PropagationB3,
+		},
+		{
+			name: "multiple formats",
+			config: PropagationConfig{
+				Formats: []string{PropagationB3, PropagationW3C, PropagationJaeger},
+			},
+			expectedLength: 3,
+			expectedFirst:  PropagationB3,
+		},
+		{
+			name: "empty formats",
+			config: PropagationConfig{
+				Formats: []string{},
+			},
+			expectedLength: 0,
+		},
+		{
+			name: "nil formats",
+			config: PropagationConfig{
+				Formats: nil,
+			},
+			expectedLength: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Len(t, tt.config.Formats, tt.expectedLength)
+			if tt.expectedLength > 0 {
+				assert.Equal(t, tt.expectedFirst, tt.config.Formats[0])
+			}
+		})
+	}
+}
+
+func TestConfig_WhenSetDefaultsPropagationFormats_ShouldSetB3Default(t *testing.T) {
+	tests := []struct {
+		name           string
+		initialConfig  Config
+		expectedLength int
+		expectedFirst  string
+	}{
+		{
+			name: "empty propagation formats get B3 default",
+			initialConfig: Config{
+				Propagation: PropagationConfig{
+					Formats: []string{},
+				},
+			},
+			expectedLength: 1,
+			expectedFirst:  PropagationB3,
+		},
+		{
+			name: "nil propagation formats get B3 default",
+			initialConfig: Config{
+				Propagation: PropagationConfig{
+					Formats: nil,
+				},
+			},
+			expectedLength: 1,
+			expectedFirst:  PropagationB3,
+		},
+		{
+			name: "existing formats are preserved",
+			initialConfig: Config{
+				Propagation: PropagationConfig{
+					Formats: []string{PropagationB3, PropagationJaeger},
+				},
+			},
+			expectedLength: 2,
+			expectedFirst:  PropagationB3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tt.initialConfig
+			config.SetDefaults()
+
+			assert.Len(t, config.Propagation.Formats, tt.expectedLength)
+			if tt.expectedLength > 0 {
+				assert.Equal(t, tt.expectedFirst, config.Propagation.Formats[0])
+			}
+		})
+	}
+}
+
+func TestConfig_WhenValidateWithPropagation_ShouldSucceed(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      Config
+		expectError bool
+	}{
+		{
+			name: "valid config with propagation",
+			config: Config{
+				Provider:    ProviderSigNoz,
+				Enabled:     true,
+				Environment: "test",
+				Address:     "localhost:4317",
+				Propagation: PropagationConfig{
+					Formats: []string{PropagationB3},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid config with multiple propagation formats",
+			config: Config{
+				Provider:    ProviderSigNoz,
+				Enabled:     true,
+				Environment: "test",
+				Address:     "localhost:4317",
+				Propagation: PropagationConfig{
+					Formats: []string{PropagationB3, PropagationW3C, PropagationJaeger},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid config with empty propagation formats",
+			config: Config{
+				Provider:    ProviderSigNoz,
+				Enabled:     true,
+				Environment: "test",
+				Address:     "localhost:4317",
+				Propagation: PropagationConfig{
+					Formats: []string{},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "disabled config with propagation doesn't validate",
+			config: Config{
+				Provider:    ProviderSigNoz,
+				Enabled:     false,
+				Environment: "",
+				Address:     "",
+				Propagation: PropagationConfig{
+					Formats: []string{PropagationB3},
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestConfig_WhenPropagationIntegration_ShouldWorkEndToEnd(t *testing.T) {
+	// Test that a full configuration works end-to-end
+	config := Config{
+		Provider:    ProviderSigNoz,
+		Enabled:     true,
+		Environment: "test",
+		Release:     "1.0.0",
+		Address:     "localhost:4317",
+		SampleRate:  1.0,
+		Propagation: PropagationConfig{
+			Formats: []string{PropagationB3, PropagationW3C},
+		},
+	}
+
+	// Set defaults and validate
+	config.SetDefaults()
+	err := config.Validate()
+	assert.NoError(t, err)
+
+	// Check that propagation formats are preserved
+	assert.Len(t, config.Propagation.Formats, 2)
+	assert.Equal(t, PropagationB3, config.Propagation.Formats[0])
+	assert.Equal(t, PropagationW3C, config.Propagation.Formats[1])
+}

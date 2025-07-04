@@ -9,6 +9,10 @@ const (
 	// DefaultShutdownTimeout is the default timeout for shutting down the tracer provider
 	DefaultShutdownTimeout = 5 * time.Second
 
+	// DefaultForceFlushTimeout is the default timeout for forcing span exports
+	// Optimized for Cloud Run environments where containers can be terminated quickly
+	DefaultForceFlushTimeout = 5 * time.Second
+
 	// Batch processor configuration
 	DefaultBatchTimeout   = 5 * time.Second  // How often to send batches
 	DefaultExportTimeout  = 30 * time.Second // Timeout for individual exports
@@ -32,6 +36,9 @@ const (
 
 	// Sampling configuration keys
 	ConfigKeyIgnoreParentSampling = "ignore_parent_sampling" // Key for ignoring parent sampling decisions
+
+	// SimpleSpan configuration keys
+	ConfigKeyUseSimpleSpan = "use_simple_span" // Key for enabling SimpleSpan immediate export
 
 	// Standardized Batch Profiles - optimized configurations for different scenarios
 	BatchProfileDevelopment = "development" // Real-time visibility, low latency

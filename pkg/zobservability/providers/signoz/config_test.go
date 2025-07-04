@@ -633,3 +633,28 @@ func TestConfig_ShouldIgnoreParentSampling_WhenNotSet_ShouldDefaultToFalse(t *te
 	// This test verifies the struct behavior, while the factory test verifies the default behavior
 	assert.False(t, result)
 }
+
+// =============================================================================
+// HOSTNAME DETECTION TESTS
+// =============================================================================
+
+func TestGetHostname_Integration(t *testing.T) {
+	t.Run("returns non-empty hostname", func(t *testing.T) {
+		config := &Config{}
+		hostname := config.GetHostname()
+
+		// Should never return empty string
+		assert.NotEmpty(t, hostname, "GetHostname() should never return empty string")
+	})
+
+	t.Run("calls generic zobservability hostname function", func(t *testing.T) {
+		config := &Config{}
+
+		// Call GetHostname multiple times to ensure it's consistent
+		hostname1 := config.GetHostname()
+		hostname2 := config.GetHostname()
+
+		assert.Equal(t, hostname1, hostname2, "GetHostname() should return consistent results")
+		assert.NotEmpty(t, hostname1, "Hostname should not be empty")
+	})
+}

@@ -120,6 +120,13 @@ func (s *sentryObserver) GetMetrics() zobservability.MetricsProvider {
 	return zobservability.NewNoopMetricsProvider("sentry")
 }
 
+func (s *sentryObserver) ForceFlush(ctx context.Context) error {
+	if s.client != nil {
+		s.client.Flush(2 * time.Second)
+	}
+	return nil
+}
+
 func (s *sentryObserver) Close() error {
 	if s.client != nil {
 		s.client.Flush(2 * time.Second)

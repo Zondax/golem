@@ -6,6 +6,14 @@ const (
 	ProviderSigNoz = "signoz"
 )
 
+// Propagation format constants
+const (
+	PropagationW3C      = "w3c"
+	PropagationB3       = "b3"
+	PropagationB3Single = "b3-single"
+	PropagationJaeger   = "jaeger"
+)
+
 // Environment constants for observability configuration
 const (
 	EnvironmentProduction  = "production"

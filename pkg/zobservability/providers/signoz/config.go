@@ -8,10 +8,6 @@ import (
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
-const (
-	unknownHostFallback = "unknown-host"
-)
-
 // Config holds the configuration for the SigNoz observer
 type Config struct {
 	Endpoint    string            `yaml:"endpoint" mapstructure:"endpoint"`
@@ -44,6 +40,14 @@ type Config struct {
 	// ResourceConfig is also a POINTER for the same reasons as BatchConfig
 	// Allows optional metadata configuration without forcing all users to specify it
 	ResourceConfig *ResourceConfig `yaml:"resource_config,omitempty" mapstructure:"resource_config"`
+
+	// UseSimpleSpan enables immediate span export without batching
+	// When true, spans are exported immediately when they finish instead of being batched
+	// This can increase network overhead but provides real-time visibility
+	UseSimpleSpan bool `yaml:"use_simple_span" mapstructure:"use_simple_span"`
+
+	// Propagation configuration
+	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
 }
 
 // BatchConfig controls how spans are batched and sent to SigNoz
@@ -165,21 +169,9 @@ func (c *Config) GetResourceConfig() *ResourceConfig {
 	return c.ResourceConfig
 }
 
-// GetHostname returns the hostname - now ALWAYS included for service identification
-// Hostname is crucial for:
-// - Multi-server deployments (identifying which server handled the request)
-// - Load balancer debugging (tracking requests across instances)
-// - Performance analysis (comparing server performance)
-// - Incident response (knowing exactly which server had issues)
+// GetHostname returns the hostname using the generic zobservability hostname detection
 func (c *Config) GetHostname() string {
-	// Always try to get hostname since it's now mandatory
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		return hostname
-	}
-
-	// Fallback: if hostname fails, use a default identifier
-	// This ensures we always have some form of instance identification
-	return unknownHostFallback
+	return zobservability.GetHostname()
 }
 
 // GetProcessID returns the process ID if configured to include it
@@ -214,12 +206,9 @@ func (c *Config) GetProcessID() string {
 //
 // When not explicitly configured, defaults to true to ensure traces are not lost.
 func (c *Config) ShouldIgnoreParentSampling() bool {
-	// If explicitly configured, respect the setting
-	if c.IgnoreParentSampling {
-		return true
-	}
-
-	return false
+	// DEFAULT: true for cloud environments to prevent trace loss
+	// Return the configured value, with true as default
+	return c.IgnoreParentSampling
 }
 
 // GetBatchProfileConfig returns a predefined batch configuration for the specified profile
@@ -281,4 +270,15 @@ func (c *Config) GetMetricsConfig() zobservability.MetricsConfig {
 	}
 
 	return metrics
+}
+
+// GetPropagationConfig returns the propagation configuration with defaults
+func (c *Config) GetPropagationConfig() zobservability.PropagationConfig {
+	if len(c.Propagation.Formats) == 0 {
+		// Default to B3 because is the only one supported by GCP+Signoz
+		return zobservability.PropagationConfig{
+			Formats: []string{zobservability.PropagationB3},
+		}
+	}
+	return c.Propagation
 }

@@ -17,6 +17,7 @@ type Observer interface {
 
 	// Configuration and lifecycle
 	GetConfig() Config
+	ForceFlush(ctx context.Context) error
 	Close() error
 }
 

@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+// PropagationConfig controls trace propagation formats
+type PropagationConfig struct {
+	Formats []string `yaml:"formats" mapstructure:"formats"` // ["w3c", "b3", "b3-single", "jaeger"]
+}
+
 // Config holds configuration for all observability features (tracing, logging, metrics)
 type Config struct {
 	Provider     string            `yaml:"provider" mapstructure:"provider"`
@@ -15,6 +20,7 @@ type Config struct {
 	SampleRate   float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
 	Middleware   MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
 	Metrics      MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
+	Propagation  PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
 	CustomConfig map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
 }
 
@@ -59,5 +65,10 @@ func (c *Config) SetDefaults() {
 	// Set metrics defaults
 	if c.Metrics.Provider == "" {
 		c.Metrics = DefaultMetricsConfig()
+	}
+
+	// Set propagation defaults
+	if len(c.Propagation.Formats) == 0 {
+		c.Propagation.Formats = []string{PropagationB3} // Default to B3 because is the only one supported by GCP+Signoz
 	}
 }

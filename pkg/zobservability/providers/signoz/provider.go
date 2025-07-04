@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -15,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
 )
 
@@ -139,13 +142,13 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 		// This creates a ParentBased sampler that:
 		// - Uses parent's sampling decision if present
 		// - Falls back to our local sampler if no parent
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using parent based sampler (ignore_parent_sampling=false)")
 		sampler = sdktrace.ParentBased(sampler)
+	} else {
+		logger.GetLoggerFromContext(context.Background()).Infof("[GCP-SAMPLER] Using direct sampler (ignore_parent_sampling=true)")
 	}
 	// If ShouldIgnoreParentSampling() is true, we keep the direct sampler (AlwaysSample or TraceIDRatioBased)
 	// This ensures our application makes its own sampling decisions regardless of GCP headers
-
-	// Get batch configuration for performance tuning
-	batchConfig := cfg.GetBatchConfig()
 
 	// Create tracer provider - this is the "engine" that creates and manages traces
 	// TracerProvider is responsible for:
@@ -153,12 +156,28 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 	// 2. Applying sampling decisions (what to collect)
 	// 3. Batching and sending data to SigNoz via the exporter
 	// 4. Managing trace lifecycle and resource cleanup
-	tracerProvider := sdktrace.NewTracerProvider(
-		// Sampling strategy - controls data volume and costs
+	var tracerProviderOpts []sdktrace.TracerProviderOption
+
+	// Add sampler and resource options
+	tracerProviderOpts = append(tracerProviderOpts,
 		sdktrace.WithSampler(sampler),
+		sdktrace.WithResource(resources),
+	)
+
+	// Choose between SimpleSpan (immediate export) or Batch processor
+	var baseProcessor sdktrace.SpanProcessor
+	if cfg.UseSimpleSpan {
+		// Use OpenTelemetry's native SimpleSpanProcessor for immediate export without batching
+		// This processor exports spans immediately when they finish, providing real-time visibility
+		// at the cost of increased network overhead (one request per span)
+		baseProcessor = sdktrace.NewSimpleSpanProcessor(exporter)
+	} else {
+		// Get batch configuration for performance tuning
+		batchConfig := cfg.GetBatchConfig()
+
 		// Batch processor - groups spans before sending (more efficient than one-by-one)
 		// Configurable batching improves performance and reduces network overhead
-		sdktrace.WithBatcher(
+		baseProcessor = sdktrace.NewBatchSpanProcessor(
 			exporter,
 			// How often to send batches (lower = more real-time, higher = more efficient)
 			sdktrace.WithBatchTimeout(batchConfig.BatchTimeout),
@@ -168,26 +187,89 @@ func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, 
 			sdktrace.WithMaxExportBatchSize(batchConfig.MaxExportBatch),
 			// Maximum spans in queue (higher = less data loss, but more memory)
 			sdktrace.WithMaxQueueSize(batchConfig.MaxQueueSize),
-		),
-		// Resource metadata - attaches service info to all traces
-		sdktrace.WithResource(resources),
-	)
+		)
+	}
+
+	// Use the base processor directly
+	finalProcessor := baseProcessor
+
+	// Debug configuration values
+	logger.GetLoggerFromContext(context.Background()).Debugf("DEBUG: SigNoz Config - IgnoreParentSampling: %v, SampleRate: %f, UseSimpleSpan: %v",
+		cfg.IgnoreParentSampling, cfg.SampleRate, cfg.UseSimpleSpan)
+
+	tracerProviderOpts = append(tracerProviderOpts, sdktrace.WithSpanProcessor(finalProcessor))
+
+	tracerProvider := sdktrace.NewTracerProvider(tracerProviderOpts...)
 
 	// Set global tracer provider
 	otel.SetTracerProvider(tracerProvider)
 
-	// Configure text map propagator for distributed tracing
-	// This is CRITICAL for distributed tracing to work across services
-	// It tells OpenTelemetry how to inject/extract trace context in HTTP/gRPC headers
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, // W3C Trace Context (standard)
-		propagation.Baggage{},      // W3C Baggage (for custom attributes)
-	))
+	// Configure propagators based on configuration
+	propagator := createPropagator(cfg)
+	otel.SetTextMapPropagator(propagator)
+
+	// Log which propagator is being used
+	logger.GetLoggerFromContext(context.Background()).Infof("OpenTelemetry propagator configured: type=%T, formats=%v",
+		propagator, cfg.GetPropagationConfig().Formats)
 
 	// Create tracer
 	tracer := otel.Tracer(cfg.ServiceName)
 
 	return tracerProvider, tracer, nil
+}
+
+// createPropagator creates a composite propagator based on the configuration
+func createPropagator(cfg *Config) propagation.TextMapPropagator {
+	propagationConfig := cfg.GetPropagationConfig()
+	formats := propagationConfig.Formats
+
+	// Default to W3C
+	if len(formats) == 0 {
+		return createW3CPropagator()
+	}
+
+	var propagators []propagation.TextMapPropagator
+	for _, format := range formats {
+		if prop := createPropagatorByFormat(format); prop != nil {
+			propagators = append(propagators, prop...)
+		}
+	}
+
+	// Fallback to W3C if no valid propagators were created
+	if len(propagators) == 0 {
+		return createW3CPropagator()
+	}
+
+	return propagation.NewCompositeTextMapPropagator(propagators...)
+}
+
+// createW3CPropagator creates the default W3C propagator
+func createW3CPropagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
+}
+
+// createPropagatorByFormat creates propagators for a specific format
+func createPropagatorByFormat(format string) []propagation.TextMapPropagator {
+	switch format {
+	case zobservability.PropagationW3C:
+		return []propagation.TextMapPropagator{
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		}
+	case zobservability.PropagationB3:
+		return []propagation.TextMapPropagator{b3.New()}
+	case zobservability.PropagationB3Single:
+		return []propagation.TextMapPropagator{
+			b3.New(b3.WithInjectEncoding(b3.B3SingleHeader)),
+		}
+	case zobservability.PropagationJaeger:
+		return []propagation.TextMapPropagator{jaeger.Jaeger{}}
+	default:
+		return nil
+	}
 }
 
 // createTracingResource creates a resource with service information for tracing
@@ -304,20 +386,67 @@ func (s *signozObserver) GetMetrics() zobservability.MetricsProvider {
 	return s.metrics
 }
 
+// ForceFlush forces the immediate export of all spans that have not yet been exported.
+// This is particularly important for Cloud Run environments where containers can be
+// terminated without warning, potentially causing spans to be lost if they remain buffered.
+//
+// ForceFlush ensures that all manually created spans (via StartSpan or NewEventSpanBuilder)
+// are immediately sent to SigNoz, complementing the automatic gRPC interceptor spans.
+func (s *signozObserver) ForceFlush(ctx context.Context) error {
+	if s.tracerProvider == nil {
+		return nil // Nothing to flush if tracer provider is not initialized
+	}
+
+	// Create timeout context for the flush operation
+	// Use a generous timeout to ensure spans have time to export, especially important for:
+	// - Slow network connections to SigNoz
+	// - Large batches of spans waiting to be exported
+	// - Cloud Run cold starts where export might take longer
+	flushCtx, cancel := context.WithTimeout(ctx, DefaultForceFlushTimeout)
+	defer cancel()
+
+	// ForceFlush immediately exports all spans that have not yet been exported
+	// for all the registered span processors. This is critical for ensuring
+	// that manually instrumented business logic spans are not lost when containers terminate.
+	if err := s.tracerProvider.ForceFlush(flushCtx); err != nil {
+		return fmt.Errorf("failed to force flush spans: %w", err)
+	}
+
+	return nil
+}
+
 // Close shuts down the observer and all its providers
+// CRITICAL: ForceFlush is called before Shutdown to ensure all pending spans are exported.
+// This prevents data loss in Cloud Run environments where containers can be terminated abruptly.
 func (s *signozObserver) Close() error {
-	// Close metrics provider
+	// Create a shutdown context with sufficient timeout for both flush and shutdown operations
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout+DefaultForceFlushTimeout)
+	defer cancel()
+
+	// 1. Force flush all pending spans before shutting down
+	// This ensures manually instrumented spans (StartSpan, NewEventSpanBuilder) are exported
+	// before the tracer provider shuts down and stops accepting new export operations
+	if err := s.ForceFlush(ctx); err != nil {
+		// Log the error but continue with shutdown - we don't want to block cleanup
+		// if ForceFlush fails, but we still need to properly close resources
+		// Note: This could be improved with better logging once logger is available in context
+		logger.GetLoggerFromContext(ctx).Errorf("Warning: failed to force flush spans during close: %v\n", err)
+	}
+
+	// 2. Close metrics provider
 	if s.metrics != nil {
 		if err := s.metrics.Stop(); err != nil {
 			return fmt.Errorf("failed to stop metrics provider: %w", err)
 		}
 	}
 
-	// Close tracer provider
+	// 3. Close tracer provider (includes final flush as per OpenTelemetry spec)
+	// Shutdown() automatically includes the effects of ForceFlush(), but we've already
+	// called it explicitly above with better error handling and timeout management
 	if s.tracerProvider != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout)
-		defer cancel()
-		if err := s.tracerProvider.Shutdown(ctx); err != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, DefaultShutdownTimeout)
+		defer shutdownCancel()
+		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("failed to shutdown tracer provider: %w", err)
 		}
 	}
