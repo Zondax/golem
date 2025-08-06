@@ -27,6 +27,13 @@ type signozObserver struct {
 	config         *Config
 	tracerProvider *sdktrace.TracerProvider
 	metrics        zobservability.MetricsProvider
+	exclusionsMap  map[string]bool
+}
+
+// isOperationExcluded checks if an operation should be excluded from tracing
+func (s *signozObserver) isOperationExcluded(operation string) bool {
+	_, excluded := s.exclusionsMap[operation]
+	return excluded
 }
 
 // NewObserver creates a new SigNoz observer using OpenTelemetry
@@ -77,12 +84,201 @@ func NewObserver(cfg *Config) (zobservability.Observer, error) {
 		return nil, fmt.Errorf("failed to start metrics provider: %w", err)
 	}
 
+	exclusionsMap := make(map[string]bool)
+	for _, excluded := range cfg.TracingExclusions {
+		exclusionsMap[excluded] = true
+	}
+
 	return &signozObserver{
 		tracer:         tracer,
 		config:         cfg,
 		tracerProvider: tracerProvider,
 		metrics:        metricsProvider,
+		exclusionsMap:  exclusionsMap,
 	}, nil
+}
+
+func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts ...zobservability.TransactionOption) zobservability.Transaction {
+	// Check if this operation should be excluded from tracing
+	if s.isOperationExcluded(name) {
+		// Return a noop transaction that doesn't create spans
+		return &noopTransaction{ctx: ctx}
+	}
+
+	ctx, span := s.tracer.Start(ctx, name)
+
+	signozTx := &signozTransaction{
+		ctx:  ctx,
+		span: span,
+		name: name,
+	}
+
+	for _, opt := range opts {
+		opt.ApplyTransaction(signozTx)
+	}
+
+	return signozTx
+}
+
+func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
+	// Check if this operation should be excluded from tracing
+	if s.isOperationExcluded(operation) {
+		// Return a noop span that doesn't create traces
+		return ctx, &noopSpan{}
+	}
+
+	ctx, span := s.tracer.Start(ctx, operation)
+
+	signozSpan := &signozSpan{
+		span:      span,
+		operation: operation,
+	}
+
+	for _, opt := range opts {
+		opt.ApplySpan(signozSpan)
+	}
+
+	return ctx, signozSpan
+}
+
+// CaptureException captures ERROR events with full error context
+// Use this for: Exceptions, failures, critical errors that need investigation
+// What it does:
+// - Records the error with full stack trace information
+// - Sets span status to ERROR (affects service health metrics)
+// - Marks the entire trace as having an error
+// - Provides structured error data for debugging
+// - Appears in SigNoz as "Error" events with red indicators
+func (s *signozObserver) CaptureException(ctx context.Context, err error, opts ...zobservability.EventOption) {
+	span := trace.SpanFromContext(ctx)
+	if span != nil {
+		span.RecordError(err, trace.WithStackTrace(true))
+		span.SetStatus(codes.Error, err.Error())
+
+		// Apply additional event options
+		event := &signozEvent{
+			span: span,
+		}
+		for _, opt := range opts {
+			opt.ApplyEvent(event)
+		}
+		event.Capture()
+	}
+}
+
+// CaptureMessage captures INFORMATIONAL events with custom severity levels
+// Use this for: Logs, debug info, warnings, business events, audit trails
+// What it does:
+// - Records a message with specified level (Debug, Info, Warning, etc.)
+// - Does NOT affect span status (span remains successful)
+// - Does NOT mark trace as failed
+// - Provides contextual information for debugging
+// - Appears in SigNoz as "Event" logs with level-based colors
+func (s *signozObserver) CaptureMessage(ctx context.Context, message string, level zobservability.Level, opts ...zobservability.EventOption) {
+	span := trace.SpanFromContext(ctx)
+	if span != nil {
+		span.AddEvent(message, trace.WithAttributes(
+			attribute.String(zobservability.SpanAttributeLevel, level.String()),
+		))
+
+		// Apply additional event options
+		event := &signozEvent{
+			span: span,
+		}
+		for _, opt := range opts {
+			opt.ApplyEvent(event)
+		}
+		event.Capture()
+	}
+}
+
+// GetMetrics returns the metrics provider
+func (s *signozObserver) GetMetrics() zobservability.MetricsProvider {
+	return s.metrics
+}
+
+// ForceFlush forces the immediate export of all spans that have not yet been exported.
+// This is particularly important for Cloud Run environments where containers can be
+// terminated without warning, potentially causing spans to be lost if they remain buffered.
+//
+// ForceFlush ensures that all manually created spans (via StartSpan or NewEventSpanBuilder)
+// are immediately sent to SigNoz, complementing the automatic gRPC interceptor spans.
+func (s *signozObserver) ForceFlush(ctx context.Context) error {
+	if s.tracerProvider == nil {
+		return nil // Nothing to flush if tracer provider is not initialized
+	}
+
+	// Create timeout context for the flush operation
+	// Use a generous timeout to ensure spans have time to export, especially important for:
+	// - Slow network connections to SigNoz
+	// - Large batches of spans waiting to be exported
+	// - Cloud Run cold starts where export might take longer
+	flushCtx, cancel := context.WithTimeout(ctx, DefaultForceFlushTimeout)
+	defer cancel()
+
+	// ForceFlush immediately exports all spans that have not yet been exported
+	// for all the registered span processors. This is critical for ensuring
+	// that manually instrumented business logic spans are not lost when containers terminate.
+	if err := s.tracerProvider.ForceFlush(flushCtx); err != nil {
+		return fmt.Errorf("failed to force flush spans: %w", err)
+	}
+
+	return nil
+}
+
+// Close shuts down the observer and all its providers
+// CRITICAL: ForceFlush is called before Shutdown to ensure all pending spans are exported.
+// This prevents data loss in Cloud Run environments where containers can be terminated abruptly.
+func (s *signozObserver) Close() error {
+	// Create a shutdown context with sufficient timeout for both flush and shutdown operations
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout+DefaultForceFlushTimeout)
+	defer cancel()
+
+	// 1. Force flush all pending spans before shutting down
+	// This ensures manually instrumented spans (StartSpan, NewEventSpanBuilder) are exported
+	// before the tracer provider shuts down and stops accepting new export operations
+	if err := s.ForceFlush(ctx); err != nil {
+		// Log the error but continue with shutdown - we don't want to block cleanup
+		// if ForceFlush fails, but we still need to properly close resources
+		// Note: This could be improved with better logging once logger is available in context
+		logger.GetLoggerFromContext(ctx).Errorf("Warning: failed to force flush spans during close: %v\n", err)
+	}
+
+	// 2. Close metrics provider
+	if s.metrics != nil {
+		if err := s.metrics.Stop(); err != nil {
+			return fmt.Errorf("failed to stop metrics provider: %w", err)
+		}
+	}
+
+	// 3. Close tracer provider (includes final flush as per OpenTelemetry spec)
+	// Shutdown() automatically includes the effects of ForceFlush(), but we've already
+	// called it explicitly above with better error handling and timeout management
+	if s.tracerProvider != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, DefaultShutdownTimeout)
+		defer shutdownCancel()
+		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("failed to shutdown tracer provider: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *signozObserver) GetConfig() zobservability.Config {
+	return zobservability.Config{
+		Provider:    zobservability.ProviderSigNoz,
+		Enabled:     true,
+		Environment: s.config.Environment,
+		Release:     s.config.Release,
+		Debug:       s.config.Debug,
+		Address:     s.config.Endpoint,
+		SampleRate:  s.config.SampleRate,
+		Middleware: zobservability.MiddlewareConfig{
+			CaptureErrors: true,
+		},
+		TracingExclusions: s.config.TracingExclusions,
+	}
 }
 
 // createTracerProvider creates and configures the OpenTelemetry tracer provider
@@ -299,173 +495,34 @@ func createTracingResource(cfg *Config) (*resource.Resource, error) {
 	)
 }
 
-func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts ...zobservability.TransactionOption) zobservability.Transaction {
-	ctx, span := s.tracer.Start(ctx, name)
-
-	signozTx := &signozTransaction{
-		ctx:  ctx,
-		span: span,
-		name: name,
-	}
-
-	for _, opt := range opts {
-		opt.ApplyTransaction(signozTx)
-	}
-
-	return signozTx
+// noopTransaction is a no-op implementation of Transaction for excluded operations
+type noopTransaction struct {
+	ctx context.Context
 }
 
-func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
-	ctx, span := s.tracer.Start(ctx, operation)
-
-	signozSpan := &signozSpan{
-		span:      span,
-		operation: operation,
-	}
-
-	for _, opt := range opts {
-		opt.ApplySpan(signozSpan)
-	}
-
-	return ctx, signozSpan
+func (t *noopTransaction) Context() context.Context {
+	return t.ctx
 }
 
-// CaptureException captures ERROR events with full error context
-// Use this for: Exceptions, failures, critical errors that need investigation
-// What it does:
-// - Records the error with full stack trace information
-// - Sets span status to ERROR (affects service health metrics)
-// - Marks the entire trace as having an error
-// - Provides structured error data for debugging
-// - Appears in SigNoz as "Error" events with red indicators
-func (s *signozObserver) CaptureException(ctx context.Context, err error, opts ...zobservability.EventOption) {
-	span := trace.SpanFromContext(ctx)
-	if span != nil {
-		span.RecordError(err, trace.WithStackTrace(true))
-		span.SetStatus(codes.Error, err.Error())
+func (t *noopTransaction) SetName(name string) {}
 
-		// Apply additional event options
-		event := &signozEvent{
-			span: span,
-		}
-		for _, opt := range opts {
-			opt.ApplyEvent(event)
-		}
-		event.Capture()
-	}
+func (t *noopTransaction) SetTag(key, value string) {}
+
+func (t *noopTransaction) SetData(key string, value interface{}) {}
+
+func (t *noopTransaction) StartChild(operation string, opts ...zobservability.SpanOption) zobservability.Span {
+	return &noopSpan{}
 }
 
-// CaptureMessage captures INFORMATIONAL events with custom severity levels
-// Use this for: Logs, debug info, warnings, business events, audit trails
-// What it does:
-// - Records a message with specified level (Debug, Info, Warning, etc.)
-// - Does NOT affect span status (span remains successful)
-// - Does NOT mark trace as failed
-// - Provides contextual information for debugging
-// - Appears in SigNoz as "Event" logs with level-based colors
-func (s *signozObserver) CaptureMessage(ctx context.Context, message string, level zobservability.Level, opts ...zobservability.EventOption) {
-	span := trace.SpanFromContext(ctx)
-	if span != nil {
-		span.AddEvent(message, trace.WithAttributes(
-			attribute.String(zobservability.SpanAttributeLevel, level.String()),
-		))
+func (t *noopTransaction) Finish(status zobservability.TransactionStatus) {}
 
-		// Apply additional event options
-		event := &signozEvent{
-			span: span,
-		}
-		for _, opt := range opts {
-			opt.ApplyEvent(event)
-		}
-		event.Capture()
-	}
-}
+// noopSpan is a no-op implementation of Span for excluded operations
+type noopSpan struct{}
 
-// GetMetrics returns the metrics provider
-func (s *signozObserver) GetMetrics() zobservability.MetricsProvider {
-	return s.metrics
-}
+func (s *noopSpan) SetTag(key, value string) {}
 
-// ForceFlush forces the immediate export of all spans that have not yet been exported.
-// This is particularly important for Cloud Run environments where containers can be
-// terminated without warning, potentially causing spans to be lost if they remain buffered.
-//
-// ForceFlush ensures that all manually created spans (via StartSpan or NewEventSpanBuilder)
-// are immediately sent to SigNoz, complementing the automatic gRPC interceptor spans.
-func (s *signozObserver) ForceFlush(ctx context.Context) error {
-	if s.tracerProvider == nil {
-		return nil // Nothing to flush if tracer provider is not initialized
-	}
+func (s *noopSpan) SetData(key string, value interface{}) {}
 
-	// Create timeout context for the flush operation
-	// Use a generous timeout to ensure spans have time to export, especially important for:
-	// - Slow network connections to SigNoz
-	// - Large batches of spans waiting to be exported
-	// - Cloud Run cold starts where export might take longer
-	flushCtx, cancel := context.WithTimeout(ctx, DefaultForceFlushTimeout)
-	defer cancel()
+func (s *noopSpan) SetError(err error, opts ...trace.EventOption) {}
 
-	// ForceFlush immediately exports all spans that have not yet been exported
-	// for all the registered span processors. This is critical for ensuring
-	// that manually instrumented business logic spans are not lost when containers terminate.
-	if err := s.tracerProvider.ForceFlush(flushCtx); err != nil {
-		return fmt.Errorf("failed to force flush spans: %w", err)
-	}
-
-	return nil
-}
-
-// Close shuts down the observer and all its providers
-// CRITICAL: ForceFlush is called before Shutdown to ensure all pending spans are exported.
-// This prevents data loss in Cloud Run environments where containers can be terminated abruptly.
-func (s *signozObserver) Close() error {
-	// Create a shutdown context with sufficient timeout for both flush and shutdown operations
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultShutdownTimeout+DefaultForceFlushTimeout)
-	defer cancel()
-
-	// 1. Force flush all pending spans before shutting down
-	// This ensures manually instrumented spans (StartSpan, NewEventSpanBuilder) are exported
-	// before the tracer provider shuts down and stops accepting new export operations
-	if err := s.ForceFlush(ctx); err != nil {
-		// Log the error but continue with shutdown - we don't want to block cleanup
-		// if ForceFlush fails, but we still need to properly close resources
-		// Note: This could be improved with better logging once logger is available in context
-		logger.GetLoggerFromContext(ctx).Errorf("Warning: failed to force flush spans during close: %v\n", err)
-	}
-
-	// 2. Close metrics provider
-	if s.metrics != nil {
-		if err := s.metrics.Stop(); err != nil {
-			return fmt.Errorf("failed to stop metrics provider: %w", err)
-		}
-	}
-
-	// 3. Close tracer provider (includes final flush as per OpenTelemetry spec)
-	// Shutdown() automatically includes the effects of ForceFlush(), but we've already
-	// called it explicitly above with better error handling and timeout management
-	if s.tracerProvider != nil {
-		shutdownCtx, shutdownCancel := context.WithTimeout(ctx, DefaultShutdownTimeout)
-		defer shutdownCancel()
-		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("failed to shutdown tracer provider: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *signozObserver) GetConfig() zobservability.Config {
-	return zobservability.Config{
-		Provider:    zobservability.ProviderSigNoz,
-		Enabled:     true,
-		Environment: s.config.Environment,
-		Release:     s.config.Release,
-		Debug:       s.config.Debug,
-		Address:     s.config.Endpoint,
-		SampleRate:  s.config.SampleRate,
-		Middleware: zobservability.MiddlewareConfig{
-			CaptureErrors: true,
-		},
-		TracingExclusions: s.config.TracingExclusions,
-	}
-}
+func (s *noopSpan) Finish() {}

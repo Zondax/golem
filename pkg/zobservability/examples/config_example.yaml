@@ -11,6 +11,10 @@ observability:
   release: "v1.2.3"
   headers:
     signoz-access-token: "your-signoz-access-token"
+  tracing_exclusions:  # Optional: exclude high-frequency endpoints
+    - "HealthCheck"
+    - "Ping"
+    - "GetMetrics"
   metrics:
     enabled: true
     provider: "opentelemetry"

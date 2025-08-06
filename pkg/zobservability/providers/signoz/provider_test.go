@@ -644,6 +644,274 @@ func TestSignozObserver_WhenNestedSpans_ShouldWorkCorrectly(t *testing.T) {
 }
 
 // =============================================================================
+// TRACING EXCLUSIONS TESTS
+// =============================================================================
+
+func TestSignozObserver_StartTransaction_WhenOperationExcluded_ShouldReturnNoopTransaction(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4317",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		SampleRate:  1.0,
+		TracingExclusions: []string{
+			"health-check",
+			"metrics-endpoint",
+			"excluded-operation",
+		},
+		Metrics: zobservability.MetricsConfig{
+			Enabled:  true,
+			Provider: string(zobservability.MetricsProviderNoop),
+		},
+	}
+	
+	observer, err := NewObserver(config)
+	require.NoError(t, err)
+	require.NotNil(t, observer)
+	defer func() { _ = observer.Close() }()
+
+	ctx := context.Background()
+
+	// Act - Start excluded transaction
+	tx := observer.StartTransaction(ctx, "health-check")
+
+	// Assert
+	assert.NotNil(t, tx)
+	// The noop transaction should preserve the context
+	assert.Equal(t, ctx, tx.Context())
+	
+	// Operations on noop transaction should not panic
+	assert.NotPanics(t, func() {
+		tx.SetName("new-name")
+		tx.SetTag("key", "value")
+		tx.SetData("data", "value")
+		child := tx.StartChild("child-operation")
+		child.Finish()
+		tx.Finish(zobservability.TransactionOK)
+	})
+}
+
+func TestSignozObserver_StartTransaction_WhenOperationNotExcluded_ShouldReturnNormalTransaction(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4317",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		SampleRate:  1.0,
+		TracingExclusions: []string{
+			"health-check",
+			"metrics-endpoint",
+		},
+		Metrics: zobservability.MetricsConfig{
+			Enabled:  true,
+			Provider: string(zobservability.MetricsProviderNoop),
+		},
+	}
+	
+	observer, err := NewObserver(config)
+	require.NoError(t, err)
+	require.NotNil(t, observer)
+	defer func() { _ = observer.Close() }()
+
+	ctx := context.Background()
+
+	// Act - Start normal transaction
+	tx := observer.StartTransaction(ctx, "normal-operation")
+
+	// Assert
+	assert.NotNil(t, tx)
+	// Should be a real transaction with trace context
+	assert.NotEqual(t, ctx, tx.Context())
+	
+	// Cleanup
+	tx.Finish(zobservability.TransactionOK)
+}
+
+func TestSignozObserver_StartSpan_WhenOperationExcluded_ShouldReturnNoopSpan(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4317",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		SampleRate:  1.0,
+		TracingExclusions: []string{
+			"excluded-span",
+			"ignored-operation",
+		},
+		Metrics: zobservability.MetricsConfig{
+			Enabled:  true,
+			Provider: string(zobservability.MetricsProviderNoop),
+		},
+	}
+	
+	observer, err := NewObserver(config)
+	require.NoError(t, err)
+	require.NotNil(t, observer)
+	defer func() { _ = observer.Close() }()
+
+	ctx := context.Background()
+
+	// Act - Start excluded span
+	newCtx, span := observer.StartSpan(ctx, "excluded-span")
+
+	// Assert
+	assert.NotNil(t, span)
+	// Context should be preserved (not modified)
+	assert.Equal(t, ctx, newCtx)
+	
+	// Operations on noop span should not panic
+	assert.NotPanics(t, func() {
+		span.SetTag("key", "value")
+		span.SetData("data", "value")
+		span.SetError(assert.AnError)
+		span.Finish()
+	})
+}
+
+func TestSignozObserver_StartSpan_WhenOperationNotExcluded_ShouldReturnNormalSpan(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4317",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		SampleRate:  1.0,
+		TracingExclusions: []string{
+			"excluded-span",
+			"ignored-operation",
+		},
+		Metrics: zobservability.MetricsConfig{
+			Enabled:  true,
+			Provider: string(zobservability.MetricsProviderNoop),
+		},
+	}
+	
+	observer, err := NewObserver(config)
+	require.NoError(t, err)
+	require.NotNil(t, observer)
+	defer func() { _ = observer.Close() }()
+
+	ctx := context.Background()
+
+	// Act - Start normal span
+	newCtx, span := observer.StartSpan(ctx, "normal-span")
+
+	// Assert
+	assert.NotNil(t, span)
+	// Should have trace context injected
+	assert.NotEqual(t, ctx, newCtx)
+	
+	// Cleanup
+	span.Finish()
+}
+
+func TestSignozObserver_TracingExclusions_EmptyList_ShouldNotExcludeAnything(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4317",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		SampleRate:  1.0,
+		TracingExclusions: []string{}, // Empty exclusion list
+		Metrics: zobservability.MetricsConfig{
+			Enabled:  true,
+			Provider: string(zobservability.MetricsProviderNoop),
+		},
+	}
+	
+	observer, err := NewObserver(config)
+	require.NoError(t, err)
+	require.NotNil(t, observer)
+	defer func() { _ = observer.Close() }()
+
+	ctx := context.Background()
+
+	// Act & Assert - All operations should create real spans
+	tx := observer.StartTransaction(ctx, "any-transaction")
+	assert.NotEqual(t, ctx, tx.Context()) // Should have trace context
+	tx.Finish(zobservability.TransactionOK)
+
+	newCtx, span := observer.StartSpan(ctx, "any-span")
+	assert.NotEqual(t, ctx, newCtx) // Should have trace context
+	span.Finish()
+}
+
+func TestSignozObserver_isOperationExcluded(t *testing.T) {
+	// Arrange
+	exclusionsMap := make(map[string]bool)
+	exclusionsMap["health"] = true
+	exclusionsMap["metrics"] = true
+	exclusionsMap["debug/pprof"] = true
+	
+	observer := &signozObserver{
+		config: &Config{
+			TracingExclusions: []string{
+				"health",
+				"metrics",
+				"debug/pprof",
+			},
+		},
+		exclusionsMap: exclusionsMap,
+	}
+
+	testCases := []struct {
+		name      string
+		operation string
+		expected  bool
+	}{
+		{
+			name:      "exact_match_health",
+			operation: "health",
+			expected:  true,
+		},
+		{
+			name:      "exact_match_metrics",
+			operation: "metrics",
+			expected:  true,
+		},
+		{
+			name:      "exact_match_debug_pprof",
+			operation: "debug/pprof",
+			expected:  true,
+		},
+		{
+			name:      "not_excluded",
+			operation: "api/users",
+			expected:  false,
+		},
+		{
+			name:      "partial_match_not_excluded",
+			operation: "health-check", // Not exact match
+			expected:  false,
+		},
+		{
+			name:      "empty_operation",
+			operation: "",
+			expected:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result := observer.isOperationExcluded(tc.operation)
+
+			// Assert
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
