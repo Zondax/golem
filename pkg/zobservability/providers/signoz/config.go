@@ -49,7 +49,7 @@ type Config struct {
 	// Propagation configuration
 	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
 
-	// TracingExclusions contains the list of gRPC methods to exclude from tracing
+	// TracingExclusions contains the list of methods to exclude from tracing
 	TracingExclusions []string `yaml:"tracing_exclusions" mapstructure:"tracing_exclusions"`
 }
 

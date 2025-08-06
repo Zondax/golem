@@ -119,20 +119,20 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 
 	// Create SigNoz configuration with all parsed settings
 	signozConfig := &signoz.Config{
-		Endpoint:                         config.Address,
-		ServiceName:                      serviceName,
-		Environment:                      config.Environment,
-		Release:                          config.Release,
-		Debug:                            config.Debug,
-		Insecure:                         insecure,
-		Headers:                          headers,
-		SampleRate:                       config.SampleRate,
-		BatchConfig:                      batchConfig,          // Optional: nil means use defaults
-		ResourceConfig:                   resourceConfig,       // Optional: nil means use defaults
+		Endpoint:             config.Address,
+		ServiceName:          serviceName,
+		Environment:          config.Environment,
+		Release:              config.Release,
+		Debug:                config.Debug,
+		Insecure:             insecure,
+		Headers:              headers,
+		SampleRate:           config.SampleRate,
+		BatchConfig:          batchConfig,          // Optional: nil means use defaults
+		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults
 		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
 		UseSimpleSpan:        useSimpleSpan,        // Enable immediate span export
 		Propagation:          config.Propagation,   // Copy propagation configuration
-		TracingExclusions:    config.TracingExclusions, // Pass filtered methods
+		TracingExclusions:    config.TracingExclusions,
 	}
 
 	return signoz.NewObserver(signozConfig)
