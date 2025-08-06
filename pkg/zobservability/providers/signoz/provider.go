@@ -466,5 +466,6 @@ func (s *signozObserver) GetConfig() zobservability.Config {
 		Middleware: zobservability.MiddlewareConfig{
 			CaptureErrors: true,
 		},
+		InterceptorTracingExcludeMethods: s.config.InterceptorTracingExcludeMethods,
 	}
 }

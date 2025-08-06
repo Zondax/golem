@@ -11,17 +11,18 @@ type PropagationConfig struct {
 
 // Config holds configuration for all observability features (tracing, logging, metrics)
 type Config struct {
-	Provider     string            `yaml:"provider" mapstructure:"provider"`
-	Enabled      bool              `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
-	Environment  string            `yaml:"environment" mapstructure:"environment"`
-	Release      string            `yaml:"release" mapstructure:"release"`
-	Debug        bool              `yaml:"debug" mapstructure:"debug"`
-	Address      string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
-	SampleRate   float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
-	Middleware   MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
-	Metrics      MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
-	Propagation  PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
-	CustomConfig map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
+	Provider                        string            `yaml:"provider" mapstructure:"provider"`
+	Enabled                         bool              `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
+	Environment                     string            `yaml:"environment" mapstructure:"environment"`
+	Release                         string            `yaml:"release" mapstructure:"release"`
+	Debug                           bool              `yaml:"debug" mapstructure:"debug"`
+	Address                         string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
+	SampleRate                      float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
+	Middleware                      MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
+	Metrics                         MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
+	Propagation                     PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
+	CustomConfig                    map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
+	InterceptorTracingExcludeMethods []string         `yaml:"interceptor_tracing_exclude_methods" mapstructure:"interceptor_tracing_exclude_methods"` // Methods to exclude from tracing
 }
 
 func (c Config) Validate() error {
@@ -71,4 +72,7 @@ func (c *Config) SetDefaults() {
 	if len(c.Propagation.Formats) == 0 {
 		c.Propagation.Formats = []string{PropagationB3} // Default to B3 because is the only one supported by GCP+Signoz
 	}
+
+	// InterceptorTracingExcludeMethods will be configured via YAML or environment variables
+	// No hardcoded defaults here
 }
