@@ -666,7 +666,7 @@ func TestSignozObserver_StartTransaction_WhenOperationExcluded_ShouldReturnNoopT
 			Provider: string(zobservability.MetricsProviderNoop),
 		},
 	}
-	
+
 	observer, err := NewObserver(config)
 	require.NoError(t, err)
 	require.NotNil(t, observer)
@@ -681,7 +681,7 @@ func TestSignozObserver_StartTransaction_WhenOperationExcluded_ShouldReturnNoopT
 	assert.NotNil(t, tx)
 	// The noop transaction should preserve the context
 	assert.Equal(t, ctx, tx.Context())
-	
+
 	// Operations on noop transaction should not panic
 	assert.NotPanics(t, func() {
 		tx.SetName("new-name")
@@ -711,7 +711,7 @@ func TestSignozObserver_StartTransaction_WhenOperationNotExcluded_ShouldReturnNo
 			Provider: string(zobservability.MetricsProviderNoop),
 		},
 	}
-	
+
 	observer, err := NewObserver(config)
 	require.NoError(t, err)
 	require.NotNil(t, observer)
@@ -726,7 +726,7 @@ func TestSignozObserver_StartTransaction_WhenOperationNotExcluded_ShouldReturnNo
 	assert.NotNil(t, tx)
 	// Should be a real transaction with trace context
 	assert.NotEqual(t, ctx, tx.Context())
-	
+
 	// Cleanup
 	tx.Finish(zobservability.TransactionOK)
 }
@@ -749,7 +749,7 @@ func TestSignozObserver_StartSpan_WhenOperationExcluded_ShouldReturnNoopSpan(t *
 			Provider: string(zobservability.MetricsProviderNoop),
 		},
 	}
-	
+
 	observer, err := NewObserver(config)
 	require.NoError(t, err)
 	require.NotNil(t, observer)
@@ -764,7 +764,7 @@ func TestSignozObserver_StartSpan_WhenOperationExcluded_ShouldReturnNoopSpan(t *
 	assert.NotNil(t, span)
 	// Context should be preserved (not modified)
 	assert.Equal(t, ctx, newCtx)
-	
+
 	// Operations on noop span should not panic
 	assert.NotPanics(t, func() {
 		span.SetTag("key", "value")
@@ -792,7 +792,7 @@ func TestSignozObserver_StartSpan_WhenOperationNotExcluded_ShouldReturnNormalSpa
 			Provider: string(zobservability.MetricsProviderNoop),
 		},
 	}
-	
+
 	observer, err := NewObserver(config)
 	require.NoError(t, err)
 	require.NotNil(t, observer)
@@ -807,7 +807,7 @@ func TestSignozObserver_StartSpan_WhenOperationNotExcluded_ShouldReturnNormalSpa
 	assert.NotNil(t, span)
 	// Should have trace context injected
 	assert.NotEqual(t, ctx, newCtx)
-	
+
 	// Cleanup
 	span.Finish()
 }
@@ -815,19 +815,19 @@ func TestSignozObserver_StartSpan_WhenOperationNotExcluded_ShouldReturnNormalSpa
 func TestSignozObserver_TracingExclusions_EmptyList_ShouldNotExcludeAnything(t *testing.T) {
 	// Arrange
 	config := &Config{
-		Endpoint:    "localhost:4317",
-		ServiceName: "test-service",
-		Environment: "test",
-		Release:     "1.0.0",
-		Insecure:    true,
-		SampleRate:  1.0,
+		Endpoint:          "localhost:4317",
+		ServiceName:       "test-service",
+		Environment:       "test",
+		Release:           "1.0.0",
+		Insecure:          true,
+		SampleRate:        1.0,
 		TracingExclusions: []string{}, // Empty exclusion list
 		Metrics: zobservability.MetricsConfig{
 			Enabled:  true,
 			Provider: string(zobservability.MetricsProviderNoop),
 		},
 	}
-	
+
 	observer, err := NewObserver(config)
 	require.NoError(t, err)
 	require.NotNil(t, observer)
@@ -851,7 +851,7 @@ func TestSignozObserver_isOperationExcluded(t *testing.T) {
 	exclusionsMap["health"] = true
 	exclusionsMap["metrics"] = true
 	exclusionsMap["debug/pprof"] = true
-	
+
 	observer := &signozObserver{
 		config: &Config{
 			TracingExclusions: []string{
