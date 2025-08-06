@@ -19,10 +19,10 @@ type Config struct {
 	Address                         string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
 	SampleRate                      float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
 	Middleware                      MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
-	Metrics                         MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
-	Propagation                     PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
-	CustomConfig                    map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
-	InterceptorTracingExcludeMethods []string         `yaml:"interceptor_tracing_exclude_methods" mapstructure:"interceptor_tracing_exclude_methods"` // Methods to exclude from tracing
+	Metrics      MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
+	Propagation  PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
+	CustomConfig map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
+	TracingExclusions []string     `yaml:"tracing_exclusions" mapstructure:"tracing_exclusions"` // gRPC methods to exclude from tracing
 }
 
 func (c Config) Validate() error {

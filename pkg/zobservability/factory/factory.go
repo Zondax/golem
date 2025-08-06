@@ -129,10 +129,10 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		SampleRate:                       config.SampleRate,
 		BatchConfig:                      batchConfig,          // Optional: nil means use defaults
 		ResourceConfig:                   resourceConfig,       // Optional: nil means use defaults
-		IgnoreParentSampling:             ignoreParentSampling, // Critical for Google Cloud Run deployments
-		UseSimpleSpan:                    useSimpleSpan,        // Enable immediate span export
-		Propagation:                      config.Propagation,   // Copy propagation configuration
-		InterceptorTracingExcludeMethods: config.InterceptorTracingExcludeMethods, // Pass filtered methods
+		IgnoreParentSampling: ignoreParentSampling, // Critical for Google Cloud Run deployments
+		UseSimpleSpan:        useSimpleSpan,        // Enable immediate span export
+		Propagation:          config.Propagation,   // Copy propagation configuration
+		TracingExclusions:    config.TracingExclusions, // Pass filtered methods
 	}
 
 	return signoz.NewObserver(signozConfig)

@@ -63,7 +63,7 @@ func (n *noopObserver) GetConfig() Config {
 			Port:          9090,
 			OpenTelemetry: DefaultOpenTelemetryMetricsConfig(),
 		},
-		InterceptorTracingExcludeMethods: []string{}, // No filtering for noop observer
+		TracingExclusions: []string{}, // No filtering for noop observer
 	}
 }
 

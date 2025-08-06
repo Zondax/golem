@@ -49,8 +49,8 @@ type Config struct {
 	// Propagation configuration
 	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
 
-	// InterceptorTracingExcludeMethods contains the list of gRPC methods to exclude from tracing
-	InterceptorTracingExcludeMethods []string `yaml:"interceptor_tracing_exclude_methods" mapstructure:"interceptor_tracing_exclude_methods"`
+	// TracingExclusions contains the list of gRPC methods to exclude from tracing
+	TracingExclusions []string `yaml:"tracing_exclusions" mapstructure:"tracing_exclusions"`
 }
 
 // BatchConfig controls how spans are batched and sent to SigNoz
