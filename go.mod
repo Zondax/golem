@@ -42,7 +42,7 @@ require (
 	google.golang.org/grpc v1.74.2
 	gorm.io/driver/clickhouse v0.7.0
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.30.0
+	gorm.io/gorm v1.30.1
 )
 
 require (
