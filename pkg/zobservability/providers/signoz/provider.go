@@ -26,6 +26,9 @@ import (
 // contextKey is a type for context keys specific to this package
 type contextKey string
 
+// httpRequestKey is a type for storing HTTP requests in context
+type httpRequestKey struct{}
+
 // Context keys for exclusion tracking
 const (
 	// contextKeyExcluded is used to mark contexts where tracing is excluded
@@ -78,7 +81,6 @@ func (s *signozObserver) shouldExcludeBasedOnContext(ctx context.Context, operat
 
 	// Check if there's an HTTP request in context (using chi's context or standard library)
 	// This is a fallback for when the route pattern is not explicitly set
-	type httpRequestKey struct{}
 	if req, ok := ctx.Value(httpRequestKey{}).(*http.Request); ok && req != nil {
 		path := req.URL.Path
 		if s.isOperationExcluded(path) {
