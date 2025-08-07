@@ -11,17 +11,18 @@ type PropagationConfig struct {
 
 // Config holds configuration for all observability features (tracing, logging, metrics)
 type Config struct {
-	Provider     string            `yaml:"provider" mapstructure:"provider"`
-	Enabled      bool              `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
-	Environment  string            `yaml:"environment" mapstructure:"environment"`
-	Release      string            `yaml:"release" mapstructure:"release"`
-	Debug        bool              `yaml:"debug" mapstructure:"debug"`
-	Address      string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
-	SampleRate   float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
-	Middleware   MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
-	Metrics      MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`             // Metrics configuration
-	Propagation  PropagationConfig `yaml:"propagation" mapstructure:"propagation"`     // Trace propagation configuration
-	CustomConfig map[string]string `yaml:"custom_config" mapstructure:"custom_config"` // Provider-specific configuration
+	Provider          string            `yaml:"provider" mapstructure:"provider"`
+	Enabled           bool              `yaml:"enabled" mapstructure:"enabled"` // Enable/disable observability
+	Environment       string            `yaml:"environment" mapstructure:"environment"`
+	Release           string            `yaml:"release" mapstructure:"release"`
+	Debug             bool              `yaml:"debug" mapstructure:"debug"`
+	Address           string            `yaml:"address" mapstructure:"address"`         // Common endpoint/address/dsn for providers
+	SampleRate        float64           `yaml:"sample_rate" mapstructure:"sample_rate"` // Common sampling rate
+	Middleware        MiddlewareConfig  `yaml:"middleware" mapstructure:"middleware"`
+	Metrics           MetricsConfig     `yaml:"metrics" mapstructure:"metrics"`                       // Metrics configuration
+	Propagation       PropagationConfig `yaml:"propagation" mapstructure:"propagation"`               // Trace propagation configuration
+	CustomConfig      map[string]string `yaml:"custom_config" mapstructure:"custom_config"`           // Provider-specific configuration
+	TracingExclusions []string          `yaml:"tracing_exclusions" mapstructure:"tracing_exclusions"` // methods to exclude from tracing
 }
 
 func (c Config) Validate() error {

@@ -48,6 +48,14 @@ type Config struct {
 
 	// Propagation configuration
 	Propagation zobservability.PropagationConfig `yaml:"propagation" mapstructure:"propagation"`
+
+	// TracingExclusions contains the list of operations/endpoints to exclude from tracing
+	// Supports:
+	// - Operation names: "authz.interceptor.Authorize"
+	// - gRPC methods: "/grpc.health.v1.Health/Check"
+	// - HTTP routes: "/api/v1/health", "/metrics"
+	// When a parent operation is excluded, all child spans are automatically excluded
+	TracingExclusions []string `yaml:"tracing_exclusions" mapstructure:"tracing_exclusions"`
 }
 
 // BatchConfig controls how spans are batched and sent to SigNoz

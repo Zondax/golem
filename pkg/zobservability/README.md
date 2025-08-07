@@ -76,6 +76,11 @@ zobservability/
 - Batch processing configuration
 - Resource attribute customization
 
+### Tracing Exclusions
+- Selective tracing with method exclusion support
+- Performance optimization for high-frequency endpoints
+- Reduce noise from health checks and metrics endpoints
+
 ### External API Monitoring
 - Automatic detection and monitoring of external service calls
 
@@ -169,6 +174,19 @@ zobservability:
   sample_rate: 1.0
   middleware:
     capture_errors: true
+  tracing_exclusions:  # Optional: List of operations/endpoints to exclude from tracing
+    # Direct operation names
+    - "HealthCheck"
+    - "Ping"
+    - "GetMetrics"
+    # gRPC methods (full path)
+    - "/grpc.health.v1.Health/Check"
+    - "/grpc.health.v1.Health/Watch"
+    - "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"
+    # HTTP routes
+    - "/health"
+    - "/metrics"
+    - "/api/v1/health"
   metrics:
     enabled: true
     provider: "opentelemetry"
@@ -431,6 +449,80 @@ observer.CaptureException(ctx, err, zobservability.WithLevel(zobservability.Leve
 // Capture messages
 observer.CaptureMessage(ctx, "User login failed", zobservability.LevelWarning)
 ```
+
+## Tracing Exclusions
+
+The tracing exclusions feature allows you to selectively exclude specific methods or operations from being traced. This is particularly useful for:
+
+- **High-frequency endpoints**: Health checks, metrics endpoints that would generate excessive trace data
+- **Performance optimization**: Reduce overhead on operations that don't need monitoring
+- **Noise reduction**: Keep your traces focused on business-critical operations
+
+### Configuration
+
+Add the `tracing_exclusions` list to your configuration:
+
+```yaml
+zobservability:
+  provider: "signoz"
+  enabled: true
+  tracing_exclusions:
+    - "HealthCheck"           # Exclude health check endpoints
+    - "Ping"                  # Exclude ping/heartbeat endpoints
+    - "GetMetrics"            # Exclude metrics collection
+    - "db.query.select_health" # Exclude specific database queries
+    - "cache.get"             # Exclude cache operations
+```
+
+### How It Works
+
+When a method name matches an entry in the `tracing_exclusions` list:
+- The method returns a no-op transaction or span that performs no operations
+- No trace data is sent to the observability backend
+- Child spans of excluded transactions are also excluded
+- The method continues to execute normally, just without tracing
+
+### Usage Example
+
+```go
+// Configuration with exclusions
+config := &zobservability.Config{
+    Provider: zobservability.ProviderSigNoz,
+    Enabled: true,
+    TracingExclusions: []string{
+        "HealthCheck",
+        "GetMetrics",
+        "cache.get",
+    },
+}
+
+observer, _ := factory.NewObserver(config, "my-service")
+
+// This transaction will be excluded (no-op)
+tx1 := observer.StartTransaction(ctx, "HealthCheck")
+tx1.SetTag("key", "value") // No-op, does nothing
+tx1.Finish(zobservability.TransactionOK) // No-op, does nothing
+
+// This transaction will be traced normally
+tx2 := observer.StartTransaction(ctx, "ProcessOrder")
+tx2.SetTag("order_id", "12345") // Actually sets the tag
+tx2.Finish(zobservability.TransactionOK) // Sends trace to backend
+
+// Spans work the same way
+_, span1 := observer.StartSpan(ctx, "cache.get") // Excluded (no-op)
+span1.Finish() // No-op
+
+_, span2 := observer.StartSpan(ctx, "db.query.insert") // Traced normally
+span2.Finish() // Sends span to backend
+```
+
+### Best Practices
+
+1. **Be Specific**: Use exact method names to avoid accidentally excluding important operations
+2. **Case Sensitive**: Method names are case-sensitive - "HealthCheck" is different from "healthcheck"
+3. **No Wildcards**: The current implementation requires exact matches (no regex or wildcards)
+4. **Document Exclusions**: Keep a list of excluded methods in your documentation for debugging purposes
+5. **Monitor Impact**: Periodically review excluded methods to ensure you're not missing important data
 
 ## External API Monitoring
 

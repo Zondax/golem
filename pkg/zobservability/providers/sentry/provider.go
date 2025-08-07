@@ -146,6 +146,7 @@ func (s *sentryObserver) GetConfig() zobservability.Config {
 		Middleware: zobservability.MiddlewareConfig{
 			CaptureErrors: s.config.CaptureErrors,
 		},
+		TracingExclusions: []string{},
 	}
 }
 
