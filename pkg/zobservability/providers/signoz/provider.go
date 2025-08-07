@@ -3,6 +3,7 @@ package signoz
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/contrib/propagators/jaeger"
@@ -15,10 +16,22 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/zobservability"
+)
+
+// contextKey is a type for context keys specific to this package
+type contextKey string
+
+// Context keys for exclusion tracking
+const (
+	// contextKeyExcluded is used to mark contexts where tracing is excluded
+	contextKeyExcluded contextKey = "signoz-excluded"
+	// contextKeyHTTPRoute stores the HTTP route pattern for exclusion checking
+	contextKeyHTTPRoute contextKey = "signoz-http-route"
 )
 
 // signozObserver implements the Observer interface using OpenTelemetry
@@ -34,6 +47,46 @@ type signozObserver struct {
 func (s *signozObserver) isOperationExcluded(operation string) bool {
 	_, excluded := s.exclusionsMap[operation]
 	return excluded
+}
+
+// shouldExcludeBasedOnContext determines if a span should be excluded based on the request context
+//
+// It follows this precedence order:
+// 1. Direct operation match - if the operation name itself is in the exclusion list
+// 2. gRPC method match - if the gRPC method (e.g., /grpc.health.v1.Health/Check) is excluded
+// 3. HTTP route match - if the HTTP route pattern (e.g., /health) is excluded
+// 4. HTTP path match - if the exact HTTP path is excluded (fallback when route is not set)
+//
+// This allows excluding all spans for specific endpoints, not just the primary span.
+// For example, excluding "/grpc.health.v1.Health/Check" will also exclude all authorization,
+// authentication, and other interceptor spans created during that request.
+func (s *signozObserver) shouldExcludeBasedOnContext(ctx context.Context, operation string) bool {
+	// Check if the operation itself is excluded
+	if s.isOperationExcluded(operation) {
+		return true
+	}
+
+	// Check if the gRPC method in context is excluded
+	if grpcMethod, ok := grpc.Method(ctx); ok && s.isOperationExcluded(grpcMethod) {
+		return true
+	}
+
+	// Check if the HTTP route in context is excluded
+	if httpRoute, ok := ctx.Value(contextKeyHTTPRoute).(string); ok && httpRoute != "" && s.isOperationExcluded(httpRoute) {
+		return true
+	}
+
+	// Check if there's an HTTP request in context (using chi's context or standard library)
+	// This is a fallback for when the route pattern is not explicitly set
+	type httpRequestKey struct{}
+	if req, ok := ctx.Value(httpRequestKey{}).(*http.Request); ok && req != nil {
+		path := req.URL.Path
+		if s.isOperationExcluded(path) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // NewObserver creates a new SigNoz observer using OpenTelemetry
@@ -101,6 +154,8 @@ func NewObserver(cfg *Config) (zobservability.Observer, error) {
 func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts ...zobservability.TransactionOption) zobservability.Transaction {
 	// Check if this operation should be excluded from tracing
 	if s.isOperationExcluded(name) {
+		// Mark the context as excluded so child spans are also excluded
+		ctx = context.WithValue(ctx, contextKeyExcluded, true)
 		// Return a noop transaction that doesn't create spans
 		return &noopTransaction{ctx: ctx}
 	}
@@ -121,8 +176,16 @@ func (s *signozObserver) StartTransaction(ctx context.Context, name string, opts
 }
 
 func (s *signozObserver) StartSpan(ctx context.Context, operation string, opts ...zobservability.SpanOption) (context.Context, zobservability.Span) {
-	// Check if this operation should be excluded from tracing
-	if s.isOperationExcluded(operation) {
+	// Check if the parent context is excluded (inherited exclusion)
+	if excluded, ok := ctx.Value(contextKeyExcluded).(bool); ok && excluded {
+		// Parent is excluded, so this child span should also be excluded
+		return ctx, &noopSpan{}
+	}
+
+	// Check if this operation should be excluded based on context
+	if s.shouldExcludeBasedOnContext(ctx, operation) {
+		// Mark the context as excluded for any future child spans
+		ctx = context.WithValue(ctx, contextKeyExcluded, true)
 		// Return a noop span that doesn't create traces
 		return ctx, &noopSpan{}
 	}
@@ -493,6 +556,12 @@ func createTracingResource(cfg *Config) (*resource.Resource, error) {
 		context.Background(),
 		resource.WithAttributes(resourceAttributes...),
 	)
+}
+
+// WithHTTPRoute adds the HTTP route pattern to the context for exclusion checking
+// This should be called by HTTP middleware to set the route pattern (e.g., "/api/v1/users/:id")
+func WithHTTPRoute(ctx context.Context, route string) context.Context {
+	return context.WithValue(ctx, contextKeyHTTPRoute, route)
 }
 
 // noopTransaction is a no-op implementation of Transaction for excluded operations

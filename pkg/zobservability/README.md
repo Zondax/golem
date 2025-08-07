@@ -174,10 +174,19 @@ zobservability:
   sample_rate: 1.0
   middleware:
     capture_errors: true
-  tracing_exclusions:  # Optional: List of method names to exclude from tracing
+  tracing_exclusions:  # Optional: List of operations/endpoints to exclude from tracing
+    # Direct operation names
     - "HealthCheck"
     - "Ping"
     - "GetMetrics"
+    # gRPC methods (full path)
+    - "/grpc.health.v1.Health/Check"
+    - "/grpc.health.v1.Health/Watch"
+    - "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"
+    # HTTP routes
+    - "/health"
+    - "/metrics"
+    - "/api/v1/health"
   metrics:
     enabled: true
     provider: "opentelemetry"
