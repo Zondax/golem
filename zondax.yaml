@@ -1,4 +1,0 @@
-projectName: golem
-localPath: ~/zondax/templates
-templates:
-  - template: templates/basic-golang
