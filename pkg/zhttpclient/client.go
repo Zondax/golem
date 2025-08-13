@@ -123,13 +123,13 @@ func (z *zHTTPClient) configureLegacySemanticConventions() {
 	currentValue := os.Getenv(envKey)
 	switch currentValue {
 	case "":
-		os.Setenv(envKey, httpDup)
+		_ = os.Setenv(envKey, httpDup)
 	case httpDup, httpStable:
 		// Already configured appropriately
 		return
 	default:
 		// Preserve existing configuration and add HTTP dual emission
-		os.Setenv(envKey, currentValue+","+httpDup)
+		_ = os.Setenv(envKey, currentValue+","+httpDup)
 	}
 }
 
