@@ -6,11 +6,18 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/zondax/golem/pkg/zconverters"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+)
+
+const (
+	envKey     = "OTEL_SEMCONV_STABILITY_OPT_IN"
+	httpDup    = "http/dup"
+	httpStable = "http"
 )
 
 type ZHTTPClient interface {
@@ -31,6 +38,10 @@ type OpenTelemetryConfig struct {
 	// Filters is an optional function to filter which requests to instrument
 	// If nil, all requests will be instrumented
 	Filters func(*http.Request) bool
+	// EnableLegacyAttributes enables legacy HTTP semantic conventions (net.peer.name, http.url, http.target)
+	// alongside new ones by setting OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+	// This is required for External API Monitoring in tools like SigNoz
+	EnableLegacyAttributes bool
 }
 
 type Config struct {
@@ -78,6 +89,11 @@ func (z *zHTTPClient) configureTransport(transport http.RoundTripper, otelConfig
 		return transport
 	}
 
+	// Configure legacy attributes if requested (for External API Monitoring compatibility)
+	if otelConfig.EnableLegacyAttributes {
+		z.configureLegacySemanticConventions()
+	}
+
 	// Configure OpenTelemetry options
 	opts := z.buildOpenTelemetryOptions(otelConfig)
 
@@ -98,6 +114,23 @@ func (z *zHTTPClient) buildOpenTelemetryOptions(config *OpenTelemetryConfig) []o
 	}
 
 	return opts
+}
+
+// configureLegacySemanticConventions enables OpenTelemetry dual HTTP semantic conventions.
+// This allows external API monitoring tools to receive both legacy attributes
+// (net.peer.name, http.url, http.target) and new standard conventions.
+func (z *zHTTPClient) configureLegacySemanticConventions() {
+	currentValue := os.Getenv(envKey)
+	switch currentValue {
+	case "":
+		_ = os.Setenv(envKey, httpDup)
+	case httpDup, httpStable:
+		// Already configured appropriately
+		return
+	default:
+		// Preserve existing configuration and add HTTP dual emission
+		_ = os.Setenv(envKey, currentValue+","+httpDup)
+	}
 }
 
 func (z *zHTTPClient) NewRequest() ZRequest {
