@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.1
 
 require (
-	cloud.google.com/go/cloudsqlconn v1.18.0
+	cloud.google.com/go/cloudsqlconn v1.18.1
 	cloud.google.com/go/secretmanager v1.15.0
 	github.com/ClickHouse/clickhouse-go/v2 v2.40.1
 	github.com/alicebob/miniredis/v2 v2.35.0
