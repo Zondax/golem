@@ -76,10 +76,10 @@ c.logger.Debugf("set if not exists on redis cache, fullKey: [%s], value: [%v]", 
 
 	set, err := c.client.SetNX(ctx, realKey, val, ttl).Result()
 	if err != nil {
-		c.logger.Errorf("error setting new key on redis cache, fullKey: [%s], err: [%s]", realKey, err)
+		c.logger.Errorf("error on setnx on redis cache, fullKey: [%s], err: [%s]", realKey, err)
+		return false, err
 	}
-
-	return set, err
+	return set, nil
 }
 
 func (c *redisCache) Get(ctx context.Context, key string, data interface{}) error {
