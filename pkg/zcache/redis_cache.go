@@ -67,7 +67,7 @@ func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl
 func (c *redisCache) SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error) {
 	realKey := getKeyWithPrefix(c.prefix, key)
 
-	c.logger.Debugf("set key on redis cache, fullKey: [%s], value: [%v]", realKey, value)
+c.logger.Debugf("set if not exists on redis cache, fullKey: [%s], value: [%v]", realKey, value)
 
 	val, err := json.Marshal(value)
 	if err != nil {
