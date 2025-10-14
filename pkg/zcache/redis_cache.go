@@ -3,9 +3,10 @@ package zcache
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -21,6 +22,7 @@ type RedisStats struct {
 
 type RemoteCache interface {
 	ZCache
+	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
 	Incr(ctx context.Context, key string) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)
@@ -60,6 +62,24 @@ func (c *redisCache) Set(ctx context.Context, key string, value interface{}, ttl
 	}
 
 	return err
+}
+
+func (c *redisCache) SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+
+	c.logger.Debugf("set if not exists on redis cache, fullKey: [%s], value: [%v]", realKey, value)
+
+	val, err := json.Marshal(value)
+	if err != nil {
+		return false, err
+	}
+
+	set, err := c.client.SetNX(ctx, realKey, val, ttl).Result()
+	if err != nil {
+		c.logger.Errorf("error on setnx on redis cache, fullKey: [%s], err: [%s]", realKey, err)
+		return false, err
+	}
+	return set, nil
 }
 
 func (c *redisCache) Get(ctx context.Context, key string, data interface{}) error {

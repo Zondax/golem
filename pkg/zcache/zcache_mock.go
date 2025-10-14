@@ -2,9 +2,10 @@ package zcache
 
 import (
 	"context"
+	"time"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/zondax/golem/pkg/metrics"
-	"time"
 )
 
 type MockZCache struct {
@@ -29,6 +30,11 @@ func (m *MockZCache) SetupAndMonitorMetrics(appName string, metricsServer metric
 func (m *MockZCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	args := m.Called(ctx, key, value, ttl)
 	return args.Error(0)
+}
+
+func (m *MockZCache) SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error) {
+	args := m.Called(ctx, key, value, ttl)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *MockZCache) Get(ctx context.Context, key string, data interface{}) error {
