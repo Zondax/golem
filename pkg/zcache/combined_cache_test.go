@@ -19,12 +19,11 @@ func TestCombinedCacheTestSuite(t *testing.T) {
 
 type CombinedCacheTestSuite struct {
 	suite.Suite
-	mr                             *miniredis.Miniredis
-	cacheRemoteBrokenBestEffort    CombinedCache
-	cacheRemoteBrokenNotBestEffort CombinedCache
-	cacheOkNotBestEffort           CombinedCache
-	cacheRemote                    RemoteCache
-	ms                             metrics.TaskMetrics
+	mr                          *miniredis.Miniredis
+	cacheRemoteBrokenBestEffort CombinedCache
+	cacheOkNotBestEffort        CombinedCache
+	cacheRemote                 RemoteCache
+	ms                          metrics.TaskMetrics
 }
 
 func (suite *CombinedCacheTestSuite) SetupSuite() {
@@ -60,18 +59,20 @@ func (suite *CombinedCacheTestSuite) SetupSuite() {
 	})
 	suite.Nil(err)
 
-	suite.cacheRemoteBrokenNotBestEffort, err = NewCombinedCache(
+	// Test that creating a cache with an invalid address fails at initialization
+	// (fail-fast behavior with Ping validation)
+	_, err = NewCombinedCache(
 		&CombinedConfig{
 			Local: &LocalConfig{},
 			Remote: &RemoteConfig{
-				Addr: "0.0.0.0",
+				Addr: "0.0.0.0:6379",
 			},
 			IsRemoteBestEffort: false,
 			GlobalMetricServer: suite.ms,
 			GlobalPrefix:       prefix,
 			GlobalLogger:       logger,
 		})
-	suite.Nil(err)
+	suite.NotNil(err, "Expected error when creating cache with invalid address")
 
 	suite.cacheRemote, err = NewRemoteCache(&RemoteConfig{
 		Addr:   mr.Addr(),
@@ -103,14 +104,6 @@ func (suite *CombinedCacheTestSuite) TestSetAndGet() {
 	err = suite.cacheOkNotBestEffort.Get(ctx, "key1", &result2)
 	suite.NoError(err)
 	suite.Equal("value1", result2)
-
-	err = suite.cacheRemoteBrokenNotBestEffort.Set(ctx, "key1", "value1", 10*time.Second)
-	suite.Error(err)
-
-	var result3 string
-	err = suite.cacheRemoteBrokenNotBestEffort.Get(ctx, "key1", &result3)
-	suite.Error(err)
-	suite.Equal("", result3)
 }
 
 func (suite *CombinedCacheTestSuite) TestGetFromRemoteToLocal() {
@@ -161,8 +154,5 @@ func (suite *CombinedCacheTestSuite) TestDelete() {
 	suite.NoError(err)
 
 	err = suite.cacheOkNotBestEffort.Get(ctx, "key2", new(string))
-	suite.Error(err)
-
-	err = suite.cacheRemoteBrokenNotBestEffort.Delete(ctx, "key2")
 	suite.Error(err)
 }

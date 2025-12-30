@@ -37,6 +37,26 @@ type RemoteCache interface {
 	Exists(ctx context.Context, keys ...string) (int64, error)
 	Expire(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	TTL(ctx context.Context, key string) (time.Duration, error)
+
+	// Extended Redis operations
+	IncrBy(ctx context.Context, key string, value int64) (int64, error)
+	DecrBy(ctx context.Context, key string, value int64) (int64, error)
+	HIncrBy(ctx context.Context, key, field string, incr int64) (int64, error)
+	HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error)
+	HExists(ctx context.Context, key, field string) (bool, error)
+	HGetAll(ctx context.Context, key string) (map[string]string, error)
+	Keys(ctx context.Context, pattern string) ([]string, error)
+	DeleteMulti(ctx context.Context, keys ...string) error
+
+	// Pipeline support
+	Pipeline() RedisPipeline
+	TxPipeline() RedisPipeline
+
+	// Distributed mutex
+	NewMutex(name string, expiry time.Duration) ZMutex
+
+	// Underlying client access (use with caution - prefer interface methods)
+	Client() *redis.Client
 }
 
 type redisCache struct {
@@ -237,4 +257,83 @@ func (c *redisCache) IsNotFoundError(err error) bool {
 
 func (c *redisCache) setupAndMonitorMetrics(updateInterval time.Duration) {
 	setupAndMonitorCacheMetrics(c.metricsServer, c, c.logger, updateInterval)
+}
+
+// IncrBy increments the key by the specified value
+func (c *redisCache) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("incrby on redis cache, fullKey: [%s], value: [%d]", realKey, value)
+	return c.client.IncrBy(ctx, realKey, value).Result()
+}
+
+// DecrBy decrements the key by the specified value
+func (c *redisCache) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("decrby on redis cache, fullKey: [%s], value: [%d]", realKey, value)
+	return c.client.DecrBy(ctx, realKey, value).Result()
+}
+
+// HIncrBy increments the hash field by the specified value
+func (c *redisCache) HIncrBy(ctx context.Context, key, field string, incr int64) (int64, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("hincrby on redis cache, fullKey: [%s], field: [%s], incr: [%d]", realKey, field, incr)
+	return c.client.HIncrBy(ctx, realKey, field, incr).Result()
+}
+
+// HSetNX sets the hash field only if it doesn't exist
+func (c *redisCache) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("hsetnx on redis cache, fullKey: [%s], field: [%s]", realKey, field)
+	return c.client.HSetNX(ctx, realKey, field, value).Result()
+}
+
+// HExists checks if a hash field exists
+func (c *redisCache) HExists(ctx context.Context, key, field string) (bool, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("hexists on redis cache, fullKey: [%s], field: [%s]", realKey, field)
+	return c.client.HExists(ctx, realKey, field).Result()
+}
+
+// HGetAll returns all fields and values of a hash
+func (c *redisCache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	realKey := getKeyWithPrefix(c.prefix, key)
+	c.logger.Debugf("hgetall on redis cache, fullKey: [%s]", realKey)
+	return c.client.HGetAll(ctx, realKey).Result()
+}
+
+// Keys returns all keys matching the pattern.
+// Uses SCAN internally to avoid blocking the Redis server on large datasets.
+// The pattern is applied after the configured prefix is added. For example,
+// if prefix is "myapp" and pattern is "user:*", it searches for "myapp/user:*".
+// Returns keys without the configured prefix (consistent with other interface methods).
+func (c *redisCache) Keys(ctx context.Context, pattern string) ([]string, error) {
+	realPattern := getKeyWithPrefix(c.prefix, pattern)
+	c.logger.Debugf("keys on redis cache, pattern: [%s]", realPattern)
+
+	var keys []string
+	iter := c.client.Scan(ctx, 0, realPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
+	return stripPrefixFromKeys(c.prefix, keys), nil
+}
+
+// DeleteMulti deletes multiple keys
+func (c *redisCache) DeleteMulti(ctx context.Context, keys ...string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	realKeys := getKeysWithPrefix(c.prefix, keys)
+	c.logger.Debugf("delete multi on redis cache, keys: [%v]", realKeys)
+	return c.client.Del(ctx, realKeys...).Err()
+}
+
+// Client returns the underlying Redis client for advanced use cases
+// Note: Use with caution - prefer interface methods when possible
+func (c *redisCache) Client() *redis.Client {
+	return c.client
 }

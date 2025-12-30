@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/mock"
 	"github.com/zondax/golem/pkg/metrics"
 )
@@ -115,4 +116,76 @@ func (m *MockZCache) ZRevRangeWithScores(ctx context.Context, key string, start,
 func (m *MockZCache) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	args := m.Called(ctx, key, ttl)
 	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *MockZCache) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	args := m.Called(ctx, key, value)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockZCache) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	args := m.Called(ctx, key, value)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockZCache) HIncrBy(ctx context.Context, key, field string, incr int64) (int64, error) {
+	args := m.Called(ctx, key, field, incr)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockZCache) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
+	args := m.Called(ctx, key, field, value)
+	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *MockZCache) HExists(ctx context.Context, key, field string) (bool, error) {
+	args := m.Called(ctx, key, field)
+	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *MockZCache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	args := m.Called(ctx, key)
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockZCache) Keys(ctx context.Context, pattern string) ([]string, error) {
+	args := m.Called(ctx, pattern)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockZCache) DeleteMulti(ctx context.Context, keys ...string) error {
+	args := m.Called(ctx, keys)
+	return args.Error(0)
+}
+
+func (m *MockZCache) Pipeline() RedisPipeline {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(RedisPipeline)
+}
+
+func (m *MockZCache) TxPipeline() RedisPipeline {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(RedisPipeline)
+}
+
+func (m *MockZCache) NewMutex(name string, expiry time.Duration) ZMutex {
+	args := m.Called(name, expiry)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(ZMutex)
+}
+
+func (m *MockZCache) Client() *redis.Client {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*redis.Client)
 }

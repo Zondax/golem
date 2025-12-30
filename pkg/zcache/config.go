@@ -1,6 +1,12 @@
 package zcache
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"net"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -39,6 +45,13 @@ type RemoteConfig struct {
 	Logger             *logger.Logger
 	MetricServer       metrics.TaskMetrics
 	StatsMetrics       StatsMetrics
+
+	// TLS Configuration
+	TLSEnabled         bool   // Enable TLS connection
+	TLSCertPath        string // Path to client TLS certificate (optional, for mTLS)
+	TLSKeyPath         string // Path to client TLS key (optional, for mTLS)
+	TLSCAPath          string // Path to CA certificate (optional)
+	InsecureSkipVerify bool   // Skip TLS verification (dev only)
 }
 
 type LocalConfig struct {
@@ -53,7 +66,91 @@ type LocalConfig struct {
 	BufferItems int64 `json:"buffer_items"` // default: 64
 }
 
-func (c *RemoteConfig) ToRedisConfig() *redis.Options {
+// SetAddr sets Addr from separate host and port values.
+// Properly handles IPv6 addresses by using net.JoinHostPort.
+func (c *RemoteConfig) SetAddr(host string, port int) {
+	c.Addr = net.JoinHostPort(host, strconv.Itoa(port))
+}
+
+// GetHost returns the host portion of Addr.
+// Properly handles IPv6 addresses (e.g., "[::1]:6379").
+func (c *RemoteConfig) GetHost() string {
+	if c.Addr == "" {
+		return ""
+	}
+	host, _, err := net.SplitHostPort(c.Addr)
+	if err != nil {
+		// If SplitHostPort fails, the address might be host-only without port
+		return c.Addr
+	}
+	return host
+}
+
+// GetPort returns the port portion of Addr, or 0 if not set or invalid.
+// Properly handles IPv6 addresses (e.g., "[::1]:6379").
+func (c *RemoteConfig) GetPort() int {
+	if c.Addr == "" {
+		return 0
+	}
+	_, portStr, err := net.SplitHostPort(c.Addr)
+	if err != nil {
+		return 0
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return 0
+	}
+	return port
+}
+
+// buildTLSConfig creates a TLS configuration based on RemoteConfig settings
+func (c *RemoteConfig) buildTLSConfig() (*tls.Config, error) {
+	if !c.TLSEnabled {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: c.InsecureSkipVerify, //nolint:gosec // User explicitly opted in
+	}
+
+	// Load CA certificate if provided
+	if c.TLSCAPath != "" {
+		caCert, err := os.ReadFile(c.TLSCAPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse CA certificate")
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	// Load client certificate and key if provided (for mTLS)
+	if c.TLSCertPath != "" || c.TLSKeyPath != "" {
+		// Validate that both cert and key are provided together
+		if c.TLSCertPath == "" {
+			return nil, fmt.Errorf("TLSKeyPath provided without TLSCertPath: both are required for mTLS")
+		}
+		if c.TLSKeyPath == "" {
+			return nil, fmt.Errorf("TLSCertPath provided without TLSKeyPath: both are required for mTLS")
+		}
+		cert, err := tls.LoadX509KeyPair(c.TLSCertPath, c.TLSKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load client certificate: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	return tlsConfig, nil
+}
+
+func (c *RemoteConfig) ToRedisConfig() (*redis.Options, error) {
+	tlsConfig, err := c.buildTLSConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build TLS config: %w", err)
+	}
+
 	return &redis.Options{
 		Network:            c.Network,
 		Addr:               c.Addr,
@@ -68,7 +165,8 @@ func (c *RemoteConfig) ToRedisConfig() *redis.Options {
 		PoolTimeout:        c.PoolTimeout,
 		IdleTimeout:        c.IdleTimeout,
 		IdleCheckFrequency: c.IdleCheckFrequency,
-	}
+		TLSConfig:          tlsConfig,
+	}, nil
 }
 
 func (c *LocalConfig) ToRistrettoConfig() *ristretto.Config {

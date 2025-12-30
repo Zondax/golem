@@ -55,8 +55,24 @@ func NewLocalCache(config *LocalConfig) (LocalCache, error) {
 }
 
 func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
-	redisOptions := config.ToRedisConfig()
+	redisOptions, err := config.ToRedisConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create redis config: %w", err)
+	}
+
 	client := redis.NewClient(redisOptions)
+
+	// Validate connection with Ping
+	dialTimeout := config.DialTimeout
+	if dialTimeout == 0 {
+		dialTimeout = 5 * time.Second // Default timeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+	defer cancel()
+	if _, err := client.Ping(ctx).Result(); err != nil {
+		_ = client.Close() // Clean up resources on connection failure
+		return nil, fmt.Errorf("redis connection failed: %w", err)
+	}
 
 	loggerInst := config.Logger
 	if loggerInst == nil {
