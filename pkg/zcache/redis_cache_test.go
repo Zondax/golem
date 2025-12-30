@@ -236,6 +236,14 @@ func (suite *RedisCacheTestSuite) TestKeys() {
 	keys, err := suite.cache.Keys(ctx, "pattern:*")
 	suite.NoError(err)
 	suite.Len(keys, 2)
+
+	// Verify the keys are returned without prefix
+	// The returned keys should be the original keys (pattern:key1, pattern:key2)
+	suite.Contains(keys, "pattern:key1")
+	suite.Contains(keys, "pattern:key2")
+
+	// Verify other keys are not included
+	suite.NotContains(keys, "other:key3")
 }
 
 func (suite *RedisCacheTestSuite) TestDeleteMulti() {
@@ -273,6 +281,30 @@ func (suite *RedisCacheTestSuite) TestPipeline() {
 	// Check results
 	suite.Equal(int64(5), incrCmd.Val())
 	suite.Equal(int64(1), hsetCmd.Val())
+}
+
+func (suite *RedisCacheTestSuite) TestPipelineHSetNX() {
+	ctx := context.Background()
+
+	// Create pipeline
+	pipe := suite.cache.Pipeline()
+
+	// Queue HSetNX commands - first should succeed, second should fail
+	hsetnxCmd1 := pipe.HSetNX(ctx, "pipelineHSetNXHash", "field1", "value1")
+	hsetnxCmd2 := pipe.HSetNX(ctx, "pipelineHSetNXHash", "field1", "value2") // Same field, should not set
+
+	// Execute
+	_, err := pipe.Exec(ctx)
+	suite.NoError(err)
+
+	// Check results - first set succeeds, second fails
+	suite.True(hsetnxCmd1.Val())
+	suite.False(hsetnxCmd2.Val())
+
+	// Verify the value is still the first one
+	value, err := suite.cache.HGet(ctx, "pipelineHSetNXHash", "field1")
+	suite.NoError(err)
+	suite.Equal("value1", value)
 }
 
 func (suite *RedisCacheTestSuite) TestClient() {

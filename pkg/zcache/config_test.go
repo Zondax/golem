@@ -21,6 +21,9 @@ func TestRemoteConfig_GetHost(t *testing.T) {
 		{"standard address", "localhost:6379", "localhost"},
 		{"ip address", "192.168.1.1:6379", "192.168.1.1"},
 		{"empty address", "", ""},
+		{"ipv6 loopback", "[::1]:6379", "::1"},
+		{"ipv6 full address", "[2001:db8::1]:6379", "2001:db8::1"},
+		{"host only (no port)", "localhost", "localhost"},
 	}
 
 	for _, tt := range tests {
@@ -42,6 +45,8 @@ func TestRemoteConfig_GetPort(t *testing.T) {
 		{"empty address", "", 0},
 		{"no port", "localhost", 0},
 		{"invalid port", "localhost:abc", 0},
+		{"ipv6 loopback", "[::1]:6379", 6379},
+		{"ipv6 full address", "[2001:db8::1]:6380", 6380},
 	}
 
 	for _, tt := range tests {

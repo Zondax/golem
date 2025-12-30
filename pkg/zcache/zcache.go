@@ -70,6 +70,7 @@ func NewRemoteCache(config *RemoteConfig) (RemoteCache, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 	if _, err := client.Ping(ctx).Result(); err != nil {
+		_ = client.Close() // Clean up resources on connection failure
 		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 

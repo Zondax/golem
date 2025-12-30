@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -71,25 +71,31 @@ func (c *RemoteConfig) SetAddr(host string, port int) {
 	c.Addr = fmt.Sprintf("%s:%d", host, port)
 }
 
-// GetHost returns the host portion of Addr
+// GetHost returns the host portion of Addr.
+// Properly handles IPv6 addresses (e.g., "[::1]:6379").
 func (c *RemoteConfig) GetHost() string {
 	if c.Addr == "" {
 		return ""
 	}
-	parts := strings.Split(c.Addr, ":")
-	return parts[0]
+	host, _, err := net.SplitHostPort(c.Addr)
+	if err != nil {
+		// If SplitHostPort fails, the address might be host-only without port
+		return c.Addr
+	}
+	return host
 }
 
-// GetPort returns the port portion of Addr, or 0 if not set or invalid
+// GetPort returns the port portion of Addr, or 0 if not set or invalid.
+// Properly handles IPv6 addresses (e.g., "[::1]:6379").
 func (c *RemoteConfig) GetPort() int {
 	if c.Addr == "" {
 		return 0
 	}
-	parts := strings.Split(c.Addr, ":")
-	if len(parts) < 2 {
+	_, portStr, err := net.SplitHostPort(c.Addr)
+	if err != nil {
 		return 0
 	}
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return 0
 	}

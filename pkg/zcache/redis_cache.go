@@ -284,12 +284,7 @@ func (c *redisCache) HIncrBy(ctx context.Context, key, field string, incr int64)
 func (c *redisCache) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
 	realKey := getKeyWithPrefix(c.prefix, key)
 	c.logger.Debugf("hsetnx on redis cache, fullKey: [%s], field: [%s]", realKey, field)
-
-	val, err := json.Marshal(value)
-	if err != nil {
-		return false, err
-	}
-	return c.client.HSetNX(ctx, realKey, field, val).Result()
+	return c.client.HSetNX(ctx, realKey, field, value).Result()
 }
 
 // HExists checks if a hash field exists
@@ -306,11 +301,23 @@ func (c *redisCache) HGetAll(ctx context.Context, key string) (map[string]string
 	return c.client.HGetAll(ctx, realKey).Result()
 }
 
-// Keys returns all keys matching the pattern
+// Keys returns all keys matching the pattern.
+// Uses SCAN internally to avoid blocking the Redis server on large datasets.
+// Returns keys without the configured prefix (consistent with other interface methods).
 func (c *redisCache) Keys(ctx context.Context, pattern string) ([]string, error) {
 	realPattern := getKeyWithPrefix(c.prefix, pattern)
 	c.logger.Debugf("keys on redis cache, pattern: [%s]", realPattern)
-	return c.client.Keys(ctx, realPattern).Result()
+
+	var keys []string
+	iter := c.client.Scan(ctx, 0, realPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
+	return stripPrefixFromKeys(c.prefix, keys), nil
 }
 
 // DeleteMulti deletes multiple keys

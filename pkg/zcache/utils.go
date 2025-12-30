@@ -1,6 +1,9 @@
 package zcache
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const KeySplitter = "/"
 
@@ -21,4 +24,16 @@ func getKeysWithPrefix(prefix string, keys []string) []string {
 	}
 
 	return keys
+}
+
+func stripPrefixFromKeys(prefix string, keys []string) []string {
+	if prefix == "" {
+		return keys
+	}
+	fullPrefix := prefix + KeySplitter
+	result := make([]string, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, strings.TrimPrefix(key, fullPrefix))
+	}
+	return result
 }
