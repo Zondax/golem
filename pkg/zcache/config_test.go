@@ -7,9 +7,25 @@ import (
 )
 
 func TestRemoteConfig_SetAddr(t *testing.T) {
-	config := &RemoteConfig{}
-	config.SetAddr("localhost", 6379)
-	assert.Equal(t, "localhost:6379", config.Addr)
+	tests := []struct {
+		name     string
+		host     string
+		port     int
+		expected string
+	}{
+		{"standard localhost", "localhost", 6379, "localhost:6379"},
+		{"ip address", "192.168.1.1", 6379, "192.168.1.1:6379"},
+		{"ipv6 loopback", "::1", 6379, "[::1]:6379"},
+		{"ipv6 full address", "2001:db8::1", 6380, "[2001:db8::1]:6380"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &RemoteConfig{}
+			config.SetAddr(tt.host, tt.port)
+			assert.Equal(t, tt.expected, config.Addr)
+		})
+	}
 }
 
 func TestRemoteConfig_GetHost(t *testing.T) {
@@ -104,4 +120,41 @@ func TestRemoteConfig_ToRedisConfig_InvalidCAPath(t *testing.T) {
 	_, err := config.ToRedisConfig()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read CA certificate")
+}
+
+func TestRemoteConfig_ToRedisConfig_PartialMTLSConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		certPath    string
+		keyPath     string
+		expectedErr string
+	}{
+		{
+			name:        "cert without key",
+			certPath:    "/path/to/cert.pem",
+			keyPath:     "",
+			expectedErr: "TLSCertPath provided without TLSKeyPath",
+		},
+		{
+			name:        "key without cert",
+			certPath:    "",
+			keyPath:     "/path/to/key.pem",
+			expectedErr: "TLSKeyPath provided without TLSCertPath",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &RemoteConfig{
+				Addr:        "localhost:6379",
+				TLSEnabled:  true,
+				TLSCertPath: tt.certPath,
+				TLSKeyPath:  tt.keyPath,
+			}
+
+			_, err := config.ToRedisConfig()
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedErr)
+		})
+	}
 }

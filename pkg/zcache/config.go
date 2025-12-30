@@ -66,9 +66,10 @@ type LocalConfig struct {
 	BufferItems int64 `json:"buffer_items"` // default: 64
 }
 
-// SetAddr sets Addr from separate host and port values
+// SetAddr sets Addr from separate host and port values.
+// Properly handles IPv6 addresses by using net.JoinHostPort.
 func (c *RemoteConfig) SetAddr(host string, port int) {
-	c.Addr = fmt.Sprintf("%s:%d", host, port)
+	c.Addr = net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 // GetHost returns the host portion of Addr.
@@ -126,7 +127,14 @@ func (c *RemoteConfig) buildTLSConfig() (*tls.Config, error) {
 	}
 
 	// Load client certificate and key if provided (for mTLS)
-	if c.TLSCertPath != "" && c.TLSKeyPath != "" {
+	if c.TLSCertPath != "" || c.TLSKeyPath != "" {
+		// Validate that both cert and key are provided together
+		if c.TLSCertPath == "" {
+			return nil, fmt.Errorf("TLSKeyPath provided without TLSCertPath: both are required for mTLS")
+		}
+		if c.TLSKeyPath == "" {
+			return nil, fmt.Errorf("TLSCertPath provided without TLSKeyPath: both are required for mTLS")
+		}
 		cert, err := tls.LoadX509KeyPair(c.TLSCertPath, c.TLSKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load client certificate: %w", err)

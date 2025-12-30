@@ -303,6 +303,8 @@ func (c *redisCache) HGetAll(ctx context.Context, key string) (map[string]string
 
 // Keys returns all keys matching the pattern.
 // Uses SCAN internally to avoid blocking the Redis server on large datasets.
+// The pattern is applied after the configured prefix is added. For example,
+// if prefix is "myapp" and pattern is "user:*", it searches for "myapp/user:*".
 // Returns keys without the configured prefix (consistent with other interface methods).
 func (c *redisCache) Keys(ctx context.Context, pattern string) ([]string, error) {
 	realPattern := getKeyWithPrefix(c.prefix, pattern)
