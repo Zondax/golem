@@ -38,7 +38,7 @@ type RemoteCache interface {
 	Expire(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	TTL(ctx context.Context, key string) (time.Duration, error)
 
-	// Extended methods for ailimits compatibility
+	// Extended Redis operations
 	IncrBy(ctx context.Context, key string, value int64) (int64, error)
 	DecrBy(ctx context.Context, key string, value int64) (int64, error)
 	HIncrBy(ctx context.Context, key, field string, incr int64) (int64, error)
