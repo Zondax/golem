@@ -64,7 +64,7 @@ func TestCloudSQLPostgresConnector_ValidateConfig(t *testing.T) {
 		{
 			name: "Valid config with password auth",
 			config: &zdbconfig.Config{
-				ConnectionParams: zdbconfig.ConnectionParams{
+				ConnectionParams: zdbconfig.ConnectionParams{ //nolint:gosec // G101: test fixture values, not real credentials
 					User:     "test-user",
 					Password: "test-password",
 					Name:     "test-db",
