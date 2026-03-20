@@ -3,6 +3,7 @@ package signoz
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zondax/golem/pkg/zobservability"
@@ -16,8 +17,9 @@ type Config struct {
 	Release     string            `yaml:"release" mapstructure:"release"`
 	Debug       bool              `yaml:"debug" mapstructure:"debug"`
 	Insecure    bool              `yaml:"insecure" mapstructure:"insecure"`
-	Headers     map[string]string `yaml:"headers" mapstructure:"headers"`
-	SampleRate  float64           `yaml:"sample_rate" mapstructure:"sample_rate"`
+	Headers    map[string]string `yaml:"headers" mapstructure:"headers"`
+	Protocol   string            `yaml:"protocol" mapstructure:"protocol"` // "grpc" (default) or "http"
+	SampleRate float64           `yaml:"sample_rate" mapstructure:"sample_rate"`
 
 	// IgnoreParentSampling forces sampling decisions to be made locally,
 	// ignoring parent trace sampling decisions from headers (like traceparent).
@@ -121,6 +123,22 @@ func (c *Config) HasHeaders() bool {
 // IsInsecure returns true if insecure mode is enabled
 func (c *Config) IsInsecure() bool {
 	return c.Insecure
+}
+
+// IsHTTP returns true if the HTTP protocol is configured
+func (c *Config) IsHTTP() bool {
+	return strings.EqualFold(c.Protocol, ProtocolHTTP)
+}
+
+// GetEndpointURL returns the endpoint formatted for HTTP exporters (with scheme)
+func (c *Config) GetEndpointURL() string {
+	if strings.HasPrefix(c.Endpoint, "http://") || strings.HasPrefix(c.Endpoint, "https://") {
+		return c.Endpoint
+	}
+	if c.IsInsecure() {
+		return "http://" + c.Endpoint
+	}
+	return "https://" + c.Endpoint
 }
 
 // GetSampleRate returns the sample rate, defaulting to 0.1 if not set or invalid

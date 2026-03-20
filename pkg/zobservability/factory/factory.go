@@ -86,6 +86,12 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		insecure = strings.ToLower(insecureStr) == signoz.ConfigKeyTrueValue
 	}
 
+	// Parse protocol (grpc or http, defaults to grpc)
+	protocol := signoz.ProtocolGRPC
+	if protocolStr, ok := config.CustomConfig[signoz.ConfigKeyProtocol]; ok {
+		protocol = strings.ToLower(protocolStr)
+	}
+
 	// Check if parent sampling should be ignored
 	// DEFAULT: true - This fixes trace loss in Google Cloud Run and other cloud environments
 	// where trace headers are automatically injected with sampling decisions
@@ -126,6 +132,7 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		Debug:                config.Debug,
 		Insecure:             insecure,
 		Headers:              headers,
+		Protocol:             protocol,             // OTLP protocol: "grpc" (default) or "http"
 		SampleRate:           config.SampleRate,
 		BatchConfig:          batchConfig,          // Optional: nil means use defaults
 		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults

@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -112,6 +113,7 @@ func NewObserver(cfg *Config) (zobservability.Observer, error) {
 	metricsConfig.OpenTelemetry.Environment = cfg.Environment
 	metricsConfig.OpenTelemetry.Hostname = cfg.GetHostname()
 	metricsConfig.OpenTelemetry.Insecure = cfg.IsInsecure()
+	metricsConfig.OpenTelemetry.Protocol = cfg.Protocol
 
 	// Pass SigNoz headers to metrics config (including access token if present)
 	if cfg.HasHeaders() {
@@ -348,19 +350,7 @@ func (s *signozObserver) GetConfig() zobservability.Config {
 
 // createTracerProvider creates and configures the OpenTelemetry tracer provider
 func createTracerProvider(cfg *Config) (*sdktrace.TracerProvider, trace.Tracer, error) {
-	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if cfg.IsInsecure() {
-		secureOption = otlptracegrpc.WithInsecure()
-	}
-
-	exporter, err := otlptrace.New(
-		context.Background(),
-		otlptracegrpc.NewClient(
-			secureOption,
-			otlptracegrpc.WithEndpoint(cfg.Endpoint),
-			otlptracegrpc.WithHeaders(cfg.Headers),
-		),
-	)
+	exporter, err := createTraceExporter(cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
@@ -531,6 +521,34 @@ func createPropagatorByFormat(format string) []propagation.TextMapPropagator {
 	default:
 		return nil
 	}
+}
+
+// createTraceExporter creates an OTLP trace exporter using either gRPC or HTTP protocol
+func createTraceExporter(cfg *Config) (*otlptrace.Exporter, error) {
+	if cfg.IsHTTP() {
+		opts := []otlptracehttp.Option{
+			otlptracehttp.WithEndpointURL(cfg.GetEndpointURL()),
+			otlptracehttp.WithHeaders(cfg.Headers),
+		}
+		if cfg.IsInsecure() {
+			opts = append(opts, otlptracehttp.WithInsecure())
+		}
+		return otlptrace.New(context.Background(), otlptracehttp.NewClient(opts...))
+	}
+
+	// Default: gRPC
+	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	if cfg.IsInsecure() {
+		secureOption = otlptracegrpc.WithInsecure()
+	}
+	return otlptrace.New(
+		context.Background(),
+		otlptracegrpc.NewClient(
+			secureOption,
+			otlptracegrpc.WithEndpoint(cfg.Endpoint),
+			otlptracegrpc.WithHeaders(cfg.Headers),
+		),
+	)
 }
 
 // createTracingResource creates a resource with service information for tracing

@@ -19,9 +19,14 @@ const (
 	DefaultMaxExportBatch = 512              // Maximum spans per batch
 	DefaultMaxQueueSize   = 2048             // Maximum spans in queue
 
+	// Protocol constants
+	ProtocolGRPC = "grpc" // gRPC protocol (default)
+	ProtocolHTTP = "http" // HTTP protocol (works through Cloudflare and other HTTP proxies)
+
 	// Factory configuration keys - used in factory.go to parse custom_config
 	ConfigKeyHeaderPrefix = "header_"  // Prefix for header configuration keys
 	ConfigKeyInsecure     = "insecure" // Key for insecure connection setting
+	ConfigKeyProtocol     = "protocol" // Key for OTLP protocol (grpc or http)
 	ConfigKeyTrueValue    = "true"     // String value representing boolean true
 
 	// SignOz Token Configuration Keys
