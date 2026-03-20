@@ -132,7 +132,7 @@ func newSigNozObserver(config *zobservability.Config, serviceName string) (zobse
 		Debug:                config.Debug,
 		Insecure:             insecure,
 		Headers:              headers,
-		Protocol:             protocol,             // OTLP protocol: "grpc" (default) or "http"
+		Protocol:             protocol, // OTLP protocol: "grpc" (default) or "http"
 		SampleRate:           config.SampleRate,
 		BatchConfig:          batchConfig,          // Optional: nil means use defaults
 		ResourceConfig:       resourceConfig,       // Optional: nil means use defaults

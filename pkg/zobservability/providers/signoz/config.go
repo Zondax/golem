@@ -17,9 +17,9 @@ type Config struct {
 	Release     string            `yaml:"release" mapstructure:"release"`
 	Debug       bool              `yaml:"debug" mapstructure:"debug"`
 	Insecure    bool              `yaml:"insecure" mapstructure:"insecure"`
-	Headers    map[string]string `yaml:"headers" mapstructure:"headers"`
-	Protocol   string            `yaml:"protocol" mapstructure:"protocol"` // "grpc" (default) or "http"
-	SampleRate float64           `yaml:"sample_rate" mapstructure:"sample_rate"`
+	Headers     map[string]string `yaml:"headers" mapstructure:"headers"`
+	Protocol    string            `yaml:"protocol" mapstructure:"protocol"` // "grpc" (default) or "http"
+	SampleRate  float64           `yaml:"sample_rate" mapstructure:"sample_rate"`
 
 	// IgnoreParentSampling forces sampling decisions to be made locally,
 	// ignoring parent trace sampling decisions from headers (like traceparent).
