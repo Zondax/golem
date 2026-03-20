@@ -131,6 +131,7 @@ func TestService_Verify(t *testing.T) {
 			assert.Equal(t, http.MethodPost, r.Method)
 			assert.Contains(t, r.Header.Get(HeaderContentType), "multipart/form-data")
 
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 			assert.Equal(t, "test-secret", r.FormValue(FieldSecret))
@@ -256,6 +257,7 @@ func TestService_Verify(t *testing.T) {
 	t.Run("WhenEmptyToken_ShouldStillWork", func(t *testing.T) {
 		// Arrange
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 			assert.Equal(t, "", r.FormValue(FieldResponse))
@@ -277,6 +279,7 @@ func TestService_Verify(t *testing.T) {
 	t.Run("WhenEmptySecretKey_ShouldStillWork", func(t *testing.T) {
 		// Arrange
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 			assert.Equal(t, "", r.FormValue(FieldSecret))
@@ -390,6 +393,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 	t.Run("WhenVeryLongToken_ShouldStillWork", func(t *testing.T) {
 		// Arrange - Test with a very long token to ensure multipart handling works
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 
@@ -421,6 +425,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 		specialToken := "token-with-special-chars-!@#$%^&*()_+-=[]{}|;:,.<>?"
 
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 
@@ -446,6 +451,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 		unicodeToken := "token-with-unicode-🚀-测试-🔒"
 
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 

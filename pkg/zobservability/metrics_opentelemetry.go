@@ -3,12 +3,14 @@ package zobservability
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -76,21 +78,53 @@ func NewOpenTelemetryMetricsProvider(name string, config MetricsConfig) (Metrics
 
 // createOTLPExporter creates an OTLP metrics exporter with the given configuration
 func createOTLPExporter(config OpenTelemetryMetricsConfig) (sdkmetric.Exporter, error) {
+	if strings.EqualFold(config.Protocol, "http") {
+		return createOTLPHTTPMetricExporter(config)
+	}
+	return createOTLPGRPCMetricExporter(config)
+}
+
+// createOTLPGRPCMetricExporter creates a gRPC-based OTLP metrics exporter
+func createOTLPGRPCMetricExporter(config OpenTelemetryMetricsConfig) (sdkmetric.Exporter, error) {
 	opts := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(config.Endpoint),
 	}
 
-	// Configure security
 	if config.Insecure {
 		opts = append(opts, otlpmetricgrpc.WithInsecure())
 	}
 
-	// Add custom headers
 	if len(config.Headers) > 0 {
 		opts = append(opts, otlpmetricgrpc.WithHeaders(config.Headers))
 	}
 
 	return otlpmetricgrpc.New(context.Background(), opts...)
+}
+
+// createOTLPHTTPMetricExporter creates an HTTP-based OTLP metrics exporter
+func createOTLPHTTPMetricExporter(config OpenTelemetryMetricsConfig) (sdkmetric.Exporter, error) {
+	endpoint := config.Endpoint
+	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+		if config.Insecure {
+			endpoint = "http://" + endpoint
+		} else {
+			endpoint = "https://" + endpoint
+		}
+	}
+
+	opts := []otlpmetrichttp.Option{
+		otlpmetrichttp.WithEndpointURL(endpoint),
+	}
+
+	if config.Insecure {
+		opts = append(opts, otlpmetrichttp.WithInsecure())
+	}
+
+	if len(config.Headers) > 0 {
+		opts = append(opts, otlpmetrichttp.WithHeaders(config.Headers))
+	}
+
+	return otlpmetrichttp.New(context.Background(), opts...)
 }
 
 // createResource creates an OpenTelemetry resource with service metadata

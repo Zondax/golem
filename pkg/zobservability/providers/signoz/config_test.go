@@ -169,6 +169,45 @@ func TestConfig_HasHeaders_WhenEmptyHeaders_ShouldReturnFalse(t *testing.T) {
 	assert.False(t, result)
 }
 
+// =============================================================================
+// PROTOCOL TESTS
+// =============================================================================
+
+func TestConfig_IsHTTP_WhenHTTPProtocol_ShouldReturnTrue(t *testing.T) {
+	config := &Config{Protocol: "http"}
+	assert.True(t, config.IsHTTP())
+}
+
+func TestConfig_IsHTTP_WhenHTTPUppercase_ShouldReturnTrue(t *testing.T) {
+	config := &Config{Protocol: "HTTP"}
+	assert.True(t, config.IsHTTP())
+}
+
+func TestConfig_IsHTTP_WhenGRPCProtocol_ShouldReturnFalse(t *testing.T) {
+	config := &Config{Protocol: "grpc"}
+	assert.False(t, config.IsHTTP())
+}
+
+func TestConfig_IsHTTP_WhenEmptyProtocol_ShouldReturnFalse(t *testing.T) {
+	config := &Config{}
+	assert.False(t, config.IsHTTP())
+}
+
+func TestConfig_GetEndpointURL_WhenNoScheme_ShouldAddHTTPS(t *testing.T) {
+	config := &Config{Endpoint: "signoz-ingest.zondax.ch:443"}
+	assert.Equal(t, "https://signoz-ingest.zondax.ch:443", config.GetEndpointURL())
+}
+
+func TestConfig_GetEndpointURL_WhenInsecureNoScheme_ShouldAddHTTP(t *testing.T) {
+	config := &Config{Endpoint: "localhost:4318", Insecure: true}
+	assert.Equal(t, "http://localhost:4318", config.GetEndpointURL())
+}
+
+func TestConfig_GetEndpointURL_WhenSchemePresent_ShouldPreserve(t *testing.T) {
+	config := &Config{Endpoint: "https://signoz-ingest.zondax.ch"}
+	assert.Equal(t, "https://signoz-ingest.zondax.ch", config.GetEndpointURL())
+}
+
 func TestConfig_IsInsecure_WhenInsecureTrue_ShouldReturnTrue(t *testing.T) {
 	// Arrange
 	config := &Config{

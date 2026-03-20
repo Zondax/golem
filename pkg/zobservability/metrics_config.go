@@ -34,6 +34,7 @@ type OpenTelemetryMetricsConfig struct {
 	Environment    string            `yaml:"environment" mapstructure:"environment"`
 	Hostname       string            `yaml:"hostname" mapstructure:"hostname"`
 	Headers        map[string]string `yaml:"headers" mapstructure:"headers"`
+	Protocol       string            `yaml:"protocol" mapstructure:"protocol"` // "grpc" (default) or "http"
 
 	// Export configuration
 	ExportMode    string        `yaml:"export_mode" mapstructure:"export_mode"`       // "push" or "endpoint"

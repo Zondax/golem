@@ -89,7 +89,7 @@ func TestExampleConfigurations_WhenCalled_ShouldCreateValidConfigs(t *testing.T)
 			PushInterval:   zobservability.DefaultPushInterval,
 			BatchTimeout:   zobservability.DefaultBatchTimeout,
 			ExportTimeout:  zobservability.DefaultExportTimeout,
-			Headers: map[string]string{
+			Headers: map[string]string{ //nolint:gosec // G101: example placeholder values, not real credentials
 				"signoz-access-token": "your-signoz-access-token",
 			},
 		},
@@ -109,7 +109,7 @@ func TestExampleConfigurations_WhenCalled_ShouldCreateValidConfigs(t *testing.T)
 			ExportMode:     zobservability.OTelExportModeEndpoint,
 			BatchTimeout:   zobservability.DefaultBatchTimeout,
 			ExportTimeout:  zobservability.DefaultExportTimeout,
-			Headers: map[string]string{
+			Headers: map[string]string{ //nolint:gosec // G101: example placeholder values, not real credentials
 				"signoz-access-token": "your-signoz-access-token",
 			},
 		},

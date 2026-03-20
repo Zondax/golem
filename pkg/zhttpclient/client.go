@@ -169,7 +169,7 @@ func (z *zHTTPClient) SetRetryPolicy(retryPolicy *RetryPolicy) ZHTTPClient {
 }
 
 func (z *zHTTPClient) Do(ctx context.Context, req *http.Request) (*Response, error) {
-	resp, err := z.client.GetClient().Do(req.WithContext(ctx))
+	resp, err := z.client.GetClient().Do(req.WithContext(ctx)) //nolint:gosec // URL is constructed internally, not from user input
 	if err != nil {
 		return nil, err
 	}
