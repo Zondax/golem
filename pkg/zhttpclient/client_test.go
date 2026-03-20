@@ -777,7 +777,7 @@ func TestOpenTelemetryIntegration(t *testing.T) {
 		// Create a test server
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("Method: " + r.Method))
+			_, _ = fmt.Fprintf(w, "Method: %s", r.Method)
 		}))
 		defer srv.Close()
 
