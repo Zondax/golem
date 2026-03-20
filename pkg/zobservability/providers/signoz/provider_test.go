@@ -469,6 +469,114 @@ func TestCreateTracerProvider_WhenCustomBatchConfig_ShouldReturnProvider(t *test
 }
 
 // =============================================================================
+// HTTP PROTOCOL TESTS
+// =============================================================================
+
+func TestCreateTracerProvider_WhenHTTPProtocol_ShouldReturnProvider(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "localhost:4318",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    true,
+		Protocol:    ProtocolHTTP,
+		SampleRate:  1.0,
+	}
+
+	// Act
+	provider, tracer, err := createTracerProvider(config)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, provider)
+	assert.NotNil(t, tracer)
+
+	// Cleanup
+	if provider != nil {
+		_ = provider.Shutdown(context.Background())
+	}
+}
+
+func TestCreateTracerProvider_WhenHTTPSecure_ShouldReturnProvider(t *testing.T) {
+	// Arrange
+	config := &Config{
+		Endpoint:    "signoz-ingest.zondax.ch:443",
+		ServiceName: "test-service",
+		Environment: "test",
+		Release:     "1.0.0",
+		Insecure:    false,
+		Protocol:    ProtocolHTTP,
+		SampleRate:  1.0,
+		Headers: map[string]string{
+			"CF-Access-Client-Id":     "test-id",
+			"CF-Access-Client-Secret": "test-secret",
+		},
+	}
+
+	// Act
+	provider, tracer, err := createTracerProvider(config)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, provider)
+	assert.NotNil(t, tracer)
+
+	// Cleanup
+	if provider != nil {
+		_ = provider.Shutdown(context.Background())
+	}
+}
+
+func TestCreateTraceExporter_WhenHTTPProtocol_ShouldReturnExporter(t *testing.T) {
+	config := &Config{
+		Endpoint: "localhost:4318",
+		Insecure: true,
+		Protocol: ProtocolHTTP,
+		Headers:  map[string]string{"X-Test": "value"},
+	}
+
+	exporter, err := createTraceExporter(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, exporter)
+
+	if exporter != nil {
+		_ = exporter.Shutdown(context.Background())
+	}
+}
+
+func TestCreateTraceExporter_WhenGRPCProtocol_ShouldReturnExporter(t *testing.T) {
+	config := &Config{
+		Endpoint: "localhost:4317",
+		Insecure: true,
+		Protocol: ProtocolGRPC,
+	}
+
+	exporter, err := createTraceExporter(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, exporter)
+
+	if exporter != nil {
+		_ = exporter.Shutdown(context.Background())
+	}
+}
+
+func TestCreateTraceExporter_WhenEmptyProtocol_ShouldDefaultToGRPC(t *testing.T) {
+	config := &Config{
+		Endpoint: "localhost:4317",
+		Insecure: true,
+	}
+
+	exporter, err := createTraceExporter(config)
+	assert.NoError(t, err)
+	assert.NotNil(t, exporter)
+
+	if exporter != nil {
+		_ = exporter.Shutdown(context.Background())
+	}
+}
+
+// =============================================================================
 // RESOURCE CREATION TESTS
 // =============================================================================
 
