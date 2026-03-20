@@ -393,6 +393,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 	t.Run("WhenVeryLongToken_ShouldStillWork", func(t *testing.T) {
 		// Arrange - Test with a very long token to ensure multipart handling works
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 
@@ -424,6 +425,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 		specialToken := "token-with-special-chars-!@#$%^&*()_+-=[]{}|;:,.<>?"
 
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 
@@ -449,6 +451,7 @@ func TestService_Verify_EdgeCases(t *testing.T) {
 		unicodeToken := "token-with-unicode-🚀-测试-🔒"
 
 		server := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 			err := r.ParseMultipartForm(10 << 20)
 			require.NoError(t, err)
 

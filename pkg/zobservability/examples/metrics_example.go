@@ -77,8 +77,8 @@ func ExampleConfigurations() {
 			PushInterval:   zobservability.DefaultPushInterval, // 30 seconds
 			BatchTimeout:   zobservability.DefaultBatchTimeout,
 			ExportTimeout:  zobservability.DefaultExportTimeout,
-			Headers: map[string]string{
-				"signoz-access-token": "your-signoz-access-token", //nolint:gosec // example placeholder values, not real credentials
+			Headers: map[string]string{ //nolint:gosec // G101: example placeholder values, not real credentials
+				"signoz-access-token": "your-signoz-access-token",
 			},
 		},
 	}
@@ -97,8 +97,8 @@ func ExampleConfigurations() {
 			ExportMode:     zobservability.OTelExportModeEndpoint,
 			BatchTimeout:   zobservability.DefaultBatchTimeout,
 			ExportTimeout:  zobservability.DefaultExportTimeout,
-			Headers: map[string]string{
-				"signoz-access-token": "your-signoz-access-token", //nolint:gosec // example placeholder values, not real credentials
+			Headers: map[string]string{ //nolint:gosec // G101: example placeholder values, not real credentials
+				"signoz-access-token": "your-signoz-access-token",
 			},
 		},
 	}

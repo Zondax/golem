@@ -775,7 +775,7 @@ func TestOpenTelemetryIntegration(t *testing.T) {
 
 	t.Run("client with custom filters works correctly", func(t *testing.T) {
 		// Create a test server
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { //nolint:gosec // test handler, no XSS risk
 			w.WriteHeader(http.StatusOK)
 			_, _ = fmt.Fprintf(w, "Method: %s", r.Method)
 		}))
