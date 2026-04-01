@@ -1,0 +1,12 @@
+.git/
+.github/
+.earthlyignore
+Earthfile
+earthly-golem/
+node_modules/
+output/
+coverage/
+*.log
+.env
+.env.*
+docker-bake.hcl
