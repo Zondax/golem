@@ -26,3 +26,4 @@ jobs:
     secrets:
       DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      REMOTE_BUILD_KIT: tcp://buildkit.int-dev.zondax.io:8372
