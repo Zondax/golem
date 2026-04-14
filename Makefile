@@ -63,6 +63,16 @@ test:
 earthly:
 	earthly +all
 
+## Docker Bake:
+docker-bake: ## Build production image locally
+	./scripts/docker-bake.sh
+
+docker-bake-push: ## Build and push with all flex tags
+	./scripts/docker-bake.sh --push
+
+docker-bake-debug: ## Build with verbose output
+	BUILDX_NO_DEFAULT_ATTESTATIONS=1 ./scripts/docker-bake.sh --progress=plain
+
 docker-bash:
 	docker run --platform linux/amd64 -it zondax/${APP_NAME}:latest /bin/sh
 

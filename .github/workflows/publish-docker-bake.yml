@@ -1,0 +1,29 @@
+name: Publish
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+    branches: ['*']
+  release:
+    types:
+      - created
+    tags:
+      - 'v[0-9]+'
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    uses: zondax/_workflows/.github/workflows/_publish-docker-bake.yaml@main
+    with:
+      registry: dockerhub
+      enable_remote_builder: true
+      enable_signing: true
+      enable_provenance: true
+    secrets:
+      DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      REMOTE_BUILD_KIT: tcp://buildkit.int-dev.zondax.io:8372
