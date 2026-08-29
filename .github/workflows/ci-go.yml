@@ -17,3 +17,4 @@ jobs:
     uses: zondax/_workflows/.github/workflows/_checks-golang.yaml@main
     with:
       package_path: .
+      go_version: "1.25"

@@ -78,4 +78,13 @@ ifeq ($(EXPORT_RESULT), true)
 	gocov convert profile.cov | gocov-xml > coverage.xml
 endif
 
+# Names expected by zondax/_workflows/_checks-golang.yaml
+.PHONY: go-build go-mod-check go-lint-install go-lint go-test go-coverage
+go-build: build
+go-mod-check: check-modtidy
+go-lint-install: install-lint
+go-lint: lint
+go-test: test
+go-coverage: coverage
+
 .PHONY: *
