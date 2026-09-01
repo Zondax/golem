@@ -58,8 +58,33 @@ lint: ## Lint
 	golangci-lint run
 
 # Dependency helpers
+GOLANGCI_LINT_VERSION ?= 2.13.2
+
+# Installed by hand rather than via golangci-lint's install.sh: that script looks
+# up the expected hash with `grep <tarball-name>` over the checksums file, which
+# since v2.12.0 also matches the `<tarball-name>.sbom.json` entry. It then compares
+# both hashes at once against the one real hash and always fails.
 install-lint: ## Install go linter `golangci-lint`
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin latest
+	@set -eu; \
+	ver="$(GOLANGCI_LINT_VERSION)"; \
+	name="golangci-lint-$$ver-$$(go env GOOS)-$$(go env GOARCH)"; \
+	base="https://github.com/golangci/golangci-lint/releases/download/v$$ver"; \
+	bin="$$(go env GOPATH)/bin"; \
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	curl -sSfL "$$base/$$name.tar.gz" -o "$$tmp/$$name.tar.gz"; \
+	curl -sSfL "$$base/golangci-lint-$$ver-checksums.txt" -o "$$tmp/checksums.txt"; \
+	want="$$(awk -v f="$$name.tar.gz" '$$2 == f { print $$1 }' "$$tmp/checksums.txt")"; \
+	[ -n "$$want" ] || { echo "no checksum entry for $$name.tar.gz"; exit 1; }; \
+	if command -v sha256sum >/dev/null 2>&1; then \
+		got="$$(sha256sum "$$tmp/$$name.tar.gz" | awk '{ print $$1 }')"; \
+	else \
+		got="$$(shasum -a 256 "$$tmp/$$name.tar.gz" | awk '{ print $$1 }')"; \
+	fi; \
+	[ "$$want" = "$$got" ] || { echo "checksum mismatch for $$name.tar.gz: want $$want, got $$got"; exit 1; }; \
+	tar -xzf "$$tmp/$$name.tar.gz" -C "$$tmp"; \
+	mkdir -p "$$bin"; \
+	install -m 0755 "$$tmp/$$name/golangci-lint" "$$bin/golangci-lint"
 
 ## Test
 test: ## Run the tests of the project, excluding integration tests.
