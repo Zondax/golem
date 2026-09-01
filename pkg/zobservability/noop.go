@@ -50,7 +50,7 @@ func (n *noopObserver) GetConfig() Config {
 	return Config{
 		Provider:    "noop",
 		Enabled:     false,
-		Environment: "development",
+		Environment: EnvironmentDevelopment,
 		Debug:       false,
 		SampleRate:  0,
 		Middleware: MiddlewareConfig{

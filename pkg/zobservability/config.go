@@ -55,7 +55,7 @@ type MiddlewareConfig struct {
 
 func (c *Config) SetDefaults() {
 	if c.Environment == "" {
-		c.Environment = "development"
+		c.Environment = EnvironmentDevelopment
 	}
 	if c.SampleRate == 0 {
 		c.SampleRate = 0.1

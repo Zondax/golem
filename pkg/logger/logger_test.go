@@ -303,7 +303,7 @@ func TestNewDevelopmentLogger(t *testing.T) {
 func TestInitLogger(t *testing.T) {
 	// Save original global logger
 	originalLogger := zap.L()
-	defer zap.ReplaceGlobals(originalLogger)
+	defer func() { zap.ReplaceGlobals(originalLogger) }()
 
 	config := Config{
 		Level:    "debug",

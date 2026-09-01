@@ -63,7 +63,7 @@ func DefaultOpenTelemetryMetricsConfig() OpenTelemetryMetricsConfig {
 		Insecure:       true,
 		ServiceName:    "unknown-service",
 		ServiceVersion: "1.0.0",
-		Environment:    "development",
+		Environment:    EnvironmentDevelopment,
 		Hostname:       "localhost",
 		Headers:        make(map[string]string),
 		ExportMode:     OTelExportModePush,
