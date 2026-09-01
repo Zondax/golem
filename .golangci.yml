@@ -27,6 +27,17 @@ linters:
       - source: "^\\s*defer\\s+"
         linters:
           - errcheck
+      # Table-driven tests repeat short literals by nature, and the gosec
+      # web-hardening rules do not apply to handlers defined inside tests.
+      - path: '_test\.go'
+        linters:
+          - goconst
+          - gosec
+      # Examples spell their config out literally so they can be read as
+      # documentation; folding the repeats into constants defeats that.
+      - path: 'examples/'
+        linters:
+          - goconst
 
 
 formatters:
