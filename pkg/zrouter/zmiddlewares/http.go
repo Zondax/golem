@@ -23,13 +23,12 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 		}
 
 		w.Header().Set(RequestIDHeader, requestID)
-		rw := &responseWriter{ResponseWriter: w}
 		newLogger := logger.NewLogger(logger.Field{
 			Key:   logger.RequestIDKey,
 			Value: requestID,
 		})
 		ctx := logger.ContextWithLogger(r.Context(), newLogger)
-		next.ServeHTTP(rw, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
