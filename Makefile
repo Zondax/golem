@@ -40,8 +40,10 @@ gitclean:
 	git clean -xfd
 	git submodule foreach --recursive git clean -xfd
 
+GOLANGCI_LINT_VERSION ?= v2.6.2
+
 install_lint:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin latest
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_VERSION)
 
 check-modtidy:
 	go mod tidy

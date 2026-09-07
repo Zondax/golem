@@ -1,32 +1,69 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# Grouped updates so we do not get one PR per OTel exporter.
+# No target-branch: security updates always open against the default
+# branch, and setting it produced duplicate PRs on other repos.
 
 version: 2
 updates:
-  # Enable version updates for Go modules
   - package-ecosystem: 'gomod'
-    # Look for `package.json` and `lock` files in the `root` directory
     directory: '/'
-    # Check the npm registry for updates every day (weekdays)
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+    open-pull-requests-limit: 5
     commit-message:
       prefix: 'chore'
       prefix-development: 'chore'
       include: 'scope'
-    target-branch: main
+    groups:
+      go-core:
+        applies-to: version-updates
+        patterns:
+          - 'golang.org/x/*'
+          - 'google.golang.org/*'
+      go-core-security:
+        applies-to: security-updates
+        patterns:
+          - 'golang.org/x/*'
+          - 'google.golang.org/*'
+      opentelemetry:
+        applies-to: version-updates
+        patterns:
+          - 'go.opentelemetry.io/*'
+      opentelemetry-security:
+        applies-to: security-updates
+        patterns:
+          - 'go.opentelemetry.io/*'
+      google-cloud:
+        applies-to: version-updates
+        patterns:
+          - 'cloud.google.com/*'
+      database:
+        applies-to: version-updates
+        patterns:
+          - 'gorm.io/*'
+          - 'github.com/ClickHouse/*'
+          - 'github.com/jackc/pgx/*'
+      go-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
 
-  # Keep GitHub Actions up to date
-  - package-ecosystem: "github-actions"
-    directory: "/"  # Looks for workflow files in .github/workflows
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "daily"  # Changed from weekly to daily
-    labels:            # Optional: Add labels to PRs
-      - "github-actions"
-      - "dependencies"
-    commit-message:    # Optional: Customize commit messages
-      prefix: "ci"
-      include: "scope"
-    target-branch: main  # Added to match gomod config
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'ci'
+      include: 'scope'
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - '*'
