@@ -29,17 +29,15 @@ func LoggingMiddleware(options LoggingMiddlewareOptions) func(http.Handler) http
 				}
 			}
 
-			buffer := &bytes.Buffer{}
-
-			rw := &responseWriter{
-				ResponseWriter: w,
-				body:           buffer,
+			log := logger.GetLoggerFromContext(r.Context())
+			rw := &responseWriter{ResponseWriter: w}
+			if log.IsDebugEnabled() {
+				rw.body = &bytes.Buffer{}
 			}
 
 			start := time.Now()
 			next.ServeHTTP(rw, r)
 			duration := time.Since(start)
-			log := logger.GetLoggerFromContext(r.Context())
 			if log.IsDebugEnabled() {
 				log.Debugf("Method: %s - URL: %s | Status: %d - Duration: %s - Response Body: %s",
 					r.Method, r.URL.String(), rw.status, duration, string(rw.Body()))

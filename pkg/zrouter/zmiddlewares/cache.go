@@ -1,6 +1,7 @@
 package zmiddlewares
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/zondax/golem/pkg/logger"
 	"github.com/zondax/golem/pkg/metrics"
@@ -34,27 +35,27 @@ func CacheMiddleware(metricServer metrics.TaskMetrics, cache zcache.ZCache, conf
 			path := r.URL.Path
 			fullURL := constructFullURL(r)
 
-			rw := &responseWriter{ResponseWriter: w}
 			for _, pPath := range processedPaths {
 				if pPath.Regex.MatchString(path) {
 					key, err := constructCacheKey(fullURL, r, metricServer)
 					if err != nil {
 						logger.GetLoggerFromContext(r.Context()).Errorf("Error constructing cache key: %v", err)
-						next.ServeHTTP(rw, r)
+						next.ServeHTTP(w, r)
 						return
 					}
 
-					if tryServeFromCache(rw, r, cache, key, metricServer) {
+					if tryServeFromCache(w, r, cache, key, metricServer) {
 						return
 					}
 
+					rw := &responseWriter{ResponseWriter: w, body: &bytes.Buffer{}}
 					next.ServeHTTP(rw, r) // Important: this line needs to be BEFORE setting the cache.
 					cacheResponseIfNeeded(rw, r, cache, key, pPath.TTL, metricServer)
 					return
 				}
 			}
 
-			next.ServeHTTP(rw, r)
+			next.ServeHTTP(w, r)
 		})
 	}
 }

@@ -20,15 +20,14 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 }
 
 func (rw *responseWriter) Write(p []byte) (int, error) {
-	if rw.body == nil {
-		rw.body = new(bytes.Buffer)
-	}
-
 	if rw.status == 0 {
 		rw.WriteHeader(http.StatusOK)
 	}
 
-	rw.body.Write(p)
+	// Only copy the payload when a middleware asked for it (HTTP cache, debug logs).
+	if rw.body != nil {
+		rw.body.Write(p)
+	}
 	n, err := rw.ResponseWriter.Write(p)
 	rw.written += int64(n)
 	return n, err
